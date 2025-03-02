@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">-->
+    
+    <link href="./styles.css" rel="stylesheet">
+    <title>Companion Dashboard</title>
+  </head>
+  <body>
+
+    <div id="settings-div">
+      <div>
+        <input id="urlInput" placeholder="127.0.0.1:8888" style="height: 30px; background-color: #ff8080; border: none;"></input>
+        <button id="saveURL">SAVE</button>
+      </div>
+      <img src="assets/icon.png" width="50px" height="50px"></img>
+      <span style="font-family: Chakra Petch;">COMPANION DASHBOARD BETA</span>
+      <div>
+        <button id="create-button">NEW BOX</button>
+        <button id="clear-button" onclick="deleteAllBoxes()">CLEAR</button>
+      </div>
+      <div>
+        <button id="download-button" onclick="downloadDisplayBoxes()">DOWNLOAD</button>
+        <button id="load-button" onclick="createFileInput()">LOAD FROM FILE</button>
+      </div>
+
+    </div>
+
+    <!-- You can also require other files to run in this process -->
+    <!-- <script src="./renderer.js"></script> -->
+    <script src="./layout.js"></script>
+    <script src="./onload.js"></script>
+    <script src="./createBox.js"></script>
+    <script src="./updater.js"></script>
+    <script src="./fetch.js"></script>
+    <script src="./modal.js"></script>
+    <script src="./saverestore.js"></script>
+
+
+  </body>
+</html>
