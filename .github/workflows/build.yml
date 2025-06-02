@@ -11,6 +11,10 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+
+    env:
+      APPLE_ID: ${{ secrets.MACOS_APPLEID }}
+      APPLE_ID_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
     
     strategy:
       matrix:
