@@ -6,12 +6,19 @@ module.exports = {
     makers: [
         {
             name: '@electron-forge/maker-zip',
-            platforms: ['darwin'],
+            platforms: ['darwin', 'win32'], // Add win32 here
         },
         {
             name: '@electron-forge/maker-dmg',
             config: {
                 format: 'ULFO'
+            }
+        },
+        // Add Windows-specific maker
+        {
+            name: '@electron-forge/maker-squirrel',
+            config: {
+                // Optional: customize installer settings
             }
         }
     ],
