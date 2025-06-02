@@ -17,63 +17,63 @@ jobs:
         os: [macos-latest, windows-latest]
         
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
+      - name: Checkout code
+        uses: actions/checkout@v4
         
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Build application
-      # Only pass macOS-specific env vars on macOS
-      env:
-        MACOS_APPLEID: ${{ secrets.MACOS_APPLEID }}
-        MACOS_NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
-        MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
-      run: npm run make
-      
-    - name: Upload artifacts (macOS)
-      if: matrix.os == 'macos-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: macos-build
-        path: out/make/**/*
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
         
-    - name: Upload artifacts (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
-      with:
-        name: windows-build
-        path: out/make/**/*
-
+      - name: Build application
+        env:
+          # Only pass these on macOS to avoid errors
+          MACOS_APPLEID: ${{ matrix.os == 'macos-latest' && secrets.MACOS_APPLEID || '' }}
+          MACOS_NOTARIZATION_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MACOS_NOTARIZATION_PASSWORD || '' }}
+          MACOS_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.MACOS_TEAM_ID || '' }}
+        run: npm run make
+        
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: out/make/**/*
+          
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: out/make/**/*
+  
   release:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     
     steps:
-    - name: Download macOS artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: macos-build
-        path: ./macos-build
-        
-    - name: Download Windows artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: windows-build  
-        path: ./windows-build
-        
-    - name: Upload to Release
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          ./macos-build/**/*
-          ./windows-build/**/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: ./macos-build
+          
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build  
+          path: ./windows-build
+          
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./macos-build/**/*
+            ./windows-build/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
