@@ -1,0 +1,139 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3001;
+}
+
+.modal-content {
+    background: #262626;
+    padding: 20px;
+    border-radius: 8px;
+    border: 2px solid white;
+    max-width: 60%;
+    max-height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    align-content: center;
+    box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
+    -webkit-box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
+    -moz-box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
+}
+
+.settings-section {
+    background-color: rgba(0, 0, 0, .2);
+    padding: 20px;
+    flex-grow: 1;
+    text-align: center;
+    margin: 5px;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    gap: 15px;
+}
+
+.settings-section h3 {
+    margin-bottom: 10px;
+    color: white;
+}
+
+.settings-section label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    gap: 5px;
+}
+
+.setting-header {
+    text-transform: uppercase;
+    font-size: .6em;
+    text-align: right;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    width: 100%;
+}
+
+.modal-buttons button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal-save-button {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.modal-cancel-button {
+    background-color: #6b7280;
+    color: white;
+}
+
+.modal-delete-button {
+    background-color: red;
+    color: white;
+}
+
+.modal-content label {
+    margin-bottom: 12px;
+    font-weight: 500;
+}
+
+.modal-content input[type="text"] {
+    width: 100%;
+    padding: 6px 8px 6px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.modal-content input[type="number"] {
+    width: 50px;
+    padding: 6px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    margin-top: 4px;
+    text-align: center;
+}
+
+.modal-content input[type="color"] {
+    width: 50px;
+    height: 30px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 3px;
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
