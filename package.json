@@ -21,6 +21,7 @@
     "make": "electron-forge make"
   },
   "dependencies": {
+    "electron-notarize": "^1.2.2",
     "install": "^0.13.0",
     "npm": "^11.4.1",
     "react": "^19.1.0",
@@ -53,12 +54,14 @@
     "wait-on": "^8.0.3"
   },
   "build": {
+    "afterSign": "notarize.js",
     "appId": "com.wearecreativeland.companiondashboard",
     "mac": {
       "category": "public.app-category.utilities",
       "entitlements": "entitlements.plist",
       "entitlementsInherit": "entitlements.plist",
       "hardenedRuntime": true,
+      "gatekeeperAssess": false,
       "identity": "Developer ID Application: Creativeland, LLC (22SGVMMH49)"
     }
   }

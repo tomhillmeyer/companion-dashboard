@@ -42,7 +42,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                             type="text"
                             value={formData.backgroundColorText}
                             onChange={(e) => updateField('backgroundColorText', e.target.value)}
-                            placeholder='Companion Variable or HEX'
+                            placeholder='Variable or HEX'
                         />
                     </label>
                 </div>
@@ -72,7 +72,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                                 type="text"
                                 value={formData.headerColorText}
                                 onChange={(e) => updateField('headerColorText', e.target.value)}
-                                placeholder='Companion Variable or HEX'
+                                placeholder='Variable or HEX'
                             />
                         </label>
                         <label>
@@ -98,7 +98,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                                 type="text"
                                 value={formData.headerLabelColorText}
                                 onChange={(e) => updateField('headerLabelColorText', e.target.value)}
-                                placeholder='Companion Variable or HEX'
+                                placeholder='Variable or HEX'
                             />
                         </label>
 
@@ -165,7 +165,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                                 type="text"
                                 value={formData.leftLabelColorText}
                                 onChange={(e) => updateField('leftLabelColorText', e.target.value)}
-                                placeholder='Companion Variable or HEX'
+                                placeholder='Variable or HEX'
                             />
                         </label>
 
@@ -228,7 +228,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                                 type="text"
                                 value={formData.rightLabelColorText}
                                 onChange={(e) => updateField('rightLabelColorText', e.target.value)}
-                                placeholder='Companion Variable or HEX'
+                                placeholder='Variable or HEX'
                             />
                         </label>
 
