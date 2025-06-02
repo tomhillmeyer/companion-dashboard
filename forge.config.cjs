@@ -2,7 +2,7 @@ module.exports = {
     packagerConfig: {
         asar: true,
         osxSign: {
-            identity: "Developer ID Application: Tom Hillmeyer ${{ secrets.MACOS_TEAM_ID }}",
+            identity: `Developer ID Application: Tom Hillmeyer ${process.env.MACOS_TEAM_ID}`,
             hardenedRuntime: true,
             entitlements: "entitlements.plist",
             "entitlements-inherit": "entitlements.plist",
@@ -10,16 +10,16 @@ module.exports = {
         },
         osxNotarize: {
             tool: "notarytool",
-            appleId: "${{ secrets.MACOS_APPLEID }}",
-            appleIdPassword: "${{ secrets.MACOS_NOTARIZATION_PASSWORD }}", // See step 3
-            teamId: "${{ secrets.MACOS_TEAM_ID }}"
+            appleId: process.env.MACOS_APPLEID,
+            appleIdPassword: process.env.MACOS_NOTARIZATION_PASSWORD,
+            teamId: process.env.MACOS_TEAM_ID
         }
     },
     rebuildConfig: {},
     makers: [
         {
             name: '@electron-forge/maker-zip',
-            platforms: ['darwin', 'win32'], // Add win32 here
+            platforms: ['darwin', 'win32'],
         },
         {
             name: '@electron-forge/maker-dmg',
@@ -27,11 +27,10 @@ module.exports = {
                 format: 'ULFO'
             }
         },
-        // Add Windows-specific maker
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                // Optional: customize installer settings
+                // Customize Windows installer if needed
             }
         }
     ],

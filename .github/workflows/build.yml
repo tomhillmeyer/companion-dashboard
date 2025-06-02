@@ -11,10 +11,6 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-
-    env:
-      APPLE_ID: ${{ secrets.MACOS_APPLEID }}
-      APPLE_ID_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
     
     strategy:
       matrix:
@@ -34,6 +30,11 @@ jobs:
       run: npm ci
       
     - name: Build application
+      # Only pass macOS-specific env vars on macOS
+      env:
+        MACOS_APPLEID: ${{ secrets.MACOS_APPLEID }}
+        MACOS_NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+        MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
       run: npm run make
       
     - name: Upload artifacts (macOS)
