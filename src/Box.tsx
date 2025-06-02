@@ -143,7 +143,7 @@ export default function Box({
                         fontSize: `${boxData.leftLabelSize}px`,
                         fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
                         display: boxData.leftVisible ? 'flex' : 'none',
-                        textAlign: boxData.rightVisible ? 'left' : 'center',
+                        justifyContent: boxData.rightVisible ? 'left' : 'center',
                     }}>
                         {displayLabels.left}
                     </div>
@@ -152,7 +152,7 @@ export default function Box({
                         fontSize: `${boxData.rightLabelSize}px`,
                         fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
                         display: boxData.rightVisible ? 'flex' : 'none',
-                        textAlign: boxData.leftVisible ? 'left' : 'center',
+                        justifyContent: boxData.leftVisible ? 'right' : 'center',
                     }}>
                         {displayLabels.right}
                     </div>
