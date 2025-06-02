@@ -2,7 +2,7 @@ module.exports = {
     packagerConfig: {
         asar: true,
         osxSign: {
-            identity: 'Developer ID Application: Your Company (YOUR_TEAM_ID)', // Replace with your identity name
+            identity: 'Developer ID Application: Creativeland, LLC (22SGVMMH49)', // Replace with your identity name
             'hardened-runtime': true,
             'entitlements': 'entitlements.plist',
             'entitlements-inherit': 'entitlements.plist',
