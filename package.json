@@ -1,5 +1,7 @@
 {
   "name": "companion-dashboard",
+  "author": "Tom Hillmeyer",
+  "description": "An app to display variables from Bitfocus Companion",
   "main": "src/main.js",
   "homepage": "./",
   "private": true,
