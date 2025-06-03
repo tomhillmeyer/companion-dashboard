@@ -22,7 +22,11 @@
     "make:mac-intel": "electron-forge make --arch=x64 --platform=darwin",
     "make:mac-arm": "electron-forge make --arch=arm64 --platform=darwin",
     "make:win": "electron-forge make --arch=x64 --platform=win32",
-    "make:all": "npm run make:mac-intel && npm run make:mac-arm && npm run make:win"
+    "make:all": "npm run make:mac-intel && npm run make:mac-arm && npm run make:win",
+    "build:all": "npm run build && npm run make:all",
+    "dist:mac": "npm run build && npm run make:mac-intel && npm run make:mac-arm",
+    "dist:win": "npm run build && npm run make:win",
+    "dist:local": "npm run build:all"
   },
   "dependencies": {
     "electron-notarize": "^1.2.2",

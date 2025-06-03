@@ -11,6 +11,10 @@ node_modules
 dist
 out
 dist-ssr
+dist-final
+build-local.sh
+notarize.js
+build.yml.archive
 test-notarize.js
 *.local
 

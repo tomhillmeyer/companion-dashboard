@@ -30,7 +30,7 @@ module.exports = {
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                // Customize Windows installer if needed
+                // Windows installer configuration
             }
         }
     ],
@@ -42,12 +42,31 @@ module.exports = {
     ],
     hooks: {
         postPackage: async (forgeConfig, buildResult) => {
-            // Only notarize on macOS
+            // Only notarize on macOS and when building locally
             if (process.platform !== 'darwin') {
+                console.log('Skipping notarization - not running on macOS');
+                return buildResult;
+            }
+
+            // Check if we're building a macOS app
+            const isMacOSBuild = buildResult.platform === 'darwin';
+            if (!isMacOSBuild) {
+                console.log('Skipping notarization - not a macOS build');
+                return buildResult;
+            }
+
+            // Check if required environment variables are set
+            if (!process.env.MACOS_TEAM_ID || !process.env.MACOS_APPLEID || !process.env.MACOS_NOTARIZATION_PASSWORD) {
+                console.warn('Missing required environment variables for notarization:');
+                console.warn('- MACOS_TEAM_ID');
+                console.warn('- MACOS_APPLEID');
+                console.warn('- MACOS_NOTARIZATION_PASSWORD');
+                console.warn('Skipping notarization...');
                 return buildResult;
             }
 
             const { notarize } = require('electron-notarize');
+            const fs = require('fs');
 
             console.log('Starting notarization process...');
 
@@ -58,13 +77,13 @@ module.exports = {
                 console.log(`Looking for app bundle at: ${appPath}`);
 
                 // Check if the app exists
-                const fs = require('fs');
                 if (!fs.existsSync(appPath)) {
                     console.error(`App bundle not found at: ${appPath}`);
                     throw new Error(`App bundle not found at: ${appPath}`);
                 }
 
                 console.log(`Notarizing: ${appPath}`);
+                console.log(`Architecture: ${buildResult.arch}`);
 
                 await notarize({
                     tool: 'notarytool',
@@ -73,17 +92,15 @@ module.exports = {
                     appPath: appPath,
                     appleId: process.env.MACOS_APPLEID,
                     appleIdPassword: process.env.MACOS_NOTARIZATION_PASSWORD,
-                    // Skip stapling to avoid Error 65
-                    skipStapling: true
                 });
 
-                console.log(`Successfully notarized: ${appPath}`);
-                console.log('Note: Stapling was skipped. Your app is notarized but the ticket is not attached.');
-                console.log('This is fine for distribution - macOS will verify online when needed.');
+                console.log(`✅ Successfully notarized: ${appPath}`);
 
             } catch (error) {
-                console.error('Notarization failed:', error);
-                throw error;
+                console.error('❌ Notarization failed:', error);
+                // Don't throw the error to allow the build to continue
+                // You can uncomment the line below if you want notarization failures to stop the build
+                // throw error;
             }
 
             return buildResult;
