@@ -1,6 +1,8 @@
 // SettingsMenu.tsx
 import { useState, useEffect, useRef } from 'react';
 import './SettingsMenu.css';
+// Import the image directly - this is the most reliable approach
+import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
 
 const STORAGE_KEY = 'companion_connection_url';
 
@@ -157,7 +159,7 @@ export default function SettingsMenu({
             </div>
             <button onClick={onNewBox}>New Box</button>
             <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'center', alignItems: 'center' }}>
-                <img src='/dashboard.png' style={{ height: '30px', marginRight: '10px' }}></img>
+                <img src={dashboardIcon} style={{ height: '30px', marginRight: '10px' }} alt="Dashboard" />
                 <h2> COMPANION DASHBOARD </h2>
             </div>
 
@@ -172,6 +174,6 @@ export default function SettingsMenu({
                 onChange={handleFileRestore}
                 style={{ display: 'none' }}
             />
-        </div >
+        </div>
     );
 }
