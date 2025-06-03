@@ -157,7 +157,7 @@ export default function SettingsMenu({
             </div>
             <button onClick={onNewBox}>New Box</button>
             <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'center', alignItems: 'center' }}>
-                <img src='/dashboard.png' style={{ height: '30px' }}></img>
+                <img src='/dashboard.png' style={{ height: '30px', marginRight: '10px' }}></img>
                 <h2> COMPANION DASHBOARD </h2>
             </div>
 

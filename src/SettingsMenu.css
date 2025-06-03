@@ -8,13 +8,13 @@
     display: flex;
     align-items: center;
     text-align: center;
-    justify-content: space-between;
+    justify-content: space-evenly;
     transition: bottom .2s ease-in-out;
 }
 
 .url-section {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
 }
 
 .menu:hover {
@@ -23,4 +23,8 @@
 
 input[type="text"] {
     width: 200px;
+}
+
+button {
+    margin: 0px 5px 0px 5px;
 }
