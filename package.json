@@ -18,7 +18,11 @@
     "preview": "vite preview",
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "make:mac-intel": "electron-forge make --arch=x64 --platform=darwin",
+    "make:mac-arm": "electron-forge make --arch=arm64 --platform=darwin",
+    "make:win": "electron-forge make --arch=x64 --platform=win32",
+    "make:all": "npm run make:mac-intel && npm run make:mac-arm && npm run make:win"
   },
   "dependencies": {
     "electron-notarize": "^1.2.2",

@@ -1,6 +1,9 @@
 module.exports = {
     packagerConfig: {
         asar: true,
+        name: 'Companion Dashboard',
+        executableName: 'Companion Dashboard',
+        icon: './public/icon',
         /*
         osxNotarize: {
             tool: 'notarytool',
