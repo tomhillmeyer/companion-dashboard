@@ -3,6 +3,8 @@ import { v4 as uuid } from 'uuid';
 import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
 import './App.css';
+import defaultBoxes from './defaultBoxes.json';
+
 
 const STORAGE_KEY = 'boxes';
 
@@ -38,30 +40,36 @@ export interface BoxData {
 
 
 
+
+
 export default function App() {
     // Initialize state with localStorage data immediately
     const [boxes, setBoxes] = useState<BoxData[]>(() => {
-
-        // Initialize from localStorage on first render
         const savedBoxes = localStorage.getItem(STORAGE_KEY);
         if (savedBoxes) {
             try {
                 return JSON.parse(savedBoxes);
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
-                return [];
+                return defaultBoxes;
             }
         } else {
-            return []
+            return defaultBoxes;
         }
-        return [];
     });
+
 
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string) => {
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
         setSelectedBoxId(null); // Clear any selection
     };
+
+    const deleteAllBoxes = () => {
+        setBoxes([]);
+        setSelectedBoxId(null); // Clear any selection
+    };
+
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>('');
@@ -126,6 +134,7 @@ export default function App() {
                 connectionUrl={companionBaseUrl}
                 onConnectionUrlChange={setCompanionBaseUrl}
                 onConfigRestore={handleConfigRestore}
+                onDeleteAllBoxes={deleteAllBoxes}
             />
             {boxes.map((box) => (
                 <Box

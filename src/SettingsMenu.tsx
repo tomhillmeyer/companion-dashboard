@@ -10,14 +10,17 @@ export default function SettingsMenu({
     onNewBox,
     connectionUrl,
     onConnectionUrlChange,
-    onConfigRestore
+    onConfigRestore,
+    onDeleteAllBoxes
 }: {
     onNewBox: () => void;
     connectionUrl: string;
     onConnectionUrlChange: (url: string) => void;
     onConfigRestore: (boxes: any[], connectionUrl: string) => void;
+    onDeleteAllBoxes: () => void;
 }) {
     const [inputUrl, setInputUrl] = useState('');
+    const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const downloadConfig = () => {
@@ -121,20 +124,47 @@ export default function SettingsMenu({
         }
     }, [connectionUrl, onConnectionUrlChange]);
 
+    useEffect(() => {
+        const checkConnection = async () => {
+            if (!connectionUrl) {
+                setIsValidUrl(null);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${connectionUrl}/api/variable/internal/time_unix/value`);
+                if (!response.ok) throw new Error('Non-200 response');
+                const data = await response.text();
+                const timestamp = parseInt(data);
+                if (!isNaN(timestamp)) {
+                    setIsValidUrl(true);
+                } else {
+                    throw new Error('Invalid response');
+                }
+            } catch (err) {
+                setIsValidUrl(false);
+            }
+        };
+
+        checkConnection(); // Initial check
+        const interval = setInterval(checkConnection, 5000); // Repeat every 5s
+
+        return () => clearInterval(interval); // Cleanup
+    }, [connectionUrl]);
+
+
     const handleUrlSubmit = () => {
-        // Extract base URL (protocol + host + port)
         try {
-            const url = new URL(inputUrl);
+            const url = new URL(inputUrl.trim());
             const baseUrl = `${url.protocol}//${url.host}`;
-
-            // Save to localStorage
             localStorage.setItem(STORAGE_KEY, baseUrl);
-
             onConnectionUrlChange(baseUrl);
         } catch (error) {
             console.error('Invalid URL:', error);
+            setIsValidUrl(false); // Show red border if input is invalid
         }
     };
+
 
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newUrl = e.target.value;
@@ -148,20 +178,41 @@ export default function SettingsMenu({
 
     return (
         <div className="menu">
+            <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'center', alignItems: 'center' }}>
+                <img src={dashboardIcon} style={{ height: '30px', marginRight: '10px' }} alt="Dashboard" />
+                <h2> COMPANION DASHBOARD </h2>
+            </div>
             <div className="url-section">
                 <input
                     type="text"
                     value={inputUrl}
                     onChange={handleUrlChange}
-                    placeholder="http://100.76.88.24:8888/connections"
+                    placeholder="http://127.0.0.1:8888/"
+                    style={{
+                        border: '1px solid',
+                        borderColor:
+                            isValidUrl === null ? 'gray' :
+                                isValidUrl === true ? 'green' :
+                                    'red'
+                    }}
                 />
                 <button onClick={handleUrlSubmit}>Set Connection</button>
             </div>
-            <button onClick={onNewBox}>New Box</button>
-            <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'center', alignItems: 'center' }}>
-                <img src={dashboardIcon} style={{ height: '30px', marginRight: '10px' }} alt="Dashboard" />
-                <h2> COMPANION DASHBOARD </h2>
+            <div>
+                <button onClick={onNewBox}>New Box</button>
+                <button
+                    onClick={() => {
+                        const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
+                        if (confirmed) {
+                            onDeleteAllBoxes();
+                        }
+                    }}
+                    style={{ backgroundColor: "#C93E37" }}
+                >
+                    Clear All Boxes
+                </button>
             </div>
+
 
             <div>
                 <button onClick={downloadConfig}>Download Config</button>

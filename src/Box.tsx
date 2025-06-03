@@ -91,9 +91,9 @@ export default function Box({
 
     // Use the fetched values or fall back to manual labels
     const displayLabels = {
-        header: variableValues.headerLabelSource || boxData.headerLabel,
-        left: variableValues.leftLabelSource || boxData.leftLabel,
-        right: variableValues.rightLabelSource || boxData.rightLabel,
+        header: variableValues.headerLabelSource || boxData.headerLabelSource,
+        left: variableValues.leftLabelSource || boxData.leftLabelSource,
+        right: variableValues.rightLabelSource || boxData.rightLabelSource,
         backgroundColor: variableValues.backgroundColorTextSource || boxData.backgroundColorText,
         headerColor: variableValues.headerColorTextSource || boxData.headerColorText,
         headerLabelColor: variableValues.headerLabelColorTextSource || boxData.headerLabelColorText,
@@ -144,6 +144,7 @@ export default function Box({
                         fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
                         display: boxData.leftVisible ? 'flex' : 'none',
                         justifyContent: boxData.rightVisible ? 'left' : 'center',
+                        textAlign: boxData.rightVisible ? 'left' : 'center',
                     }}>
                         {displayLabels.left}
                     </div>
@@ -153,6 +154,7 @@ export default function Box({
                         fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
                         display: boxData.rightVisible ? 'flex' : 'none',
                         justifyContent: boxData.leftVisible ? 'right' : 'center',
+                        textAlign: boxData.leftVisible ? 'right' : 'center',
                     }}>
                         {displayLabels.right}
                     </div>

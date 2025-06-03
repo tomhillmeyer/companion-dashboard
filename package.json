@@ -1,11 +1,11 @@
 {
-  "name": "companion-dashboard",
+  "name": "Companion Dashboard",
   "author": "Tom Hillmeyer",
-  "description": "An app to display variables from Bitfocus Companion",
+  "description": "Display variables from Bitfocus Companion",
   "main": "src/main.js",
   "homepage": "./",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "electron": "electron .",

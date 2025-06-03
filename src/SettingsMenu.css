@@ -1,30 +1,35 @@
 .menu {
     width: 100%;
-    height: 100px;
+    height: fit-content;
     background-color: #262626;
     position: fixed;
     left: 0;
-    bottom: -85px;
+    bottom: 0;
+    transform: translateY(calc(100% - 18px));
+    transition: transform .2s ease-in-out;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     text-align: center;
     justify-content: space-evenly;
-    transition: bottom .2s ease-in-out;
+}
+
+.menu:hover {
+    transform: translateY(0);
 }
 
 .url-section {
     display: flex;
     flex-direction: row;
-}
-
-.menu:hover {
-    bottom: 0;
+    align-items: center;
 }
 
 input[type="text"] {
     width: 200px;
+    height: 33px;
+    border-radius: 8px;
 }
 
 button {
-    margin: 0px 5px 0px 5px;
+    margin: 10px;
 }
