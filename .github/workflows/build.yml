@@ -43,13 +43,17 @@ jobs:
         
       - name: Build application
         env:
-          # Only pass these on macOS to avoid errors
-          CSC_LINK: ${{ contains(matrix.platform, 'mac') && secrets.CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ contains(matrix.platform, 'mac') && secrets.CSC_KEY_PASSWORD || '' }}
-          MACOS_APPLEID: ${{ contains(matrix.platform, 'mac') && secrets.MACOS_APPLEID || '' }}
-          MACOS_NOTARIZATION_PASSWORD: ${{ contains(matrix.platform, 'mac') && secrets.MACOS_NOTARIZATION_PASSWORD || '' }}
-          MACOS_TEAM_ID: ${{ contains(matrix.platform, 'mac') && secrets.MACOS_TEAM_ID || '' }}
-        run: ${{ matrix.make_command }}
+          # Always set these environment variables for all platforms
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          MACOS_APPLEID: ${{ secrets.MACOS_APPLEID }}
+          MACOS_NOTARIZATION_PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          # Add this to ensure environment variables are available
+          NODE_ENV: production
+        run: |
+          echo "Building for platform: ${{ matrix.platform }}"
+          ${{ matrix.make_command }}
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

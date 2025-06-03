@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 
 module.exports = {
     packagerConfig: {
@@ -40,10 +41,10 @@ module.exports = {
         },
     ],
     hooks: {
-        postMake: async (forgeConfig, makeResults) => {
+        postPackage: async (forgeConfig, buildResult) => {
             // Only notarize on macOS
             if (process.platform !== 'darwin') {
-                return makeResults;
+                return buildResult;
             }
 
             const { notarize } = require('electron-notarize');
@@ -51,38 +52,41 @@ module.exports = {
             console.log('Starting notarization process...');
 
             try {
-                for (const makeResult of makeResults) {
-                    if (makeResult.platform === 'darwin') {
-                        // Find the .app bundle in the make results
-                        const appPath = makeResult.artifacts.find(artifact =>
-                            artifact.endsWith('.app') ||
-                            (artifact.includes('.app') && !artifact.endsWith('.zip') && !artifact.endsWith('.dmg'))
-                        );
+                // The .app bundle is in the package output directory
+                const appPath = path.join(buildResult.outputPaths[0], 'Companion Dashboard.app');
 
-                        if (appPath) {
-                            console.log(`Notarizing: ${appPath}`);
+                console.log(`Looking for app bundle at: ${appPath}`);
 
-                            await notarize({
-                                tool: 'notarytool',
-                                teamId: process.env.MACOS_TEAM_ID,
-                                appBundleId: 'com.wearecreativeland.companiondashboard',
-                                appPath: appPath,
-                                appleId: process.env.MACOS_APPLEID,
-                                appleIdPassword: process.env.MACOS_NOTARIZATION_PASSWORD,
-                            });
-
-                            console.log(`Successfully notarized: ${appPath}`);
-                        } else {
-                            console.log('No .app bundle found in make results');
-                        }
-                    }
+                // Check if the app exists
+                const fs = require('fs');
+                if (!fs.existsSync(appPath)) {
+                    console.error(`App bundle not found at: ${appPath}`);
+                    throw new Error(`App bundle not found at: ${appPath}`);
                 }
+
+                console.log(`Notarizing: ${appPath}`);
+
+                await notarize({
+                    tool: 'notarytool',
+                    teamId: process.env.MACOS_TEAM_ID,
+                    appBundleId: 'com.wearecreativeland.companiondashboard',
+                    appPath: appPath,
+                    appleId: process.env.MACOS_APPLEID,
+                    appleIdPassword: process.env.MACOS_NOTARIZATION_PASSWORD,
+                    // Skip stapling to avoid Error 65
+                    skipStapling: true
+                });
+
+                console.log(`Successfully notarized: ${appPath}`);
+                console.log('Note: Stapling was skipped. Your app is notarized but the ticket is not attached.');
+                console.log('This is fine for distribution - macOS will verify online when needed.');
+
             } catch (error) {
                 console.error('Notarization failed:', error);
                 throw error;
             }
 
-            return makeResults;
+            return buildResult;
         }
     }
 };
