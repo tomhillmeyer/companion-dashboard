@@ -1,37 +1,24 @@
 {
-  "name": "Companion Dashboard",
+  "name": "companion-dashboard",
   "author": "Tom Hillmeyer",
   "description": "Display variables from Bitfocus Companion",
   "main": "src/main.js",
   "homepage": "./",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:pack": "npm run build && electron-builder",
-    "preelectron:pack": "npm run build",
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
     "preview": "vite preview",
-    "start": "electron-forge start",
-    "package": "electron-forge package",
-    "make": "electron-forge make",
-    "make:mac-intel": "electron-forge make --arch=x64 --platform=darwin",
-    "make:mac-arm": "electron-forge make --arch=arm64 --platform=darwin",
-    "make:win": "electron-forge make --arch=x64 --platform=win32",
-    "make:all": "npm run make:mac-intel && npm run make:mac-arm && npm run make:win",
-    "build:all": "npm run build && npm run make:all",
-    "dist:mac": "npm run build && npm run make:mac-intel && npm run make:mac-arm",
-    "dist:win": "npm run build && npm run make:win",
-    "dist:local": "npm run build:all"
+    "dist": "electron-builder",
+    "dist:mac-arm": "electron-builder --mac --arm64",
+    "dist:mac-intel": "electron-builder --mac --x64",
+    "dist:win": "electron-builder --win --x64",
+    "dist:all": "npm run dist:mac-arm && npm run dist:mac-intel && npm run dist:win"
   },
   "dependencies": {
-    "electron-notarize": "^1.2.2",
-    "install": "^0.13.0",
-    "npm": "^11.4.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-moveable": "^0.56.0",
@@ -39,11 +26,6 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.8.1",
-    "@electron-forge/maker-dmg": "^7.8.1",
-    "@electron-forge/maker-squirrel": "^7.8.1",
-    "@electron-forge/maker-zip": "^7.8.1",
-    "@electron-forge/plugin-auto-unpack-natives": "^7.8.1",
     "@electron/notarize": "^3.0.1",
     "@electron/osx-sign": "^2.0.0",
     "@eslint/js": "^9.25.0",
@@ -61,5 +43,44 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
     "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.creativeland.companiondashboard",
+    "productName": "Companion Dashboard",
+    "files": [
+      "dist/**/*",
+      "src/**/*",
+      "public/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "public"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "public/icon.icns",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.plist",
+      "entitlementsInherit": "entitlements.plist",
+      "gatekeeperAssess": false,
+      "identity": "Creativeland, LLC (22SGVMMH49)"
+    },
+    "afterSign": "./notarize.js",
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
