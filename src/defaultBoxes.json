@@ -1,197 +1,197 @@
 [
-    {
-      "id": "530ee768-fc0b-4fc3-9159-e2c1617ee61b",
-      "frame": {
-        "translate": [
-          15,
-          22
-        ],
-        "width": 630,
-        "height": 120
-      },
-      "backgroundColor": "#292929",
-      "headerColor": "#C93E37",
-      "headerLabelSource": "Companion Dashboard",
-      "headerLabel": "Header",
-      "headerLabelSize": 30,
-      "headerLabelColor": "#ffffff",
-      "headerLabelBold": true,
-      "leftLabelSource": "A way to display Companion Variables",
-      "leftLabel": "Left",
-      "leftLabelSize": 25,
-      "leftLabelColor": "#FFFFFF",
-      "leftLabelBold": false,
-      "rightLabelSource": "Any Companion Variables",
-      "rightLabel": "Right",
-      "rightLabelSize": 20,
-      "rightLabelColor": "#FFFFFF",
-      "rightLabelBold": true,
-      "headerLabelVisible": true,
-      "leftVisible": true,
-      "backgroundColorText": ""
+  {
+    "id": "530ee768-fc0b-4fc3-9159-e2c1617ee61b",
+    "frame": {
+      "translate": [
+        30,
+        75
+      ],
+      "width": 630,
+      "height": 150
     },
-    {
-      "id": "2c6e565e-a6fc-4254-a944-f2dc4c347ee5",
-      "frame": {
-        "translate": [
-          15,
-          157
-        ],
-        "width": 630,
-        "height": 98
-      },
-      "backgroundColor": "#c93e37",
-      "headerColor": "#C93E37",
-      "headerLabelSource": "Test",
-      "headerLabel": "Header",
-      "headerLabelSize": 16,
-      "headerLabelColor": "#ffffff",
-      "headerLabelBold": true,
-      "leftLabelSource": "Hover over the gray bar at the bottom of the page to set your Companion Instance and edit settings",
-      "leftLabel": "Left",
-      "leftLabelSize": 20,
-      "leftLabelColor": "#FFFFFF",
-      "leftLabelBold": false,
-      "leftVisible": true,
-      "rightLabelSource": "",
-      "rightLabel": "Right",
-      "rightLabelSize": 20,
-      "rightLabelColor": "#FFFFFF",
-      "rightLabelBold": true,
-      "rightVisible": false,
-      "headerLabelVisible": false
+    "backgroundColor": "#292929",
+    "headerColor": "#C93E37",
+    "headerLabelSource": "Companion Dashboard",
+    "headerLabel": "Header",
+    "headerLabelSize": 50,
+    "headerLabelColor": "#ffffff",
+    "headerLabelBold": true,
+    "leftLabelSource": "A way to display Companion Variables",
+    "leftLabel": "Left",
+    "leftLabelSize": 25,
+    "leftLabelColor": "#FFFFFF",
+    "leftLabelBold": false,
+    "rightLabelSource": "Any Companion Variables",
+    "rightLabel": "Right",
+    "rightLabelSize": 20,
+    "rightLabelColor": "#FFFFFF",
+    "rightLabelBold": true,
+    "headerLabelVisible": true,
+    "leftVisible": true,
+    "backgroundColorText": ""
+  },
+  {
+    "id": "2c6e565e-a6fc-4254-a944-f2dc4c347ee5",
+    "frame": {
+      "translate": [
+        30,
+        241
+      ],
+      "width": 630,
+      "height": 59
     },
-    {
-      "id": "0da323f1-1be9-4364-831e-3a96b7d5bd13",
-      "frame": {
-        "translate": [
-          15,
-          270
-        ],
-        "width": 630,
-        "height": 120
-      },
-      "backgroundColor": "#262626",
-      "headerColor": "#C93E37",
-      "headerLabelSource": "How to Edit",
-      "headerLabel": "Header",
-      "headerLabelSize": 16,
-      "headerLabelColor": "#ffffff",
-      "headerLabelBold": true,
-      "leftLabelSource": "Double click a box to edit or delete it.",
-      "leftLabel": "Left",
-      "leftLabelSize": 20,
-      "leftLabelColor": "#FFFFFF",
-      "leftLabelBold": true,
-      "leftVisible": true,
-      "rightLabelSource": "Download and restore configurations from the buttons in the menu at the bottom.",
-      "rightLabel": "Right",
-      "rightLabelSize": 16,
-      "rightLabelColor": "#FFFFFF",
-      "rightLabelBold": false,
-      "rightVisible": true,
-      "headerLabelVisible": true
+    "backgroundColor": "#c93e37",
+    "headerColor": "#C93E37",
+    "headerLabelSource": "Test",
+    "headerLabel": "Header",
+    "headerLabelSize": 16,
+    "headerLabelColor": "#ffffff",
+    "headerLabelBold": true,
+    "leftLabelSource": "Click the menu button in the top left to edit the page",
+    "leftLabel": "Left",
+    "leftLabelSize": 20,
+    "leftLabelColor": "#FFFFFF",
+    "leftLabelBold": false,
+    "leftVisible": true,
+    "rightLabelSource": "",
+    "rightLabel": "Right",
+    "rightLabelSize": 20,
+    "rightLabelColor": "#FFFFFF",
+    "rightLabelBold": true,
+    "rightVisible": false,
+    "headerLabelVisible": false
+  },
+  {
+    "id": "0da323f1-1be9-4364-831e-3a96b7d5bd13",
+    "frame": {
+      "translate": [
+        30,
+        315
+      ],
+      "width": 630,
+      "height": 120
     },
-    {
-      "id": "4354e6c8-30d1-43eb-b40f-2b3630e612c2",
-      "frame": {
-        "translate": [
-          15,
-          405
-        ],
-        "width": 200,
-        "height": 75
-      },
-      "backgroundColor": "#262626",
-      "headerColor": "#C93E37",
-      "headerLabelSource": "",
-      "headerLabel": "Header",
-      "headerLabelSize": 16,
-      "headerLabelColor": "#ffffff",
-      "headerLabelBold": true,
-      "leftLabelSource": "Variables update once a second",
-      "leftLabel": "Left",
-      "leftLabelSize": 14,
-      "leftLabelColor": "#FFFFFF",
-      "leftLabelBold": false,
-      "leftVisible": true,
-      "rightLabelSource": "",
-      "rightLabel": "Right",
-      "rightLabelSize": 20,
-      "rightLabelColor": "#FFFFFF",
-      "rightLabelBold": true,
-      "rightVisible": false,
-      "headerLabelVisible": false
+    "backgroundColor": "#262626",
+    "headerColor": "#C93E37",
+    "headerLabelSource": "How to Edit",
+    "headerLabel": "Header",
+    "headerLabelSize": 16,
+    "headerLabelColor": "#ffffff",
+    "headerLabelBold": true,
+    "leftLabelSource": "Double click a box to edit or delete it.",
+    "leftLabel": "Left",
+    "leftLabelSize": 20,
+    "leftLabelColor": "#FFFFFF",
+    "leftLabelBold": true,
+    "leftVisible": true,
+    "rightLabelSource": "Download and restore configurations from the buttons in the menu at the bottom.",
+    "rightLabel": "Right",
+    "rightLabelSize": 16,
+    "rightLabelColor": "#FFFFFF",
+    "rightLabelBold": false,
+    "rightVisible": true,
+    "headerLabelVisible": true
+  },
+  {
+    "id": "4354e6c8-30d1-43eb-b40f-2b3630e612c2",
+    "frame": {
+      "translate": [
+        30,
+        450
+      ],
+      "width": 200,
+      "height": 75
     },
-    {
-      "id": "97352fc3-1c3c-4ab1-b7ee-6ae2fa0ea70e",
-      "frame": {
-        "translate": [
-          225,
-          405
-        ],
-        "width": 420,
-        "height": 75
-      },
-      "backgroundColor": "#262626",
-      "headerColor": "#C93E37",
-      "headerLabelSource": "If information doesn't appear",
-      "headerLabel": "Header",
-      "headerLabelSize": 16,
-      "headerLabelColor": "#ffffff",
-      "headerLabelBold": true,
-      "leftLabelSource": "Make sure the box is",
-      "leftLabel": "Left",
-      "leftLabelSize": 14,
-      "leftLabelColor": "#FFFFFF",
-      "leftLabelBold": false,
-      "leftVisible": true,
-      "rightLabelSource": "BIG ENOUGH",
-      "rightLabel": "Right",
-      "rightLabelSize": 20,
-      "rightLabelColor": "#FFFFFF",
-      "rightLabelBold": true,
-      "rightVisible": true,
-      "headerLabelVisible": true,
-      "leftLabelColorText": "",
-      "rightLabelColorText": "",
-      "headerColorText": "",
-      "headerLabelColorText": ""
+    "backgroundColor": "#262626",
+    "headerColor": "#C93E37",
+    "headerLabelSource": "",
+    "headerLabel": "Header",
+    "headerLabelSize": 16,
+    "headerLabelColor": "#ffffff",
+    "headerLabelBold": true,
+    "leftLabelSource": "Variables update once a second",
+    "leftLabel": "Left",
+    "leftLabelSize": 14,
+    "leftLabelColor": "#FFFFFF",
+    "leftLabelBold": false,
+    "leftVisible": true,
+    "rightLabelSource": "",
+    "rightLabel": "Right",
+    "rightLabelSize": 20,
+    "rightLabelColor": "#FFFFFF",
+    "rightLabelBold": true,
+    "rightVisible": false,
+    "headerLabelVisible": false
+  },
+  {
+    "id": "97352fc3-1c3c-4ab1-b7ee-6ae2fa0ea70e",
+    "frame": {
+      "translate": [
+        240,
+        450
+      ],
+      "width": 420,
+      "height": 75
     },
-    {
-      "id": "593738e6-abe2-4c4b-bd5a-fd3fff188c30",
-      "frame": {
-        "translate": [
-          15,
-          500
-        ],
-        "width": 630,
-        "height": 76
-      },
-      "backgroundColor": "#262626",
-      "backgroundColorText": "",
-      "headerColor": "#C93E37",
-      "headerColorText": "",
-      "headerLabelSource": "Color can be determined using the color picker",
-      "headerLabel": "Header",
-      "headerLabelSize": 16,
-      "headerLabelColor": "#ffffff",
-      "headerLabelColorText": "",
-      "headerLabelBold": true,
-      "leftLabelSource": "Hex Values",
-      "leftLabel": "Left",
-      "leftLabelSize": 20,
-      "leftLabelColor": "#FFFFFF",
-      "leftLabelColorText": "#d1f542",
-      "leftLabelBold": false,
-      "leftVisible": true,
-      "rightLabelSource": "or_companion_variables",
-      "rightLabel": "Right",
-      "rightLabelSize": 20,
-      "rightLabelColor": "#FFFFFF",
-      "rightLabelColorText": "#4287f5",
-      "rightLabelBold": true,
-      "rightVisible": true,
-      "headerLabelVisible": true
-    }
-  ]
+    "backgroundColor": "#262626",
+    "headerColor": "#C93E37",
+    "headerLabelSource": "If information doesn't appear",
+    "headerLabel": "Header",
+    "headerLabelSize": 16,
+    "headerLabelColor": "#ffffff",
+    "headerLabelBold": true,
+    "leftLabelSource": "Make sure the box is",
+    "leftLabel": "Left",
+    "leftLabelSize": 14,
+    "leftLabelColor": "#FFFFFF",
+    "leftLabelBold": false,
+    "leftVisible": true,
+    "rightLabelSource": "BIG ENOUGH",
+    "rightLabel": "Right",
+    "rightLabelSize": 20,
+    "rightLabelColor": "#FFFFFF",
+    "rightLabelBold": true,
+    "rightVisible": true,
+    "headerLabelVisible": true,
+    "leftLabelColorText": "",
+    "rightLabelColorText": "",
+    "headerColorText": "",
+    "headerLabelColorText": ""
+  },
+  {
+    "id": "593738e6-abe2-4c4b-bd5a-fd3fff188c30",
+    "frame": {
+      "translate": [
+        30,
+        540
+      ],
+      "width": 630,
+      "height": 76
+    },
+    "backgroundColor": "#262626",
+    "backgroundColorText": "",
+    "headerColor": "#C93E37",
+    "headerColorText": "",
+    "headerLabelSource": "Color can be determined using the color picker",
+    "headerLabel": "Header",
+    "headerLabelSize": 16,
+    "headerLabelColor": "#ffffff",
+    "headerLabelColorText": "",
+    "headerLabelBold": true,
+    "leftLabelSource": "Hex Values",
+    "leftLabel": "Left",
+    "leftLabelSize": 20,
+    "leftLabelColor": "#FFFFFF",
+    "leftLabelColorText": "#d1f542",
+    "leftLabelBold": false,
+    "leftVisible": true,
+    "rightLabelSource": "or_companion_variables",
+    "rightLabel": "Right",
+    "rightLabelSize": 20,
+    "rightLabelColor": "#FFFFFF",
+    "rightLabelColorText": "#4287f5",
+    "rightLabelBold": true,
+    "rightVisible": true,
+    "headerLabelVisible": true
+  }
+]

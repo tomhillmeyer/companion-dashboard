@@ -23,6 +23,7 @@ notarize.js
 build.yml.archive
 test-notarize.js
 verify-setup.sh
+notarize.js
 *.local
 
 # Editor directories and files

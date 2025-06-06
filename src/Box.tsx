@@ -4,6 +4,7 @@ import './Box.css';
 import type { BoxData } from './App';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
+import { DoubleTapBox } from './DoubleTapBox';
 
 
 export default function Box({
@@ -77,6 +78,7 @@ export default function Box({
         });
     };
 
+
     // Use the variable fetcher
     const variableValues = useVariableFetcher(companionBaseUrl, {
         headerLabelSource: boxData.headerLabelSource,
@@ -101,138 +103,145 @@ export default function Box({
         rightLabelColorTextSource: variableValues.rightLabelColorTextSource || boxData.rightLabelColorText,
     };
 
+
+
     return (
-        <div className="box-container">
-            <div
-                ref={targetRef}
-                className="box"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onSelect();
-                }}
-                onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    setShowModal(true);
-                }}
-                style={{
-                    width: `${frame.width}px`,
-                    height: `${frame.height}px`,
-                    transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
-                    backgroundColor: boxData.backgroundColorText ? displayLabels.backgroundColor : boxData.backgroundColor,
-                }}
-            >
-                {/* Header */}
-                <div
-                    className='header'
-                    style={{
-                        backgroundColor: boxData.headerColorText ? displayLabels.headerColor : boxData.headerColor,
-                        color: boxData.headerLabelColorText ? displayLabels.headerLabelColor : boxData.headerLabelColor,
-                        fontSize: `${boxData.headerLabelSize}px`,
-                        fontWeight: boxData.headerLabelBold ? 'bold' : 'normal',
-                        textAlign: 'center',
-                        display: boxData.headerLabelVisible ? 'flex' : 'none',
-                    }}
-                >
-                    {displayLabels.header}
-                </div>
+        <div>
+            <DoubleTapBox onDoubleTap={() => setShowModal(true)}>
+                <div className="box-container">
+                    <div
+                        ref={targetRef}
+                        className="box"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect();
+                        }}
+                        onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setShowModal(true);
+                        }}
+                        style={{
+                            width: `${frame.width}px`,
+                            height: `${frame.height}px`,
+                            transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
+                            backgroundColor: boxData.backgroundColorText ? displayLabels.backgroundColor : boxData.backgroundColor,
+                        }}
+                    >
+                        {/* Header */}
+                        <div
+                            className='header'
+                            style={{
+                                backgroundColor: boxData.headerColorText ? displayLabels.headerColor : boxData.headerColor,
+                                color: boxData.headerLabelColorText ? displayLabels.headerLabelColor : boxData.headerLabelColor,
+                                fontSize: `${boxData.headerLabelSize}px`,
+                                fontWeight: boxData.headerLabelBold ? 'bold' : 'normal',
+                                textAlign: 'center',
+                                display: boxData.headerLabelVisible ? 'flex' : 'none',
+                            }}
+                        >
+                            {displayLabels.header}
+                        </div>
 
-                {/* Body with left and right labels */}
-                <div className='content-container'>
-                    <div className='content' style={{
-                        color: boxData.leftLabelColorText ? displayLabels.leftLabelColorTextSource : boxData.leftLabelColor,
-                        fontSize: `${boxData.leftLabelSize}px`,
-                        fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
-                        display: boxData.leftVisible ? 'flex' : 'none',
-                        justifyContent: boxData.rightVisible ? 'left' : 'center',
-                        textAlign: boxData.rightVisible ? 'left' : 'center',
-                    }}>
-                        {displayLabels.left}
+                        {/* Body with left and right labels */}
+                        <div className='content-container'>
+                            <div className='content' style={{
+                                color: boxData.leftLabelColorText ? displayLabels.leftLabelColorTextSource : boxData.leftLabelColor,
+                                fontSize: `${boxData.leftLabelSize}px`,
+                                fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
+                                display: boxData.leftVisible ? 'flex' : 'none',
+                                justifyContent: boxData.rightVisible ? 'left' : 'center',
+                                textAlign: boxData.rightVisible ? 'left' : 'center',
+                            }}>
+                                {displayLabels.left}
+                            </div>
+                            <div className='content' style={{
+                                color: boxData.rightLabelColorText ? displayLabels.rightLabelColorTextSource : boxData.rightLabelColor,
+                                fontSize: `${boxData.rightLabelSize}px`,
+                                fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
+                                display: boxData.rightVisible ? 'flex' : 'none',
+                                justifyContent: boxData.leftVisible ? 'right' : 'center',
+                                textAlign: boxData.leftVisible ? 'right' : 'center',
+                            }}>
+                                {displayLabels.right}
+                            </div>
+                        </div>
                     </div>
-                    <div className='content' style={{
-                        color: boxData.rightLabelColorText ? displayLabels.rightLabelColorTextSource : boxData.rightLabelColor,
-                        fontSize: `${boxData.rightLabelSize}px`,
-                        fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
-                        display: boxData.rightVisible ? 'flex' : 'none',
-                        justifyContent: boxData.leftVisible ? 'right' : 'center',
-                        textAlign: boxData.leftVisible ? 'right' : 'center',
-                    }}>
-                        {displayLabels.right}
-                    </div>
-                </div>
-            </div>
 
-            {
-                isSelected && (
-                    <>
-                        <Moveable
-                            target={targetRef}
-                            draggable
-                            resizable
-                            snappable
-                            snapThreshold={15}
-                            snapDirections={{ top: true, left: true, bottom: true, right: true }}
-                            verticalGuidelines={gridLines.verticalGridLines}
-                            horizontalGuidelines={gridLines.horizontalGridLines}
-                            isDisplaySnapDigit
-                            onDrag={({ beforeTranslate }) => {
-                                const newFrame = {
-                                    ...frame,
-                                    translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number]
-                                };
-                                setFrame(newFrame);
-                                targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-                            }}
-                            onDragEnd={({ lastEvent }) => {
-                                if (lastEvent) {
-                                    const newFrame = {
-                                        ...frame,
-                                        translate: [lastEvent.beforeTranslate[0], lastEvent.beforeTranslate[1]] as [number, number]
-                                    };
-                                    updateFrame(newFrame);
-                                }
-                            }}
-                            onResize={({ width, height, drag }) => {
-                                const beforeTranslate = drag.beforeTranslate;
-                                const newFrame = {
-                                    translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number],
-                                    width,
-                                    height
-                                };
-                                setFrame(newFrame);
-                                targetRef.current!.style.width = `${width}px`;
-                                targetRef.current!.style.height = `${height}px`;
-                                targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-                            }}
-                            onResizeEnd={({ lastEvent }) => {
-                                if (lastEvent) {
-                                    const newFrame = {
-                                        translate: [lastEvent.drag.beforeTranslate[0], lastEvent.drag.beforeTranslate[1]] as [number, number],
-                                        width: lastEvent.width,
-                                        height: lastEvent.height
-                                    };
-                                    updateFrame(newFrame);
-                                }
-                            }}
+                    {
+                        isSelected && (
+                            <>
+                                <Moveable
+                                    target={targetRef}
+                                    draggable
+                                    resizable
+                                    snappable
+                                    snapThreshold={15}
+                                    snapDirections={{ top: true, left: true, bottom: true, right: true }}
+                                    verticalGuidelines={gridLines.verticalGridLines}
+                                    horizontalGuidelines={gridLines.horizontalGridLines}
+                                    isDisplaySnapDigit
+                                    onDrag={({ beforeTranslate }) => {
+                                        const newFrame = {
+                                            ...frame,
+                                            translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number]
+                                        };
+                                        setFrame(newFrame);
+                                        targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+                                    }}
+                                    onDragEnd={({ lastEvent }) => {
+                                        if (lastEvent) {
+                                            const newFrame = {
+                                                ...frame,
+                                                translate: [lastEvent.beforeTranslate[0], lastEvent.beforeTranslate[1]] as [number, number]
+                                            };
+                                            updateFrame(newFrame);
+                                        }
+                                    }}
+                                    onResize={({ width, height, drag }) => {
+                                        const beforeTranslate = drag.beforeTranslate;
+                                        const newFrame = {
+                                            translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number],
+                                            width,
+                                            height
+                                        };
+                                        setFrame(newFrame);
+                                        targetRef.current!.style.width = `${width}px`;
+                                        targetRef.current!.style.height = `${height}px`;
+                                        targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+                                    }}
+                                    onResizeEnd={({ lastEvent }) => {
+                                        if (lastEvent) {
+                                            const newFrame = {
+                                                translate: [lastEvent.drag.beforeTranslate[0], lastEvent.drag.beforeTranslate[1]] as [number, number],
+                                                width: lastEvent.width,
+                                                height: lastEvent.height
+                                            };
+                                            updateFrame(newFrame);
+                                        }
+                                    }}
 
-                        />
-                        {showModal && (
-                            <BoxSettingsModal
-                                boxData={boxData}
-                                onSave={(updatedBoxData) => {
-                                    onBoxUpdate(updatedBoxData);
-                                    setShowModal(false);
-                                }}
-                                onCancel={() => setShowModal(false)}
-                                onDelete={(boxId) => {
-                                    onDelete(boxId); // Pass it up to App
-                                    setShowModal(false);
-                                }}
-                            />
-                        )}
-                    </>
+                                />
+                                {showModal && (
+                                    <BoxSettingsModal
+                                        boxData={boxData}
+                                        onSave={(updatedBoxData) => {
+                                            onBoxUpdate(updatedBoxData);
+                                            setShowModal(false);
+                                        }}
+                                        onCancel={() => setShowModal(false)}
+                                        onDelete={(boxId) => {
+                                            onDelete(boxId); // Pass it up to App
+                                            setShowModal(false);
+                                        }}
+                                    />
+                                )}
+                            </>
 
-                )
-            }
-        </div >
+                        )
+                    }
+                </div >
+            </DoubleTapBox>
+        </div>
     );
+
 }

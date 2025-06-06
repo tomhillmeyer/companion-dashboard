@@ -1,5 +1,9 @@
 // SettingsMenu.tsx
 import { useState, useEffect, useRef } from 'react';
+import { FaBars } from "react-icons/fa6";
+import { FaXmark } from "react-icons/fa6";
+
+
 import './SettingsMenu.css';
 // Import the image directly - this is the most reliable approach
 import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
@@ -45,7 +49,7 @@ export default function SettingsMenu({
             // Create temporary link and trigger download
             const link = document.createElement('a');
             link.href = url;
-            link.download = `box-config-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `companion-dashboard-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -176,55 +180,68 @@ export default function SettingsMenu({
         }
     };
 
+    const [isActive, setIsActive] = useState(false);
+
+    const toggleClass = () => {
+        setIsActive(prev => !prev);
+    };
+
     return (
-        <div className="menu">
-            <div style={{ display: 'flex', flexDirection: 'row', alignContent: 'center', alignItems: 'center' }}>
-                <img src={dashboardIcon} style={{ height: '30px', marginRight: '10px' }} alt="Dashboard" />
-                <h2> COMPANION DASHBOARD </h2>
+        <div>
+            <div className="menu-icon" onClick={toggleClass}>
+                <FaBars style={{ display: isActive ? 'none' : 'inline' }} />
+                <FaXmark style={{ display: isActive ? 'inline' : 'none' }} />
             </div>
-            <div className="url-section">
+            <div className={isActive ? 'menu menu-open' : 'menu'}>
+
+                <div style={{ display: 'flex', flexDirection: 'row', textAlign: 'left', gap: '10px' }}>
+                    <img src={dashboardIcon} style={{ height: '40px' }} alt="Dashboard" />
+                    <span className='wordmark'> COMPANION <b style={{ fontSize: '1.3em' }}>DASHBOARD</b> </span>
+                </div>
+                <div className="menu-section">
+                    <input
+                        type="text"
+                        value={inputUrl}
+                        onChange={handleUrlChange}
+                        placeholder="http://127.0.0.1:8888/"
+                        style={{
+                            border: '1px solid',
+                            borderColor:
+                                isValidUrl === null ? 'gray' :
+                                    isValidUrl === true ? 'green' :
+                                        'red'
+                        }}
+                    />
+                    <button onClick={handleUrlSubmit}>Set Connection</button>
+                </div>
+                <div className='menu-section'>
+                    <button onClick={onNewBox}>New Box</button>
+                    <button
+                        onClick={() => {
+                            const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
+                            if (confirmed) {
+                                onDeleteAllBoxes();
+                            }
+                        }}
+                        className='clear-boxes'
+                    >
+                        Clear All Boxes
+                    </button>
+                </div>
+
+
+                <div className='menu-section'>
+                    <button onClick={downloadConfig}>Download Config</button>
+                    <button onClick={triggerFileInput}>Restore Config</button>
+                </div>
                 <input
-                    type="text"
-                    value={inputUrl}
-                    onChange={handleUrlChange}
-                    placeholder="http://127.0.0.1:8888/"
-                    style={{
-                        border: '1px solid',
-                        borderColor:
-                            isValidUrl === null ? 'gray' :
-                                isValidUrl === true ? 'green' :
-                                    'red'
-                    }}
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json"
+                    onChange={handleFileRestore}
+                    style={{ display: 'none' }}
                 />
-                <button onClick={handleUrlSubmit}>Set Connection</button>
             </div>
-            <div>
-                <button onClick={onNewBox}>New Box</button>
-                <button
-                    onClick={() => {
-                        const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
-                        if (confirmed) {
-                            onDeleteAllBoxes();
-                        }
-                    }}
-                    style={{ backgroundColor: "#C93E37" }}
-                >
-                    Clear All Boxes
-                </button>
-            </div>
-
-
-            <div>
-                <button onClick={downloadConfig}>Download Config</button>
-                <button onClick={triggerFileInput}>Restore Config</button>
-            </div>
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileRestore}
-                style={{ display: 'none' }}
-            />
         </div>
     );
 }
