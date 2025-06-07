@@ -16,7 +16,8 @@
     padding: 20px;
     border-radius: 8px;
     border: 2px solid white;
-    max-width: 60%;
+    width: 80%;
+    max-width: 1400px;
     max-height: 80vh;
     overflow-y: auto;
     display: flex;

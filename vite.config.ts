@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Companion Dashboard',
         short_name: 'Dashboard',
-        start_url: '/dashboard/',
+        start_url: '/',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#000000',

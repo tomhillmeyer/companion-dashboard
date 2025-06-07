@@ -1,7 +1,11 @@
 // SettingsMenu.tsx
 import { useState, useEffect, useRef } from 'react';
-import { FaBars } from "react-icons/fa6";
-import { FaXmark } from "react-icons/fa6";
+import { FaAngleRight } from "react-icons/fa6";
+import { FaAngleLeft } from "react-icons/fa6";
+
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 
 import './SettingsMenu.css';
@@ -26,8 +30,10 @@ export default function SettingsMenu({
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isActive, setIsActive] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
 
-    const downloadConfig = () => {
+    const downloadConfig = async () => {
         try {
             // Get data from localStorage
             const boxes = localStorage.getItem('boxes');
@@ -41,23 +47,50 @@ export default function SettingsMenu({
                 companion_connection_url: connectionUrl || ''
             };
 
-            // Create and download file
             const dataStr = JSON.stringify(config, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(dataBlob);
+            const fileName = `companion-dashboard-${new Date().toISOString().split('T')[0]}.json`;
 
-            // Create temporary link and trigger download
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `companion-dashboard-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            if (Capacitor.isNativePlatform()) {
+                // Native platform (iOS/Android) - use Capacitor plugins
+                try {
+                    // Write file to Documents directory
+                    const result = await Filesystem.writeFile({
+                        path: fileName,
+                        data: dataStr,
+                        directory: Directory.Documents,
+                        encoding: Encoding.UTF8
+                    });
 
-            // Clean up
-            URL.revokeObjectURL(url);
+                    console.log('File saved to:', result.uri);
 
-            console.log('Config downloaded successfully');
+                    // Show share dialog so user can save/export the file
+                    await Share.share({
+                        title: 'Export Companion Dashboard Config',
+                        text: 'Save your dashboard configuration',
+                        url: result.uri,
+                        dialogTitle: 'Save Configuration File'
+                    });
+
+                    console.log('Config exported successfully');
+                } catch (error) {
+                    console.error('Failed to export config:', error);
+                    //alert('Failed to export configuration');
+                }
+            } else {
+                // Web platform - use original blob method
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(dataBlob);
+
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                URL.revokeObjectURL(url);
+                console.log('Config downloaded successfully');
+            }
         } catch (error) {
             console.error('Failed to download config:', error);
             alert('Failed to download configuration');
@@ -100,7 +133,7 @@ export default function SettingsMenu({
                 setInputUrl(config.companion_connection_url || '');
 
                 console.log('Config restored successfully');
-                alert('Configuration restored successfully!');
+                //alert('Configuration restored successfully!');
 
             } catch (error) {
                 console.error('Failed to restore config:', error);
@@ -156,6 +189,22 @@ export default function SettingsMenu({
         return () => clearInterval(interval); // Cleanup
     }, [connectionUrl]);
 
+    // Click outside handler to close menu
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsActive(false);
+            }
+        };
+
+        if (isActive) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [isActive]);
 
     const handleUrlSubmit = () => {
         try {
@@ -169,7 +218,6 @@ export default function SettingsMenu({
         }
     };
 
-
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newUrl = e.target.value;
         setInputUrl(newUrl);
@@ -180,23 +228,21 @@ export default function SettingsMenu({
         }
     };
 
-    const [isActive, setIsActive] = useState(false);
-
     const toggleClass = () => {
         setIsActive(prev => !prev);
     };
 
     return (
-        <div>
+        <div ref={menuRef}>
             <div className="menu-icon" onClick={toggleClass}>
-                <FaBars style={{ display: isActive ? 'none' : 'inline' }} />
-                <FaXmark style={{ display: isActive ? 'inline' : 'none' }} />
+                <FaAngleRight style={{ display: isActive ? 'none' : 'inline' }} />
+                <FaAngleLeft style={{ display: isActive ? 'inline' : 'none' }} />
             </div>
             <div className={isActive ? 'menu menu-open' : 'menu'}>
 
-                <div style={{ display: 'flex', flexDirection: 'row', textAlign: 'left', gap: '10px' }}>
-                    <img src={dashboardIcon} style={{ height: '40px' }} alt="Dashboard" />
-                    <span className='wordmark'> COMPANION <b style={{ fontSize: '1.3em' }}>DASHBOARD</b> </span>
+                <div style={{ display: 'flex', flexDirection: 'row', textAlign: 'left', alignItems: 'center', gap: '10px' }}>
+                    <img src={dashboardIcon} style={{ height: '100px' }} alt="Dashboard" />
+                    <span className='wordmark'>COMPANION <b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
                 </div>
                 <div className="menu-section">
                     <input
@@ -241,6 +287,9 @@ export default function SettingsMenu({
                     onChange={handleFileRestore}
                     style={{ display: 'none' }}
                 />
+
+                <span style={{ position: 'absolute', bottom: '50px' }}>v1.0.0</span>
+                <span style={{ position: 'absolute', bottom: '30px' }}>Created by Tom Hillmeyer</span>
             </div>
         </div>
     );

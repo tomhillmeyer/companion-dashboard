@@ -25,6 +25,14 @@ test-notarize.js
 verify-setup.sh
 notarize.js
 *.local
+.firebase
+.firebaserc
+firebase.json
+ios
+capacitor.config.ts
+icons
+manifest.webmanifest
+vite.svg
 
 # Editor directories and files
 .vscode/*

@@ -17,11 +17,12 @@
 
 
 .moveable-line {
-    background: #C93E37 !important;
+    background: #2dbcff !important;
 }
 
 .moveable-control {
-    background: #C93E37 !important;
+    background: #2dbcff !important;
+    border-radius: 5px !important;
 }
 
 .moveable-control.moveable-origin {

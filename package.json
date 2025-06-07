@@ -11,6 +11,8 @@
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "dev": "vite --host",
     "build": "tsc -b && vite build",
+    "build:ios": "vite build && npx cap sync ios",
+    "ios": "npx cap open ios && open 'ios/Companion Dashboard/Companion Dashboard.xcodeproj",
     "preview": "vite preview",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac",
@@ -18,6 +20,11 @@
     "dist:all": "electron-builder -mwl"
   },
   "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.1.1",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/share": "^7.0.1",
+    "electron-notarize": "^1.2.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
@@ -26,6 +33,8 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0",
     "@electron/notarize": "^3.0.1",
     "@electron/osx-sign": "^2.0.0",
     "@eslint/js": "^9.25.0",
@@ -50,9 +59,7 @@
     "productName": "Companion Dashboard",
     "files": [
       "dist/**/*",
-      "src/**/*",
-      "public/**/*",
-      "node_modules/**/*",
+      "src/main.js",
       "package.json"
     ],
     "directories": {
@@ -60,8 +67,18 @@
     },
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
       "icon": "public/icon.icns",
       "hardenedRuntime": true,

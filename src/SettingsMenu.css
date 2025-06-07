@@ -1,8 +1,8 @@
 .menu {
-    width: fit-content;
+    width: 100%;
+    max-width: 500px;
     height: 100%;
-    background-color: rgba(0, 0, 0, 1);
-    border-right: 2px white solid;
+    background-color: #262626;
     position: fixed;
     left: 0;
     bottom: 0;
@@ -17,23 +17,25 @@
     gap: 20px;
     z-index: 3002;
     padding: 0px 20px 0px 20px;
+    box-sizing: border-box;
 }
 
 .menu-open {
     transform: translateX(0);
+    outline: 2px solid white;
 }
 
 .menu-icon {
     position: fixed;
     font-size: 30px;
     left: 20px;
-    top: 20px;
+    bottom: 20px;
     cursor: pointer;
     z-index: 3003;
     opacity: .5;
     transition: transform .2s ease-in-out;
-    background-color: black;
-    padding: 2px 5px 2px 5px;
+    padding: 5px 5px 2px 5px;
+    line-height: 1;
 }
 
 .menu-icon:hover {
@@ -49,10 +51,12 @@
 }
 
 input[type="text"] {
-    width: 200px;
-    height: 33px;
+    width: 100%;
+    height: 40px;
     border-radius: 8px;
     text-align: center;
+    font-size: 18px;
+    box-sizing: border-box;
 }
 
 button {
@@ -62,11 +66,12 @@ button {
 }
 
 .clear-boxes {
-    background-color: #C93E37;
+    background-color: #C63E37;
+    color: white;
 }
 
 .clear-boxes:hover {
-    border-color: white;
+    border-color: #19325c;
 }
 
 .wordmark {

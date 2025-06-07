@@ -24,6 +24,24 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
         setFormData({ ...formData, [field]: value });
     };
 
+    const handleNumberInput = (field: keyof BoxData, value: string) => {
+        // Allow empty string and any numeric input while typing
+        if (value === '' || /^\d*$/.test(value)) {
+            setFormData({ ...formData, [field]: value });
+        }
+    };
+
+    const handleNumberBlur = (field: keyof BoxData, value: string) => {
+        // On blur, ensure we have a valid number
+        const numValue = parseInt(value);
+        if (isNaN(numValue)) {
+            setFormData({ ...formData, [field]: 12 }); // Default fallback only if not a number
+        } else {
+            // Make sure we store as number, not string
+            setFormData({ ...formData, [field]: numValue });
+        }
+    };
+
     return (
         <div className="modal-overlay" onClick={onCancel}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -78,11 +96,13 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                         <label>
                             <span className='setting-header'>Size</span>
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={formData.headerLabelSize}
-                                onChange={(e) => updateField('headerLabelSize', parseInt(e.target.value) || 12)}
-                                min="8"
-                                max="72"
+                                onChange={(e) => handleNumberInput('headerLabelSize', e.target.value)}
+                                onBlur={(e) => handleNumberBlur('headerLabelSize', e.target.value)}
+                                style={{ width: '50px', textAlign: 'center' }}
                             />
                         </label>
 
@@ -145,11 +165,13 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                             <span className='setting-header'>Size</span>
 
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={formData.leftLabelSize}
-                                onChange={(e) => updateField('leftLabelSize', parseInt(e.target.value) || 12)}
-                                min="8"
-                                max="72"
+                                onChange={(e) => handleNumberInput('leftLabelSize', e.target.value)}
+                                onBlur={(e) => handleNumberBlur('leftLabelSize', e.target.value)}
+                                style={{ width: '50px', textAlign: 'center' }}
                             />
                         </label>
 
@@ -208,11 +230,13 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                             <span className='setting-header'>Size</span>
 
                             <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={formData.rightLabelSize}
-                                onChange={(e) => updateField('rightLabelSize', parseInt(e.target.value) || 12)}
-                                min="8"
-                                max="72"
+                                onChange={(e) => handleNumberInput('rightLabelSize', e.target.value)}
+                                onBlur={(e) => handleNumberBlur('rightLabelSize', e.target.value)}
+                                style={{ width: '50px', textAlign: 'center' }}
                             />
                         </label>
 
