@@ -15,7 +15,8 @@
     "ios": "npx cap open ios && open 'ios/Companion Dashboard/Companion Dashboard.xcodeproj",
     "preview": "vite preview",
     "dist": "electron-builder",
-    "dist:mac": "electron-builder --mac",
+    "dist:mac:intel": "electron-builder --mac --x64",
+    "dist:mac:arm": "electron-builder --mac --arm64",
     "dist:win": "electron-builder --win",
     "dist:all": "electron-builder -mwl"
   },
@@ -63,29 +64,18 @@
       "package.json"
     ],
     "directories": {
-      "buildResources": "public"
+      "buildResources": "public",
+      "output": "out"
     },
     "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64"
-          ]
-        }
-      ],
+      "target": "dmg",
       "icon": "public/icon.icns",
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",
       "entitlementsInherit": "entitlements.plist",
       "gatekeeperAssess": false,
-      "identity": "Creativeland, LLC (22SGVMMH49)"
+      "identity": "Creativeland, LLC (22SGVMMH49)",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "afterSign": "./notarize.js",
     "win": {

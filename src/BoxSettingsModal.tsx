@@ -7,9 +7,10 @@ interface BoxSettingsModalProps {
     onSave: (boxData: BoxData) => void;
     onCancel: () => void;
     onDelete: (boxId: string) => void;
+    onDuplicate: (boxData: BoxData) => void;
 }
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate }: BoxSettingsModalProps) {
     const [formData, setFormData] = useState(boxData);
 
     const handleSave = () => {
@@ -42,6 +43,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
         }
     };
 
+    const handleDuplicate = () => {
+        onDuplicate(formData); // Use current form data, not original boxData
+    };
+
     return (
         <div className="modal-overlay" onClick={onCancel}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -49,6 +54,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                     style={{
                         width: '100%',
                     }}>
+                    <span className='setting-title'>Box Background</span>
                     <label>
                         <span className='setting-header'>Background Color</span>
                         <input
@@ -68,6 +74,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                     style={{
                         width: '100%',
                     }}>
+                    <span className='setting-title'>Header</span>
                     <div className='setting-group'>
                         <label style={{ flexGrow: '1' }}>
                             <input
@@ -152,6 +159,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                 <div className="settings-section" style={{
                     width: '40%',
                 }}>
+                    <span className='setting-title'>LEFT</span>
                     <label>
                         <input
                             type="text"
@@ -217,7 +225,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                 <div className="settings-section" style={{
                     width: '40%',
                 }}>
-
+                    <span className='setting-title'>RIGHT</span>
                     <label>
                         <input
                             type="text"
@@ -283,6 +291,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete }
                 <div className="modal-buttons">
                     <button onClick={handleSave} className="modal-save-button">Save</button>
                     <button onClick={onCancel} className="modal-cancel-button">Cancel</button>
+                    <button onClick={handleDuplicate} className="modal-duplicate-button">Duplicate</button>
                     <button onClick={handleDelete} className="modal-delete-button">Delete</button>
                 </div>
             </div>

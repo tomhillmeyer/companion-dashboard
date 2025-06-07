@@ -8,7 +8,7 @@ const isDev = process.env.NODE_ENV === 'development';
 function createWindow() {
     const mainWindow = new BrowserWindow({
         width: 1200,
-        height: 800,
+        height: 1000,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -27,6 +27,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
     createWindow();
+    mainWindow.maximize();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {

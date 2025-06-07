@@ -59,6 +59,8 @@ export default function App() {
     });
 
 
+
+
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string) => {
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
@@ -70,6 +72,21 @@ export default function App() {
         setSelectedBoxId(null); // Clear any selection
     };
 
+    const duplicateBox = (originalBoxData: BoxData) => {
+        const duplicatedBox: BoxData = {
+            ...originalBoxData,
+            id: uuid(), // New unique ID
+            frame: {
+                ...originalBoxData.frame,
+                translate: [
+                    originalBoxData.frame.translate[0] + 20, // Offset by 20px
+                    originalBoxData.frame.translate[1] + 20
+                ] as [number, number]
+            }
+        };
+        setBoxes((prev) => [...prev, duplicatedBox]);
+    };
+
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>('');
@@ -79,17 +96,18 @@ export default function App() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(boxes));
     }, [boxes]);
 
+
     const createNewBox = () => {
         const newBox: BoxData = {
             id: uuid(),
             frame: {
-                translate: [100, 100] as [number, number],
+                translate: [525, 20] as [number, number],
                 width: 200,
                 height: 100,
             },
             backgroundColor: "#262626",
             backgroundColorText: "",
-            headerColor: '#C93E37',
+            headerColor: '#19325c',
             headerColorText: "",
             headerLabelSource: 'Time of Day',
             headerLabel: 'NO CONNECTION',
@@ -116,19 +134,25 @@ export default function App() {
         setBoxes((prev) => [...prev, newBox]);
     };
 
-    /* Function to update a specific box's frame
-    const updateBoxFrame = (boxId: string, newFrame: { translate: [number, number]; width: number; height: number }) => {
-        setBoxes((prev) =>
-            prev.map((box) =>
-                box.id === boxId
-                    ? { ...box, frame: newFrame }
-                    : box
-            )
-        );
-    };*/
+
+    // Handle keyboard shortcuts for deleting selected box
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (selectedBoxId && (event.key === 'Backspace' || event.key === 'Delete')) {
+                // Prevent default behavior (like navigating back in browser)
+                event.preventDefault();
+                // Delete the selected box
+                setBoxes((prev) => prev.filter((b) => b.id !== selectedBoxId));
+                setSelectedBoxId(null);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [selectedBoxId]);
 
     return (
-        <div>
+        <div style={{ minHeight: '100vh', width: '100%' }}>
             <SettingsMenu
                 onNewBox={createNewBox}
                 connectionUrl={companionBaseUrl}
@@ -136,24 +160,27 @@ export default function App() {
                 onConfigRestore={handleConfigRestore}
                 onDeleteAllBoxes={deleteAllBoxes}
             />
-            {boxes.map((box) => (
-                <Box
-                    key={box.id}
-                    boxData={box}
-                    isSelected={selectedBoxId === box.id} // Pass down selection state
-                    onSelect={() => setSelectedBoxId(box.id)} // Pass down select handler
-                    onDeselect={() => setSelectedBoxId(null)} // Pass down deselect handler
-                    onBoxUpdate={(updatedBox) => {
-                        setBoxes(prev => prev.map(b => b.id === updatedBox.id ? updatedBox : b));
-                    }}
-                    onDelete={(boxId) => {
-                        setBoxes((prev) => prev.filter((b) => b.id !== boxId));
-                        setSelectedBoxId(null);
-                    }}
-                    companionBaseUrl={companionBaseUrl}
-                />
-            ))}
-        </div>
+            {
+                boxes.map((box) => (
+                    <Box
+                        key={box.id}
+                        boxData={box}
+                        isSelected={selectedBoxId === box.id} // Pass down selection state
+                        onSelect={() => setSelectedBoxId(box.id)} // Pass down select handler
+                        onDeselect={() => setSelectedBoxId(null)} // Pass down deselect handler
+                        onBoxUpdate={(updatedBox) => {
+                            setBoxes(prev => prev.map(b => b.id === updatedBox.id ? updatedBox : b));
+                        }}
+                        onDelete={(boxId) => {
+                            setBoxes((prev) => prev.filter((b) => b.id !== boxId));
+                            setSelectedBoxId(null);
+                        }}
+                        onDuplicate={duplicateBox}
+                        companionBaseUrl={companionBaseUrl}
+                    />
+                ))
+            }
+        </div >
     );
 }
 

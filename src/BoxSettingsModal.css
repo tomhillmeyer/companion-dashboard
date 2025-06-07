@@ -4,7 +4,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, .5);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -15,8 +15,9 @@
     background: #262626;
     padding: 20px;
     border-radius: 8px;
-    border: 2px solid white;
+    border: 2px solid #61BAFA;
     width: 80%;
+    gap: 20px;
     max-width: 1400px;
     max-height: 80vh;
     overflow-y: auto;
@@ -31,11 +32,16 @@
 
 .settings-section {
     background-color: rgba(0, 0, 0, .2);
-    padding: 20px;
+    padding: 10px 20px 20px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
     flex-grow: 1;
     text-align: center;
     margin: 5px;
     width: 100%;
+    border: 1px #61BAFA solid;
+    border-radius: 10px;
 }
 
 .setting-group {
@@ -43,13 +49,18 @@
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 20px;
     width: 100%;
-    gap: 15px;
 }
 
-.settings-section h3 {
+.setting-title {
+    font-size: 15px;
+    letter-spacing: 5px;
+    font-weight: 700;
+    color: #61BAFA;
+    text-transform: uppercase;
+    padding: 5px;
     margin-bottom: 10px;
-    color: white;
 }
 
 .settings-section label {
@@ -106,7 +117,8 @@
 .modal-content input[type="text"] {
     width: 100%;
     padding: 6px 8px 6px 8px;
-    border: 1px solid #d1d5db;
+    /*border: 1px solid #d1d5db;*/
+    border: none;
     border-radius: 4px;
     text-align: center;
 }
@@ -114,7 +126,8 @@
 .modal-content input[type="number"] {
     width: 50px;
     padding: 6px 8px;
-    border: 1px solid #d1d5db;
+    /*border: 1px solid #d1d5db;*/
+    border: none;
     border-radius: 4px;
     margin-top: 4px;
     text-align: center;
@@ -123,7 +136,8 @@
 .modal-content input[type="color"] {
     width: 50px;
     height: 30px;
-    border: 1px solid #d1d5db;
+    /*border: 1px solid #d1d5db;*/
+    border: none;
     border-radius: 4px;
     cursor: pointer;
     margin-left: 3px;
@@ -136,6 +150,7 @@
 }
 
 .checkbox-label input[type="checkbox"] {
-    width: auto;
+    width: 25px;
     margin: 0;
+    transform: scale(1.3);
 }

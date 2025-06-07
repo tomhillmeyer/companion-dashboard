@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
 import type { BoxData } from './App';
@@ -14,6 +15,7 @@ export default function Box({
     onDeselect,
     onBoxUpdate,
     onDelete,
+    onDuplicate,
     gridSize = 15,
     companionBaseUrl,
 }: {
@@ -23,6 +25,7 @@ export default function Box({
     onDeselect: () => void;
     onBoxUpdate: (boxData: BoxData) => void;
     onDelete: (boxId: string) => void;
+    onDuplicate: (boxData: BoxData) => void;
     gridSize?: number;
     companionBaseUrl: string;
 }) {
@@ -78,6 +81,14 @@ export default function Box({
         });
     };
 
+    useEffect(() => {
+        if (showModal) {
+            onDeselect();
+        }
+    }, [showModal, onDeselect]);
+
+
+
 
     // Use the variable fetcher
     const variableValues = useVariableFetcher(companionBaseUrl, {
@@ -107,14 +118,30 @@ export default function Box({
 
     return (
         <div>
-            <DoubleTapBox onDoubleTap={() => setShowModal(true)}>
+            <DoubleTapBox onDoubleTap={() => { setShowModal(true) }}>
                 <div className="box-container">
                     <div
                         ref={targetRef}
                         className="box"
                         onClick={(e) => {
                             e.stopPropagation();
-                            onSelect();
+                            if (e.altKey) {
+                                // Duplicate this box
+                                const duplicatedBox: BoxData = {
+                                    ...boxData,
+                                    id: uuid(),
+                                    frame: {
+                                        ...boxData.frame,
+                                        translate: [
+                                            boxData.frame.translate[0] + 20,
+                                            boxData.frame.translate[1] + 20
+                                        ] as [number, number]
+                                    }
+                                };
+                                onDuplicate(duplicatedBox);
+                            } else {
+                                onSelect();
+                            }
                         }}
                         onDoubleClick={(e) => {
                             e.stopPropagation();
@@ -167,80 +194,80 @@ export default function Box({
                         </div>
                     </div>
 
-                    {
-                        isSelected && (
-                            <>
-                                <Moveable
-                                    target={targetRef}
-                                    draggable
-                                    resizable
-                                    snappable
-                                    snapThreshold={15}
-                                    snapDirections={{ top: true, left: true, bottom: true, right: true }}
-                                    verticalGuidelines={gridLines.verticalGridLines}
-                                    horizontalGuidelines={gridLines.horizontalGridLines}
-                                    isDisplaySnapDigit
-                                    onDrag={({ beforeTranslate }) => {
-                                        const newFrame = {
-                                            ...frame,
-                                            translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number]
-                                        };
-                                        setFrame(newFrame);
-                                        targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-                                    }}
-                                    onDragEnd={({ lastEvent }) => {
-                                        if (lastEvent) {
-                                            const newFrame = {
-                                                ...frame,
-                                                translate: [lastEvent.beforeTranslate[0], lastEvent.beforeTranslate[1]] as [number, number]
-                                            };
-                                            updateFrame(newFrame);
-                                        }
-                                    }}
-                                    onResize={({ width, height, drag }) => {
-                                        const beforeTranslate = drag.beforeTranslate;
-                                        const newFrame = {
-                                            translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number],
-                                            width,
-                                            height
-                                        };
-                                        setFrame(newFrame);
-                                        targetRef.current!.style.width = `${width}px`;
-                                        targetRef.current!.style.height = `${height}px`;
-                                        targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-                                    }}
-                                    onResizeEnd={({ lastEvent }) => {
-                                        if (lastEvent) {
-                                            const newFrame = {
-                                                translate: [lastEvent.drag.beforeTranslate[0], lastEvent.drag.beforeTranslate[1]] as [number, number],
-                                                width: lastEvent.width,
-                                                height: lastEvent.height
-                                            };
-                                            updateFrame(newFrame);
-                                        }
-                                    }}
-
-                                />
-                                {showModal && (
-                                    <BoxSettingsModal
-                                        boxData={boxData}
-                                        onSave={(updatedBoxData) => {
-                                            onBoxUpdate(updatedBoxData);
-                                            setShowModal(false);
-                                        }}
-                                        onCancel={() => setShowModal(false)}
-                                        onDelete={(boxId) => {
-                                            onDelete(boxId); // Pass it up to App
-                                            setShowModal(false);
-                                        }}
-                                    />
-                                )}
-                            </>
-
-                        )
-                    }
-                </div >
+                    {isSelected && (
+                        <Moveable
+                            target={targetRef}
+                            draggable
+                            resizable
+                            snappable
+                            snapThreshold={15}
+                            snapDirections={{ top: true, left: true, bottom: true, right: true }}
+                            verticalGuidelines={gridLines.verticalGridLines}
+                            horizontalGuidelines={gridLines.horizontalGridLines}
+                            isDisplaySnapDigit
+                            onDrag={({ beforeTranslate }) => {
+                                const newFrame = {
+                                    ...frame,
+                                    translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number]
+                                };
+                                setFrame(newFrame);
+                                targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+                            }}
+                            onDragEnd={({ lastEvent }) => {
+                                if (lastEvent) {
+                                    const newFrame = {
+                                        ...frame,
+                                        translate: [lastEvent.beforeTranslate[0], lastEvent.beforeTranslate[1]] as [number, number]
+                                    };
+                                    updateFrame(newFrame);
+                                }
+                            }}
+                            onResize={({ width, height, drag }) => {
+                                const beforeTranslate = drag.beforeTranslate;
+                                const newFrame = {
+                                    translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number],
+                                    width,
+                                    height
+                                };
+                                setFrame(newFrame);
+                                targetRef.current!.style.width = `${width}px`;
+                                targetRef.current!.style.height = `${height}px`;
+                                targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+                            }}
+                            onResizeEnd={({ lastEvent }) => {
+                                if (lastEvent) {
+                                    const newFrame = {
+                                        translate: [lastEvent.drag.beforeTranslate[0], lastEvent.drag.beforeTranslate[1]] as [number, number],
+                                        width: lastEvent.width,
+                                        height: lastEvent.height
+                                    };
+                                    updateFrame(newFrame);
+                                }
+                            }}
+                        />
+                    )}
+                </div>
             </DoubleTapBox>
+
+            {/* Move modal outside of isSelected condition */}
+            {showModal && (
+                <BoxSettingsModal
+                    boxData={boxData}
+                    onSave={(updatedBoxData) => {
+                        onBoxUpdate(updatedBoxData);
+                        setShowModal(false);
+                    }}
+                    onCancel={() => setShowModal(false)}
+                    onDelete={(boxId) => {
+                        onDelete(boxId);
+                        setShowModal(false);
+                    }}
+                    onDuplicate={(boxData) => {
+                        onDuplicate(boxData);
+                        setShowModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 

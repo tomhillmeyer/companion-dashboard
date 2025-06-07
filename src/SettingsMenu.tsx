@@ -239,57 +239,58 @@ export default function SettingsMenu({
                 <FaAngleLeft style={{ display: isActive ? 'inline' : 'none' }} />
             </div>
             <div className={isActive ? 'menu menu-open' : 'menu'}>
+                <div className='menu-content'>
+                    <div style={{ display: 'flex', flexDirection: 'row', textAlign: 'left', alignItems: 'center', gap: '10px' }}>
+                        <img src={dashboardIcon} style={{ height: '100px' }} alt="Dashboard" />
+                        <span className='wordmark'>COMPANION <b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
+                    </div>
+                    <div className="menu-section">
+                        <input
+                            type="text"
+                            value={inputUrl}
+                            onChange={handleUrlChange}
+                            placeholder="http://127.0.0.1:8888/"
+                            style={{
+                                border: '1px solid',
+                                borderColor:
+                                    isValidUrl === null ? 'gray' :
+                                        isValidUrl === true ? 'green' :
+                                            'red'
+                            }}
+                        />
+                        <button onClick={handleUrlSubmit}>Set Connection</button>
+                    </div>
+                    <div className='menu-section'>
+                        <button onClick={onNewBox}>New Box</button>
+                        <button
+                            onClick={() => {
+                                const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
+                                if (confirmed) {
+                                    onDeleteAllBoxes();
+                                }
+                            }}
+                            className='clear-boxes'
+                        >
+                            Clear All Boxes
+                        </button>
+                    </div>
 
-                <div style={{ display: 'flex', flexDirection: 'row', textAlign: 'left', alignItems: 'center', gap: '10px' }}>
-                    <img src={dashboardIcon} style={{ height: '100px' }} alt="Dashboard" />
-                    <span className='wordmark'>COMPANION <b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
-                </div>
-                <div className="menu-section">
+
+                    <div className='menu-section'>
+                        <button onClick={downloadConfig}>Download Config</button>
+                        <button onClick={triggerFileInput}>Restore Config</button>
+                    </div>
                     <input
-                        type="text"
-                        value={inputUrl}
-                        onChange={handleUrlChange}
-                        placeholder="http://127.0.0.1:8888/"
-                        style={{
-                            border: '1px solid',
-                            borderColor:
-                                isValidUrl === null ? 'gray' :
-                                    isValidUrl === true ? 'green' :
-                                        'red'
-                        }}
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".json"
+                        onChange={handleFileRestore}
+                        style={{ display: 'none' }}
                     />
-                    <button onClick={handleUrlSubmit}>Set Connection</button>
-                </div>
-                <div className='menu-section'>
-                    <button onClick={onNewBox}>New Box</button>
-                    <button
-                        onClick={() => {
-                            const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
-                            if (confirmed) {
-                                onDeleteAllBoxes();
-                            }
-                        }}
-                        className='clear-boxes'
-                    >
-                        Clear All Boxes
-                    </button>
-                </div>
 
-
-                <div className='menu-section'>
-                    <button onClick={downloadConfig}>Download Config</button>
-                    <button onClick={triggerFileInput}>Restore Config</button>
+                    <span>v1.0.0</span>
+                    <span>Created by Tom Hillmeyer</span>
                 </div>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".json"
-                    onChange={handleFileRestore}
-                    style={{ display: 'none' }}
-                />
-
-                <span style={{ position: 'absolute', bottom: '50px' }}>v1.0.0</span>
-                <span style={{ position: 'absolute', bottom: '30px' }}>Created by Tom Hillmeyer</span>
             </div>
         </div>
     );
