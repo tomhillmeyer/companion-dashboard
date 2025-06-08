@@ -37,7 +37,6 @@ This is an application for displaying variables from Bitfocus Companion.
 ## Roadmap
 
 - Grouping boxes together, both to move/resize them as well as more options to visually group boxes together
-- Add a "Duplicate Box" function
 - Connect to multiple Companion instances at the same time
 - Clean up UI and Menus, evolve the UI based on how people use it
 - Use Companion variables to set box size, position, and the other attributes
