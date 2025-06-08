@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "homepage": "./",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
@@ -17,7 +17,7 @@
     "dist": "electron-builder",
     "dist:mac:intel": "electron-builder --mac --x64",
     "dist:mac:arm": "electron-builder --mac --arm64",
-    "dist:win": "electron-builder --win",
+    "dist:win": "electron-builder --win --x64",
     "dist:all": "electron-builder -mwl"
   },
   "dependencies": {
@@ -75,7 +75,7 @@
       "entitlementsInherit": "entitlements.plist",
       "gatekeeperAssess": false,
       "identity": "Creativeland, LLC (22SGVMMH49)",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "afterSign": "./notarize.js",
     "win": {
@@ -83,7 +83,8 @@
         "nsis",
         "zip"
       ],
-      "icon": "public/icon.ico"
+      "icon": "public/icon.ico",
+      "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
