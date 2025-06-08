@@ -42,6 +42,7 @@ This is an application for displaying variables from Bitfocus Companion.
 
 ### Yamaha audio consoles
 Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors.
+
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png)
 
 ## Roadmap
