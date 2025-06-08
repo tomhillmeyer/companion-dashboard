@@ -35,7 +35,8 @@ This is an application for displaying variables from Bitfocus Companion.
 - Option + Click a box and it will duplicate
 - Select a box and hit "backspace" or "delete" to delete
 
-
+## Demos
+[Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
 
 ## Roadmap
 
