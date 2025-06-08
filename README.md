@@ -27,6 +27,9 @@ This is an application for displaying variables from Bitfocus Companion.
 - Double clicking a box launches the settings window for that box.
 - All of the color pickers have a "Variable or HEX" text field. That text field takes priority.
 
+## Custom Variable / Trigger Demo
+[A tutorial on how to use Custom Variables & Triggers in Companion to change the color on a box in Companion Dashboard](https://wearecreativeland.com/tools/dashboard/custom-variables-triggers)
+
 ## Tips & Tricks
 - Text fields automatically concatenate, so you can include multiple variables and strings
 - Option + Click a box and it will duplicate
