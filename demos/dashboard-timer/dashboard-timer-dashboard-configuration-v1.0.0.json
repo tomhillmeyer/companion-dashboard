@@ -1,0 +1,115 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-06-08T16:18:20.143Z",
+  "boxes": [
+    {
+      "id": "198db216-886e-4155-8319-e20515aee933",
+      "frame": {
+        "translate": [
+          30,
+          35
+        ],
+        "width": 810,
+        "height": 205
+      },
+      "backgroundColor": "#262626",
+      "backgroundColorText": "",
+      "headerColor": "#19325c",
+      "headerColorText": "",
+      "headerLabelSource": "",
+      "headerLabel": "NO CONNECTION",
+      "headerLabelSize": 16,
+      "headerLabelColor": "#ffffff",
+      "headerLabelColorText": "",
+      "headerLabelBold": false,
+      "leftLabelSource": "$(stopwatch:hms)",
+      "leftLabel": "",
+      "leftLabelSize": 150,
+      "leftLabelColor": "#FFFFFF",
+      "leftLabelColorText": "$(custom:timer_color)",
+      "leftLabelBold": true,
+      "leftVisible": true,
+      "rightLabelSource": "",
+      "rightLabel": "",
+      "rightLabelSize": 20,
+      "rightLabelColor": "#FFFFFF",
+      "rightLabelColorText": "",
+      "rightLabelBold": false,
+      "rightVisible": false,
+      "headerLabelVisible": false
+    },
+    {
+      "id": "5f36949b-cb49-4986-8f57-b71c31313ae7",
+      "frame": {
+        "translate": [
+          30,
+          260
+        ],
+        "width": 405,
+        "height": 190
+      },
+      "backgroundColor": "#262626",
+      "backgroundColorText": "",
+      "headerColor": "#19325c",
+      "headerColorText": "",
+      "headerLabelSource": "TIMER ENDS AT",
+      "headerLabel": "NO CONNECTION",
+      "headerLabelSize": 50,
+      "headerLabelColor": "#ffffff",
+      "headerLabelColorText": "",
+      "headerLabelBold": false,
+      "leftLabelSource": "$(custom:timer_ends)",
+      "leftLabel": "",
+      "leftLabelSize": 100,
+      "leftLabelColor": "#FFFFFF",
+      "leftLabelColorText": "",
+      "leftLabelBold": true,
+      "leftVisible": true,
+      "rightLabelSource": "",
+      "rightLabel": "",
+      "rightLabelSize": 20,
+      "rightLabelColor": "#FFFFFF",
+      "rightLabelColorText": "",
+      "rightLabelBold": false,
+      "rightVisible": false,
+      "headerLabelVisible": true
+    },
+    {
+      "id": "206e2d01-5500-4447-b21c-6a9e96f31b02",
+      "frame": {
+        "translate": [
+          450,
+          260
+        ],
+        "width": 390,
+        "height": 190
+      },
+      "backgroundColor": "#262626",
+      "backgroundColorText": "",
+      "headerColor": "#19325c",
+      "headerColorText": "",
+      "headerLabelSource": "CURRENT TIME",
+      "headerLabel": "NO CONNECTION",
+      "headerLabelSize": 50,
+      "headerLabelColor": "#ffffff",
+      "headerLabelColorText": "",
+      "headerLabelBold": false,
+      "leftLabelSource": "$(internal:time_hm_12)",
+      "leftLabel": "",
+      "leftLabelSize": 100,
+      "leftLabelColor": "#FFFFFF",
+      "leftLabelColorText": "",
+      "leftLabelBold": true,
+      "leftVisible": true,
+      "rightLabelSource": "",
+      "rightLabel": "",
+      "rightLabelSize": 20,
+      "rightLabelColor": "#FFFFFF",
+      "rightLabelColorText": "",
+      "rightLabelBold": false,
+      "rightVisible": false,
+      "headerLabelVisible": true
+    }
+  ],
+  "companion_connection_url": "http://127.0.0.1:8888"
+}
