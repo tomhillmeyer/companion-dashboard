@@ -4,9 +4,9 @@ This is a Dashboard demo using the Generic: Stopwatch module in Companion to cre
 NOTE: This Companion configuration is built in v4.0.0 and Dashboard v1.0.0
 
 ### Files & Installation
-- [Companion Configuration File](https://github.com/tomhillmeyer/companion-dashboard/blob/main/demos/dashboard-timer/dashboard-timer-companion-configuration-v1.0.0.companionconfig)
+- [Companion Configuration File](https://raw.github.com/tomhillmeyer/companion-dashboard/main/demos/dashboard-timer/dashboard-timer-companion-configuration-v1.0.0.companionconfig)
     - Import this configuration into Companion on the import/export page
-- [Dashboard Configuration File](https://github.com/tomhillmeyer/companion-dashboard/blob/main/demos/dashboard-timer/dashboard-timer-dashboard-configuration-v1.0.0.json)
+- [Dashboard Configuration File](https://raw.github.com/tomhillmeyer/companion-dashboard/main/demos/dashboard-timer/dashboard-timer-dashboard-configuration-v1.0.0.json)
     - Use this configuration into Dashboard using "Restore Config"
 
 ### How to use
