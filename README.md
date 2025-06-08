@@ -38,6 +38,12 @@ This is an application for displaying variables from Bitfocus Companion.
 ## Demos
 [Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
 
+## Use cases
+
+### Yamaha audio consoles
+Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors.
+![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png)
+
 ## Roadmap
 
 - Grouping boxes together, both to move/resize them as well as more options to visually group boxes together
