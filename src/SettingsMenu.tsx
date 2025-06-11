@@ -277,8 +277,8 @@ export default function SettingsMenu({
 
 
                     <div className='menu-section'>
-                        <button onClick={downloadConfig}>Download Config</button>
-                        <button onClick={triggerFileInput}>Restore Config</button>
+                        <button onClick={downloadConfig}>Save Config</button>
+                        <button onClick={triggerFileInput}>Load Config</button>
                     </div>
                     <input
                         ref={fileInputRef}
