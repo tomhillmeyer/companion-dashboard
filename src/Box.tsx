@@ -161,7 +161,6 @@ export default function Box({
         backgroundColor: boxData.headerColorText ? displayLabels.headerColor : boxData.headerColor,
         color: boxData.headerLabelColorText ? displayLabels.headerLabelColor : boxData.headerLabelColor,
         fontSize: `${boxData.headerLabelSize}px`,
-        fontWeight: boxData.headerLabelBold ? 'bold' : 'normal',
         textAlign: 'center' as const,
         display: boxData.headerLabelVisible ? 'flex' : 'none',
         alignItems: 'center' as const,
@@ -169,34 +168,32 @@ export default function Box({
     }), [
         boxData.headerColorText, displayLabels.headerColor, boxData.headerColor,
         boxData.headerLabelColorText, displayLabels.headerLabelColor, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelBold, boxData.headerLabelVisible
+        boxData.headerLabelSize, boxData.headerLabelVisible
     ]);
 
     const leftStyle = useMemo(() => ({
         color: boxData.leftLabelColorText ? displayLabels.leftLabelColorTextSource : boxData.leftLabelColor,
         fontSize: `${boxData.leftLabelSize}px`,
-        fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
         display: boxData.leftVisible ? 'flex' : 'none',
         justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
         textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
         alignItems: 'center' as const,
     }), [
         boxData.leftLabelColorText, displayLabels.leftLabelColorTextSource, boxData.leftLabelColor,
-        boxData.leftLabelSize, boxData.leftLabelBold, boxData.leftVisible,
+        boxData.leftLabelSize, boxData.leftVisible,
         boxData.rightVisible
     ]);
 
     const rightStyle = useMemo(() => ({
         color: boxData.rightLabelColorText ? displayLabels.rightLabelColorTextSource : boxData.rightLabelColor,
         fontSize: `${boxData.rightLabelSize}px`,
-        fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
         display: boxData.rightVisible ? 'flex' : 'none',
         justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
         textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
         alignItems: 'center' as const,
     }), [
         boxData.rightLabelColorText, displayLabels.rightLabelColorTextSource, boxData.rightLabelColor,
-        boxData.rightLabelSize, boxData.rightLabelBold, boxData.rightVisible,
+        boxData.rightLabelSize, boxData.rightVisible,
         boxData.leftVisible
     ]);
 

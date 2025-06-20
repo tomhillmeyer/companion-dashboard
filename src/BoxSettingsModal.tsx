@@ -49,7 +49,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     const renderBackgroundSettings = () => (
         <div className="settings-section">
-            <div className="setting-title">Box Background</div>
+            <div className="setting-title">Background</div>
             <div className="setting-group">
                 <div className="setting-row">
                     <div className="setting-label">
@@ -75,7 +75,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     const renderHeaderSettings = () => (
         <div className="settings-section">
-            <div className="setting-title">Header Settings</div>
+            <div className="setting-title">Header</div>
             <div className="setting-group">
                 <div className="setting-row">
                     <div className="setting-label">
@@ -145,16 +145,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     <div className="checkbox-container">
                         <input
                             type="checkbox"
-                            id="header-bold"
-                            checked={formData.headerLabelBold}
-                            onChange={(e) => updateField('headerLabelBold', e.target.checked)}
-                        />
-                        <label htmlFor="header-bold">Bold</label>
-                    </div>
-
-                    <div className="checkbox-container">
-                        <input
-                            type="checkbox"
                             id="header-visible"
                             checked={formData.headerLabelVisible}
                             onChange={(e) => updateField('headerLabelVisible', e.target.checked)}
@@ -168,7 +158,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     const renderLeftSettings = () => (
         <div className="settings-section">
-            <div className="setting-title">Left Label Settings</div>
+            <div className="setting-title">Left</div>
             <div className="setting-group">
                 <div className="setting-row">
                     <div className="setting-label">
@@ -219,16 +209,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     <div className="checkbox-container">
                         <input
                             type="checkbox"
-                            id="left-bold"
-                            checked={formData.leftLabelBold}
-                            onChange={(e) => updateField('leftLabelBold', e.target.checked)}
-                        />
-                        <label htmlFor="left-bold">Bold</label>
-                    </div>
-
-                    <div className="checkbox-container">
-                        <input
-                            type="checkbox"
                             id="left-visible"
                             checked={formData.leftVisible}
                             onChange={(e) => updateField('leftVisible', e.target.checked)}
@@ -242,7 +222,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     const renderRightSettings = () => (
         <div className="settings-section">
-            <div className="setting-title">Right Label Settings</div>
+            <div className="setting-title">Right</div>
             <div className="setting-group">
                 <div className="setting-row">
                     <div className="setting-label">
@@ -293,16 +273,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     <div className="checkbox-container">
                         <input
                             type="checkbox"
-                            id="right-bold"
-                            checked={formData.rightLabelBold}
-                            onChange={(e) => updateField('rightLabelBold', e.target.checked)}
-                        />
-                        <label htmlFor="right-bold">Bold</label>
-                    </div>
-
-                    <div className="checkbox-container">
-                        <input
-                            type="checkbox"
                             id="right-visible"
                             checked={formData.rightVisible}
                             onChange={(e) => updateField('rightVisible', e.target.checked)}
@@ -334,10 +304,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <div className="modal-buttons">
-                        <button onClick={handleSave} className="modal-save-button">Save</button>
-                        <button onClick={onCancel} className="modal-cancel-button">Cancel</button>
-                        <button onClick={handleDuplicate} className="modal-duplicate-button">Duplicate</button>
-                        <button onClick={handleDelete} className="modal-delete-button">Delete</button>
+                        <button onClick={handleSave} className="modal-save-button">SAVE</button>
+                        <button onClick={onCancel} className="modal-cancel-button">CANCEL</button>
+                        <button onClick={handleDuplicate} className="modal-duplicate-button">DUPLICATE</button>
+                        <button onClick={handleDelete} className="modal-delete-button">DELETE</button>
                     </div>
                 </div>
 

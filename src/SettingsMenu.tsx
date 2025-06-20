@@ -240,10 +240,11 @@ export default function SettingsMenu({
             </div>
             <div className={isActive ? 'menu menu-open' : 'menu'}>
                 <div className='menu-content'>
-                    <div style={{ display: 'flex', flexDirection: 'row', textAlign: 'left', alignItems: 'center', gap: '10px' }}>
+                    <div className='logo-box'>
                         <img src={dashboardIcon} style={{ height: '100px' }} alt="Dashboard" />
-                        <span className='wordmark'>COMPANION <b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
+                        <span className='wordmark'>COMPANION<b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
                     </div>
+                    <span className='section-label'>Companion Connection</span>
                     <div className="menu-section">
                         <input
                             type="text"
@@ -258,8 +259,9 @@ export default function SettingsMenu({
                                             'red'
                             }}
                         />
-                        <button onClick={handleUrlSubmit}>Set Connection</button>
+                        <button onClick={handleUrlSubmit}>Set</button>
                     </div>
+                    <span className='section-label'>Boxes</span>
                     <div className='menu-section'>
                         <button onClick={onNewBox}>New Box</button>
                         <button
@@ -275,10 +277,10 @@ export default function SettingsMenu({
                         </button>
                     </div>
 
-
+                    <span className='section-label'>CONFIGURATION</span>
                     <div className='menu-section'>
-                        <button onClick={downloadConfig}>Save Config</button>
-                        <button onClick={triggerFileInput}>Load Config</button>
+                        <button onClick={downloadConfig}>SAVE</button>
+                        <button onClick={triggerFileInput}>LOAD</button>
                     </div>
                     <input
                         ref={fileInputRef}
@@ -287,9 +289,7 @@ export default function SettingsMenu({
                         onChange={handleFileRestore}
                         style={{ display: 'none' }}
                     />
-
-                    <span>v1.0.1</span>
-                    <span>Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.1.0<br />Created by <a href='http://tomhillmeyer.com'>Tom Hillmeyer</a></span>
                 </div>
             </div>
         </div>

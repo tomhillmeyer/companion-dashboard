@@ -20,21 +20,18 @@ export interface BoxData {
     headerLabelSize: number;
     headerLabelColor: string;
     headerLabelColorText: string;
-    headerLabelBold: boolean;
     headerLabelVisible: boolean;
     leftLabelSource: string;
     leftLabel: string;
     leftLabelSize: number;
     leftLabelColor: string;
     leftLabelColorText: string;
-    leftLabelBold: boolean;
     leftVisible: boolean;
     rightLabelSource: string;
     rightLabel: string;
     rightLabelSize: number;
     rightLabelColor: string;
     rightLabelColorText: string;
-    rightLabelBold: boolean;
     rightVisible: boolean;
 }
 
@@ -101,9 +98,9 @@ export default function App() {
         const newBox: BoxData = {
             id: uuid(),
             frame: {
-                translate: [525, 20] as [number, number],
-                width: 200,
-                height: 100,
+                translate: [15, 15] as [number, number],
+                width: 600,
+                height: 105,
             },
             backgroundColor: "#262626",
             backgroundColorText: "",
@@ -114,20 +111,17 @@ export default function App() {
             headerLabelSize: 16,
             headerLabelColor: '#ffffff',
             headerLabelColorText: "",
-            headerLabelBold: true,
             leftLabelSource: 'Time',
             leftLabel: '',
             leftLabelSize: 14,
             leftLabelColor: '#FFFFFF',
             leftLabelColorText: "",
-            leftLabelBold: false,
             leftVisible: true,
             rightLabelSource: '$(internal:time_hms_12)',
             rightLabel: '',
             rightLabelSize: 20,
             rightLabelColor: '#FFFFFF',
             rightLabelColorText: "",
-            rightLabelBold: true,
             rightVisible: true,
             headerLabelVisible: true,
         };
