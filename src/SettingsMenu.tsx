@@ -288,7 +288,7 @@ export default function SettingsMenu({
                         style={{ display: 'none' }}
                     />
 
-                    <span>v1.0.0</span>
+                    <span>v1.0.1</span>
                     <span>Created by Tom Hillmeyer</span>
                 </div>
             </div>

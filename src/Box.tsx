@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
@@ -7,6 +7,24 @@ import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 
+// Component for rendering markdown content
+const MarkdownContent = React.memo(({
+    content,
+    style,
+    className = ''
+}: {
+    content: string;
+    style: React.CSSProperties;
+    className?: string;
+}) => {
+    return (
+        <div
+            className={className}
+            style={style}
+            dangerouslySetInnerHTML={{ __html: content }}
+        />
+    );
+});
 
 export default function Box({
     boxData,
@@ -33,7 +51,6 @@ export default function Box({
     const targetRef = useRef<HTMLDivElement>(null);
     const [frame, setFrame] = useState(boxData.frame);
     const [showModal, setShowModal] = useState(false);
-
 
     // Update local frame when initialFrame changes
     useEffect(() => {
@@ -87,11 +104,8 @@ export default function Box({
         }
     }, [showModal, onDeselect]);
 
-
-
-
-    // Use the variable fetcher
-    const variableValues = useVariableFetcher(companionBaseUrl, {
+    // Use the enhanced variable fetcher
+    const { values: variableValues, htmlValues: variableHtmlValues } = useVariableFetcher(companionBaseUrl, {
         headerLabelSource: boxData.headerLabelSource,
         leftLabelSource: boxData.leftLabelSource,
         rightLabelSource: boxData.rightLabelSource,
@@ -114,7 +128,77 @@ export default function Box({
         rightLabelColorTextSource: variableValues.rightLabelColorTextSource || boxData.rightLabelColorText,
     };
 
+    // HTML versions for markdown rendering - need to parse even the fallback values
+    const parseMarkdownFallback = (text: string): string => {
+        if (!text) return '';
+        return text
+            // Handle escaped characters first (replace \* with placeholder, etc.)
+            .replace(/\\(\*|_|\[|\]|\(|\)|!)/g, 'ESCAPED_$1_PLACEHOLDER')
+            // Bold: **text** or __text__
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/__(.*?)__/g, '<strong>$1</strong>')
+            // Italic: *text* or _text_
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/_(.*?)_/g, '<em>$1</em>')
+            // Images: ![alt](url)
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
+            // Links: [text](url)
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+            // Line breaks
+            .replace(/\n/g, '<br>')
+            // Restore escaped characters
+            .replace(/ESCAPED_(.?)_PLACEHOLDER/g, '$1');
+    };
 
+    const displayHtmlLabels = useMemo(() => ({
+        header: variableHtmlValues.headerLabelSource || parseMarkdownFallback(boxData.headerLabelSource),
+        left: variableHtmlValues.leftLabelSource || parseMarkdownFallback(boxData.leftLabelSource),
+        right: variableHtmlValues.rightLabelSource || parseMarkdownFallback(boxData.rightLabelSource),
+    }), [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource, boxData.headerLabelSource, boxData.leftLabelSource, boxData.rightLabelSource]);
+
+    // Memoize styles to prevent unnecessary re-renders
+    const headerStyle = useMemo(() => ({
+        backgroundColor: boxData.headerColorText ? displayLabels.headerColor : boxData.headerColor,
+        color: boxData.headerLabelColorText ? displayLabels.headerLabelColor : boxData.headerLabelColor,
+        fontSize: `${boxData.headerLabelSize}px`,
+        fontWeight: boxData.headerLabelBold ? 'bold' : 'normal',
+        textAlign: 'center' as const,
+        display: boxData.headerLabelVisible ? 'flex' : 'none',
+        alignItems: 'center' as const,
+        justifyContent: 'center' as const,
+    }), [
+        boxData.headerColorText, displayLabels.headerColor, boxData.headerColor,
+        boxData.headerLabelColorText, displayLabels.headerLabelColor, boxData.headerLabelColor,
+        boxData.headerLabelSize, boxData.headerLabelBold, boxData.headerLabelVisible
+    ]);
+
+    const leftStyle = useMemo(() => ({
+        color: boxData.leftLabelColorText ? displayLabels.leftLabelColorTextSource : boxData.leftLabelColor,
+        fontSize: `${boxData.leftLabelSize}px`,
+        fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
+        display: boxData.leftVisible ? 'flex' : 'none',
+        justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
+        textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
+        alignItems: 'center' as const,
+    }), [
+        boxData.leftLabelColorText, displayLabels.leftLabelColorTextSource, boxData.leftLabelColor,
+        boxData.leftLabelSize, boxData.leftLabelBold, boxData.leftVisible,
+        boxData.rightVisible
+    ]);
+
+    const rightStyle = useMemo(() => ({
+        color: boxData.rightLabelColorText ? displayLabels.rightLabelColorTextSource : boxData.rightLabelColor,
+        fontSize: `${boxData.rightLabelSize}px`,
+        fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
+        display: boxData.rightVisible ? 'flex' : 'none',
+        justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
+        textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
+        alignItems: 'center' as const,
+    }), [
+        boxData.rightLabelColorText, displayLabels.rightLabelColorTextSource, boxData.rightLabelColor,
+        boxData.rightLabelSize, boxData.rightLabelBold, boxData.rightVisible,
+        boxData.leftVisible
+    ]);
 
     return (
         <div>
@@ -155,42 +239,24 @@ export default function Box({
                         }}
                     >
                         {/* Header */}
-                        <div
-                            className='header'
-                            style={{
-                                backgroundColor: boxData.headerColorText ? displayLabels.headerColor : boxData.headerColor,
-                                color: boxData.headerLabelColorText ? displayLabels.headerLabelColor : boxData.headerLabelColor,
-                                fontSize: `${boxData.headerLabelSize}px`,
-                                fontWeight: boxData.headerLabelBold ? 'bold' : 'normal',
-                                textAlign: 'center',
-                                display: boxData.headerLabelVisible ? 'flex' : 'none',
-                            }}
-                        >
-                            {displayLabels.header}
-                        </div>
+                        <MarkdownContent
+                            content={displayHtmlLabels.header}
+                            className="header"
+                            style={headerStyle}
+                        />
 
                         {/* Body with left and right labels */}
                         <div className='content-container'>
-                            <div className='content' style={{
-                                color: boxData.leftLabelColorText ? displayLabels.leftLabelColorTextSource : boxData.leftLabelColor,
-                                fontSize: `${boxData.leftLabelSize}px`,
-                                fontWeight: boxData.leftLabelBold ? 'bold' : 'normal',
-                                display: boxData.leftVisible ? 'flex' : 'none',
-                                justifyContent: boxData.rightVisible ? 'left' : 'center',
-                                textAlign: boxData.rightVisible ? 'left' : 'center',
-                            }}>
-                                {displayLabels.left}
-                            </div>
-                            <div className='content' style={{
-                                color: boxData.rightLabelColorText ? displayLabels.rightLabelColorTextSource : boxData.rightLabelColor,
-                                fontSize: `${boxData.rightLabelSize}px`,
-                                fontWeight: boxData.rightLabelBold ? 'bold' : 'normal',
-                                display: boxData.rightVisible ? 'flex' : 'none',
-                                justifyContent: boxData.leftVisible ? 'right' : 'center',
-                                textAlign: boxData.leftVisible ? 'right' : 'center',
-                            }}>
-                                {displayLabels.right}
-                            </div>
+                            <MarkdownContent
+                                content={displayHtmlLabels.left}
+                                className="content"
+                                style={leftStyle}
+                            />
+                            <MarkdownContent
+                                content={displayHtmlLabels.right}
+                                className="content"
+                                style={rightStyle}
+                            />
                         </div>
                     </div>
 
@@ -270,5 +336,4 @@ export default function Box({
             )}
         </div>
     );
-
 }

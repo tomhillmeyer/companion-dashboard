@@ -15,17 +15,29 @@ const parseVariables = (source: string): string[] => {
 
 // Convert variable reference to API path
 const variableToApiPath = (variable: string): string => {
-    /*if (variable.startsWith('custom:')) {
-        const name = variable.replace('custom:', '');
-        return `/api/custom-variable/${name}/value`;
-    } else {
-        // Format: "internal:time_hms_12" -> "/api/variable/internal/time_hms_12/value"
-        const [connectionLabel, variableName] = variable.split(':', 2);
-        return `/api/variable/${connectionLabel}/${variableName}/value`;
-    }*/
-
     const [connectionLabel, variableName] = variable.split(':', 2);
     return `/api/variable/${connectionLabel}/${variableName}/value`;
+};
+
+// Simple markdown parser for basic formatting
+const parseMarkdown = (text: string): string => {
+    return text
+        // Handle escaped characters first (replace \* with placeholder, etc.)
+        .replace(/\\(\*|_|\[|\]|\(|\)|!)/g, 'ESCAPED_$1_PLACEHOLDER')
+        // Bold: **text** or __text__
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.*?)__/g, '<strong>$1</strong>')
+        // Italic: *text* or _text_
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/_(.*?)_/g, '<em>$1</em>')
+        // Images: ![alt](url)
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
+        // Links: [text](url)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        // Line breaks
+        .replace(/\n/g, '<br>')
+        // Restore escaped characters
+        .replace(/ESCAPED_(.?)_PLACEHOLDER/g, '$1');
 };
 
 export const useVariableFetcher = (
@@ -33,16 +45,19 @@ export const useVariableFetcher = (
     sources: { [key: string]: string } // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
 ) => {
     const [values, setValues] = useState<{ [key: string]: string }>({});
+    const [htmlValues, setHtmlValues] = useState<{ [key: string]: string }>({});
 
     useEffect(() => {
         if (!baseUrl) return;
 
         const fetchVariables = async () => {
             const newValues: { [key: string]: string } = {};
+            const newHtmlValues: { [key: string]: string } = {};
 
             for (const [sourceKey, sourceValue] of Object.entries(sources)) {
                 if (!sourceValue) {
                     newValues[sourceKey] = '';
+                    newHtmlValues[sourceKey] = '';
                     continue;
                 }
 
@@ -69,9 +84,18 @@ export const useVariableFetcher = (
                 }
 
                 newValues[sourceKey] = processedString;
+                newHtmlValues[sourceKey] = parseMarkdown(processedString);
             }
 
-            setValues(newValues);
+            // Only update if values have actually changed
+            setValues(prevValues => {
+                const hasChanged = JSON.stringify(prevValues) !== JSON.stringify(newValues);
+                return hasChanged ? newValues : prevValues;
+            });
+            setHtmlValues(prevHtmlValues => {
+                const hasChanged = JSON.stringify(prevHtmlValues) !== JSON.stringify(newHtmlValues);
+                return hasChanged ? newHtmlValues : prevHtmlValues;
+            });
         };
 
         // Initial fetch
@@ -83,5 +107,5 @@ export const useVariableFetcher = (
         return () => clearInterval(interval);
     }, [baseUrl, JSON.stringify(sources)]); // Re-run when baseUrl or sources change
 
-    return values;
+    return { values, htmlValues };
 };
