@@ -6,6 +6,7 @@ This is an application for displaying variables from Bitfocus Companion.
 ## Example Layouts
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/sample-layout.png)
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo.png)
+### [^ Click here to see how to build this Spotify demo](https://wearecreativeland.com/tools/dashboard/spotify-example)
 
 
 ## How to use
