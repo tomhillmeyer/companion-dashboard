@@ -17,11 +17,17 @@ const MarkdownContent = React.memo(({
     style: React.CSSProperties;
     className?: string;
 }) => {
+    // Check if content contains HTML tags (indicating it's not plain text)
+    const hasHtmlTags = /<[^>]*>/.test(content);
+    
+    // If it's plain text, wrap in span with text-only-content class
+    const processedContent = hasHtmlTags ? content : `<span class="text-only-content">${content}</span>`;
+    
     return (
         <div
             className={className}
             style={style}
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: processedContent }}
         />
     );
 });
@@ -107,7 +113,7 @@ export default function Box({
     // Collect all variable names from variable colors arrays
     const getAllVariableNames = () => {
         const allVariables: { [key: string]: string } = {};
-        
+
         // Add variable colors
         const variableColorArrays = [
             boxData.backgroundVariableColors,
@@ -116,7 +122,7 @@ export default function Box({
             boxData.leftLabelVariableColors,
             boxData.rightLabelVariableColors
         ];
-        
+
         variableColorArrays.forEach(varColors => {
             if (varColors && Array.isArray(varColors)) {
                 varColors.forEach(varColor => {
@@ -126,7 +132,7 @@ export default function Box({
                 });
             }
         });
-        
+
         return allVariables;
     };
 
@@ -156,12 +162,12 @@ export default function Box({
                 }
             }
         }
-        
+
         // 2. If no variable colors match, check if colorText has a value
         if (colorText && colorText.trim()) {
             return variableValues[colorText] || colorText;
         }
-        
+
         // 3. Fall back to the picker color
         return fallbackColor;
     };
@@ -181,9 +187,20 @@ export default function Box({
     // HTML versions for markdown rendering - need to parse even the fallback values
     const parseMarkdownFallback = (text: string): string => {
         if (!text) return '';
-        return text
-            // Handle escaped characters first (replace \* with placeholder, etc.)
-            .replace(/\\(\*|_|\[|\]|\(|\)|!)/g, 'ESCAPED_$1_PLACEHOLDER')
+
+        // First, store escaped characters with unique placeholders
+        const escapedChars: { [key: string]: string } = {};
+        let placeholderIndex = 0;
+
+        let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (match, char) => {
+            const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
+            escapedChars[placeholder] = char;
+            placeholderIndex++;
+            return placeholder;
+        });
+
+        // Now apply markdown formatting
+        processedText = processedText
             // Bold: **text** or __text__
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/__(.*?)__/g, '<strong>$1</strong>')
@@ -191,13 +208,18 @@ export default function Box({
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/_(.*?)_/g, '<em>$1</em>')
             // Images: ![alt](url)
-            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
             // Links: [text](url)
             .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
             // Line breaks
-            .replace(/\n/g, '<br>')
-            // Restore escaped characters
-            .replace(/ESCAPED_(.?)_PLACEHOLDER/g, '$1');
+            .replace(/\n/g, '<br>');
+
+        // Finally, restore escaped characters
+        Object.keys(escapedChars).forEach(placeholder => {
+            processedText = processedText.replace(new RegExp(placeholder, 'g'), escapedChars[placeholder]);
+        });
+
+        return processedText;
     };
 
     const displayHtmlLabels = useMemo(() => ({

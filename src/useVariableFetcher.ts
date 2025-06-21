@@ -21,9 +21,19 @@ const variableToApiPath = (variable: string): string => {
 
 // Simple markdown parser for basic formatting
 const parseMarkdown = (text: string): string => {
-    return text
-        // Handle escaped characters first (replace \* with placeholder, etc.)
-        .replace(/\\(\*|_|\[|\]|\(|\)|!)/g, 'ESCAPED_$1_PLACEHOLDER')
+    // First, store escaped characters with unique placeholders
+    const escapedChars: { [key: string]: string } = {};
+    let placeholderIndex = 0;
+
+    let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (match, char) => {
+        const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
+        escapedChars[placeholder] = char;
+        placeholderIndex++;
+        return placeholder;
+    });
+
+    // Now apply markdown formatting
+    processedText = processedText
         // Bold: **text** or __text__
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.*?)__/g, '<strong>$1</strong>')
@@ -35,9 +45,14 @@ const parseMarkdown = (text: string): string => {
         // Links: [text](url)
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         // Line breaks
-        .replace(/\n/g, '<br>')
-        // Restore escaped characters
-        .replace(/ESCAPED_(.?)_PLACEHOLDER/g, '$1');
+        .replace(/\n/g, '<br>');
+
+    // Finally, restore escaped characters
+    Object.keys(escapedChars).forEach(placeholder => {
+        processedText = processedText.replace(new RegExp(placeholder, 'g'), escapedChars[placeholder]);
+    });
+
+    return processedText;
 };
 
 export const useVariableFetcher = (

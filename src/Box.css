@@ -47,9 +47,7 @@
     flex-direction: row;
     flex: 1;
     align-items: stretch;
-    padding: 0px 10px 0px 10px;
     box-sizing: border-box;
-    margin-top: -4px;
     overflow: auto;
     min-height: 0;
 }
@@ -59,10 +57,17 @@
     min-width: 0;
     align-items: center;
     overflow: auto;
+    box-sizing: border-box;
     /*display: flex;
     flex-direction: row;
     justify-content: center;*/
 }
+
+.text-only-content {
+    padding-left: 20px;
+    padding-right: 20px;
+}
+
 
 .noselect {
     -webkit-touch-callout: none;
