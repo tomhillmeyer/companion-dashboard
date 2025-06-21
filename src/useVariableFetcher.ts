@@ -25,7 +25,7 @@ const parseMarkdown = (text: string): string => {
     const escapedChars: { [key: string]: string } = {};
     let placeholderIndex = 0;
 
-    let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (match, char) => {
+    let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (char) => {
         const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
         escapedChars[placeholder] = char;
         placeholderIndex++;

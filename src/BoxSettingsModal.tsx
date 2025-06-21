@@ -415,6 +415,17 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <button onClick={onCancel} className="modal-cancel-button">CANCEL</button>
                         <button onClick={handleDuplicate} className="modal-duplicate-button">DUPLICATE</button>
                         <button onClick={handleDelete} className="modal-delete-button">DELETE</button>
+                        <div className="layer-input-container">
+                            <label htmlFor="layer-input">Layer</label>
+                            <input
+                                id="layer-input"
+                                type="number"
+                                value={formData.zIndex}
+                                onChange={(e) => updateField('zIndex', parseInt(e.target.value) || 1)}
+                                min="1"
+                                className="layer-input"
+                            />
+                        </div>
                     </div>
                 </div>
 

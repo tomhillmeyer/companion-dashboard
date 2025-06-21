@@ -2,6 +2,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { FaAngleRight } from "react-icons/fa6";
 import { FaAngleLeft } from "react-icons/fa6";
+import { FaCirclePlus } from "react-icons/fa6";
+import { FaCircleMinus } from "react-icons/fa6";
+import { v4 as uuid } from 'uuid';
+import type { VariableColor } from './App';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -18,13 +22,25 @@ export default function SettingsMenu({
     connectionUrl,
     onConnectionUrlChange,
     onConfigRestore,
-    onDeleteAllBoxes
+    onDeleteAllBoxes,
+    canvasBackgroundColor,
+    canvasBackgroundColorText,
+    canvasBackgroundVariableColors,
+    onCanvasBackgroundColorChange,
+    onCanvasBackgroundColorTextChange,
+    onCanvasBackgroundVariableColorsChange
 }: {
     onNewBox: () => void;
     connectionUrl: string;
     onConnectionUrlChange: (url: string) => void;
     onConfigRestore: (boxes: any[], connectionUrl: string) => void;
     onDeleteAllBoxes: () => void;
+    canvasBackgroundColor?: string;
+    canvasBackgroundColorText?: string;
+    canvasBackgroundVariableColors?: VariableColor[];
+    onCanvasBackgroundColorChange?: (color: string) => void;
+    onCanvasBackgroundColorTextChange?: (text: string) => void;
+    onCanvasBackgroundVariableColorsChange?: (variableColors: VariableColor[]) => void;
 }) {
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
@@ -295,6 +311,31 @@ export default function SettingsMenu({
         setIsActive(prev => !prev);
     };
 
+    const addCanvasVariableColor = () => {
+        const variableColors = canvasBackgroundVariableColors || [];
+        const newVariableColor: VariableColor = {
+            id: uuid(),
+            variable: '',
+            value: '',
+            color: '#ffffff'
+        };
+        onCanvasBackgroundVariableColorsChange?.([...variableColors, newVariableColor]);
+    };
+
+    const removeCanvasVariableColor = (id: string, event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        const variableColors = canvasBackgroundVariableColors || [];
+        onCanvasBackgroundVariableColorsChange?.(variableColors.filter(vc => vc.id !== id));
+    };
+
+    const updateCanvasVariableColor = (id: string, property: keyof VariableColor, value: string) => {
+        const variableColors = canvasBackgroundVariableColors || [];
+        const updated = variableColors.map(vc =>
+            vc.id === id ? { ...vc, [property]: value } : vc
+        );
+        onCanvasBackgroundVariableColorsChange?.(updated);
+    };
+
     return (
         <div ref={menuRef}>
             <div className="menu-icon" onClick={toggleClass}>
@@ -324,6 +365,71 @@ export default function SettingsMenu({
                         />
                         <button onClick={handleUrlSubmit}>SET</button>
                     </div>
+                    <span className='section-label'>Canvas</span>
+                    <div className='menu-section canvas-section'>
+                        <div className="canvas-color-container">
+                            <span className="canvas-color-label">Default Background Color</span>
+                            <div className="canvas-color-input-group">
+                                <input
+                                    type="color"
+                                    value={canvasBackgroundColor || '#000000'}
+                                    onChange={(e) => onCanvasBackgroundColorChange?.(e.target.value)}
+                                    className="canvas-color-picker"
+                                />
+                                <input
+                                    type="text"
+                                    value={canvasBackgroundColorText || ''}
+                                    onChange={(e) => onCanvasBackgroundColorTextChange?.(e.target.value)}
+                                    placeholder="Variable or HEX"
+                                    className="canvas-color-text"
+                                />
+                            </div>
+                        </div>
+                        <div className="canvas-variable-color-container">
+                            <span className="canvas-color-label">Variable Background Color</span>
+                            <div className="canvas-variable-color-section">
+                                {(canvasBackgroundVariableColors || []).map(vc => (
+                                    <div key={vc.id} className="canvas-variable-color-row">
+                                        <input
+                                            type="text"
+                                            value={vc.variable}
+                                            onChange={(e) => updateCanvasVariableColor(vc.id, 'variable', e.target.value)}
+                                            placeholder="Variable"
+                                            className="canvas-variable-input"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={vc.value}
+                                            onChange={(e) => updateCanvasVariableColor(vc.id, 'value', e.target.value)}
+                                            placeholder="Value"
+                                            className="canvas-value-input"
+                                        />
+                                        <input
+                                            type="color"
+                                            value={vc.color}
+                                            onChange={(e) => updateCanvasVariableColor(vc.id, 'color', e.target.value)}
+                                            className="canvas-variable-color-picker"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="canvas-remove-variable-color-button"
+                                            onClick={(e) => removeCanvasVariableColor(vc.id, e)}
+                                        >
+                                            <FaCircleMinus />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                className="canvas-add-variable-color-button"
+                                onClick={addCanvasVariableColor}
+                            >
+                                <FaCirclePlus />
+                            </button>
+                        </div>
+                    </div>
+
                     <span className='section-label'>Boxes</span>
                     <div className='menu-section'>
                         <button onClick={onNewBox}>NEW BOX</button>

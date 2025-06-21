@@ -5,9 +5,11 @@ import SettingsMenu from './SettingsMenu.tsx';
 import './App.css';
 import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
+import { useVariableFetcher } from './useVariableFetcher';
 
 
 const STORAGE_KEY = 'boxes';
+const CANVAS_STORAGE_KEY = 'canvas_settings';
 
 export interface VariableColor {
     id: string;
@@ -19,6 +21,7 @@ export interface VariableColor {
 export interface BoxData {
     id: string;
     frame: { translate: [number, number]; width: number; height: number };
+    zIndex: number;
     backgroundColor: string;
     backgroundColorText: string;
     backgroundVariableColors: VariableColor[];
@@ -100,12 +103,114 @@ export default function App() {
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>('');
+    
+    // Canvas background color state - initialize from localStorage
+    const [canvasBackgroundColor, setCanvasBackgroundColor] = useState<string>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundColor || '#000000';
+            } catch (error) {
+                console.error('Failed to parse canvas settings:', error);
+                return '#000000';
+            }
+        }
+        return '#000000';
+    });
+    const [canvasBackgroundColorText, setCanvasBackgroundColorText] = useState<string>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundColorText || '';
+            } catch (error) {
+                return '';
+            }
+        }
+        return '';
+    });
+    const [canvasBackgroundVariableColors, setCanvasBackgroundVariableColors] = useState<VariableColor[]>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundVariableColors || [];
+            } catch (error) {
+                return [];
+            }
+        }
+        return [];
+    });
 
     // Save boxes to localStorage whenever boxes state changes
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(boxes));
     }, [boxes]);
 
+    // Save canvas settings to localStorage whenever canvas state changes
+    useEffect(() => {
+        const canvasSettings = {
+            canvasBackgroundColor,
+            canvasBackgroundColorText,
+            canvasBackgroundVariableColors
+        };
+        localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors]);
+
+    // Collect canvas variable names for fetching
+    const getCanvasVariableNames = () => {
+        const allVariables: { [key: string]: string } = {};
+        
+        // Add canvas background color text if it exists
+        if (canvasBackgroundColorText) {
+            allVariables[canvasBackgroundColorText] = canvasBackgroundColorText;
+        }
+        
+        // Add canvas variable colors
+        if (canvasBackgroundVariableColors && Array.isArray(canvasBackgroundVariableColors)) {
+            canvasBackgroundVariableColors.forEach(varColor => {
+                if (varColor.variable) {
+                    allVariables[varColor.variable] = varColor.variable;
+                }
+            });
+        }
+        
+        return allVariables;
+    };
+
+    // Use variable fetcher for canvas colors
+    const { values: canvasVariableValues } = useVariableFetcher(companionBaseUrl, getCanvasVariableNames());
+
+    // Canvas color resolution function (same as Box component)
+    const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
+        // 1. Check variable colors first - find first matching variable that evaluates to true
+        if (variableColors && Array.isArray(variableColors)) {
+            for (const varColor of variableColors) {
+                if (varColor && varColor.variable && varColor.value) {
+                    const variableValue = canvasVariableValues[varColor.variable] || '';
+                    if (variableValue === varColor.value) {
+                        return varColor.color;
+                    }
+                }
+            }
+        }
+
+        // 2. If no variable colors match, check if colorText has a value
+        if (colorText && colorText.trim()) {
+            return canvasVariableValues[colorText] || colorText;
+        }
+
+        // 3. Fall back to the picker color
+        return fallbackColor;
+    };
+
+    // Calculate the actual canvas background color
+    const actualCanvasBackgroundColor = resolveCanvasColor(
+        canvasBackgroundVariableColors,
+        canvasBackgroundColorText,
+        canvasBackgroundColor
+    );
 
     const createNewBox = () => {
         const newBox: BoxData = {
@@ -115,6 +220,7 @@ export default function App() {
                 width: 600,
                 height: 105,
             },
+            zIndex: 1,
             backgroundColor: "#262626",
             backgroundColorText: "",
             backgroundVariableColors: [],
@@ -164,13 +270,23 @@ export default function App() {
     }, [selectedBoxId]);
 
     return (
-        <div style={{ minHeight: '100vh', width: '100%' }}>
+        <div style={{ 
+            minHeight: '100vh', 
+            width: '100%', 
+            backgroundColor: actualCanvasBackgroundColor 
+        }}>
             <SettingsMenu
                 onNewBox={createNewBox}
                 connectionUrl={companionBaseUrl}
                 onConnectionUrlChange={setCompanionBaseUrl}
                 onConfigRestore={handleConfigRestore}
                 onDeleteAllBoxes={deleteAllBoxes}
+                canvasBackgroundColor={canvasBackgroundColor}
+                canvasBackgroundColorText={canvasBackgroundColorText}
+                canvasBackgroundVariableColors={canvasBackgroundVariableColors}
+                onCanvasBackgroundColorChange={setCanvasBackgroundColor}
+                onCanvasBackgroundColorTextChange={setCanvasBackgroundColorText}
+                onCanvasBackgroundVariableColorsChange={setCanvasBackgroundVariableColors}
             />
             {boxes.length === 0 ? (
                 <div style={{
@@ -184,7 +300,7 @@ export default function App() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     pointerEvents: 'none',
-                    zIndex: -1,
+                    zIndex: 1,
                 }}>
                     <img
                         src={dashboardLogo}

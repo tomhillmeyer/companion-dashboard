@@ -9,6 +9,7 @@
       "width": 360,
       "height": 156
     },
+    "zIndex": 1,
     "backgroundColor": "#292929",
     "backgroundColorText": "",
     "backgroundVariableColors": [],
@@ -50,6 +51,7 @@
       "width": 360,
       "height": 68
     },
+    "zIndex": 1,
     "backgroundColor": "#fe8b47",
     "backgroundColorText": "#3883c7",
     "backgroundVariableColors": [],
@@ -91,6 +93,7 @@
       "width": 360,
       "height": 120
     },
+    "zIndex": 1,
     "backgroundColor": "#262626",
     "backgroundColorText": "",
     "backgroundVariableColors": [],
@@ -132,6 +135,7 @@
       "width": 90,
       "height": 105
     },
+    "zIndex": 1,
     "backgroundColor": "#262626",
     "backgroundColorText": "",
     "backgroundVariableColors": [],
@@ -173,6 +177,7 @@
       "width": 255,
       "height": 105
     },
+    "zIndex": 1,
     "backgroundColor": "#262626",
     "backgroundColorText": "",
     "backgroundVariableColors": [],
@@ -214,6 +219,7 @@
       "width": 360,
       "height": 107
     },
+    "zIndex": 1,
     "backgroundColor": "#262626",
     "backgroundColorText": "",
     "backgroundVariableColors": [],

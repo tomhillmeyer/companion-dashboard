@@ -34,18 +34,20 @@
 
 .modal-buttons {
     display: flex;
-    gap: 10px;
+    gap: 20px;
     justify-content: center;
+    align-items: center;
     flex-wrap: wrap;
 }
 
 .modal-buttons button {
-    padding: 8px 16px;
+    padding: 16px 16px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-weight: 500;
     max-width: 125px;
+    margin: 0px;
 }
 
 .modal-save-button {
@@ -66,6 +68,32 @@
 .modal-duplicate-button {
     background-color: #059669;
     color: white;
+}
+
+.layer-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.layer-input-container label {
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 600;
+    color: #61BAFA;
+    letter-spacing: 1px;
+}
+
+.layer-input {
+    width: 60px;
+    padding: 8px;
+    border: 1px solid #61BAFA;
+    border-radius: 4px;
+    background-color: #333;
+    color: white;
+    font-size: 14px;
+    text-align: center;
+    box-sizing: border-box;
 }
 
 .modal-body {

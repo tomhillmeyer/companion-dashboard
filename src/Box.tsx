@@ -19,10 +19,10 @@ const MarkdownContent = React.memo(({
 }) => {
     // Check if content contains HTML tags (indicating it's not plain text)
     const hasHtmlTags = /<[^>]*>/.test(content);
-    
+
     // If it's plain text, wrap in span with text-only-content class
     const processedContent = hasHtmlTags ? content : `<span class="text-only-content">${content}</span>`;
-    
+
     return (
         <div
             className={className}
@@ -173,6 +173,7 @@ export default function Box({
     };
 
     // Use the fetched values or fall back to manual labels
+    /*
     const displayLabels = {
         header: variableValues.headerLabelSource || boxData.headerLabelSource,
         left: variableValues.leftLabelSource || boxData.leftLabelSource,
@@ -182,7 +183,7 @@ export default function Box({
         headerLabelColor: variableValues.headerLabelColorTextSource || boxData.headerLabelColorText,
         leftLabelColorTextSource: variableValues.leftLabelColorTextSource || boxData.leftLabelColorText,
         rightLabelColorTextSource: variableValues.rightLabelColorTextSource || boxData.rightLabelColorText,
-    };
+    };*/
 
     // HTML versions for markdown rendering - need to parse even the fallback values
     const parseMarkdownFallback = (text: string): string => {
@@ -192,7 +193,7 @@ export default function Box({
         const escapedChars: { [key: string]: string } = {};
         let placeholderIndex = 0;
 
-        let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (match, char) => {
+        let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (char) => {
             const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
             escapedChars[placeholder] = char;
             placeholderIndex++;
@@ -305,6 +306,7 @@ export default function Box({
                             height: `${frame.height}px`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
                             backgroundColor: resolveColor(boxData.backgroundVariableColors, boxData.backgroundColorText, boxData.backgroundColor, variableValues),
+                            zIndex: boxData.zIndex,
                         }}
                     >
                         {/* Header */}

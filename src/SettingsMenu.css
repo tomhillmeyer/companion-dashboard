@@ -84,12 +84,13 @@
     font-size: 12px;
     letter-spacing: 3px;
     font-weight: 700;
-    color: #FFFFFF;
+    color: #61BAFA;
     text-transform: uppercase;
     padding-bottom: 10px;
     margin-top: 20px;
     margin-bottom: 10px;
-    border-bottom: .5px solid #FFFFFF;
+    border-bottom: .5px solid #61BAFA;
+    ;
 }
 
 input[type="text"] {
@@ -123,6 +124,129 @@ button {
 
 a {
     color: white;
+}
+
+.canvas-section {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.canvas-color-container,
+.canvas-variable-color-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.canvas-color-label {
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 600;
+    color: #61BAFA;
+    letter-spacing: 1px;
+}
+
+.canvas-color-input-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.canvas-color-picker {
+    width: 50px;
+    height: 40px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+}
+
+.canvas-color-text {
+    flex: 1;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    padding: 0 12px;
+    font-size: 14px;
+    text-align: left;
+    box-sizing: border-box;
+    width: auto;
+}
+
+.canvas-variable-color-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.canvas-variable-color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.canvas-variable-input,
+.canvas-value-input {
+    flex: 1;
+    height: 35px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    padding: 0 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.canvas-variable-color-picker {
+    width: 40px;
+    height: 35px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+}
+
+.canvas-remove-variable-color-button {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    flex-shrink: 0;
+    padding: 4px 5px 0px 5px;
+    transition: background-color 0.2s ease;
+}
+
+.canvas-remove-variable-color-button:hover {
+    background-color: #dc2626;
+}
+
+.canvas-add-variable-color-button {
+    background-color: #059669;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    padding: 4px 5px 0px 5px;
+}
+
+.canvas-add-variable-color-button:hover {
+    background-color: #047857;
 }
 
 
