@@ -12,11 +12,11 @@ This is an application for displaying variables from Bitfocus Companion.
 
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/settings-menu.png)
 
-- The settings pane opens from the left side of the screen. Open it with the arrow / carrot in the bottom left of the viewport
+- The settings pane opens from the left side of the screen. Open it with the arrow / carrot in the bottom left of the viewport, or by swiping from the left on touch screen devices
 - Input the address:port of your Companion instance and click "Set Connection." The outline around the address will turn green if it's connected to Companion.
-- Click "New Box" to add a new box to the canvas.
-- "Clear All Boxes" clears all of the boxes off of the canvas.
-- "Download Config" and "Restore Config" allow you to download box details, layout, and Companion connection into a file to be restored from later. Restoring a configuration replaces whatever configuration is in place.
+- The canvas settings let you set a background color for the dashboard.
+- Click "New Box" to add a new box to the canvas. "Clear All Boxes" clears all of the boxes off of the canvas.
+- "Save" and "Load" allow you to download box details, layout, and Companion connection into a file to be restored from later. Loading a configuration replaces whatever configuration is in place.
 
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/resize-handles.png)
 
@@ -25,15 +25,50 @@ This is an application for displaying variables from Bitfocus Companion.
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/box-settings-modal.png)
 
 - Double clicking a box launches the settings window for that box.
-- All of the color pickers have a "Variable or HEX" text field. That text field takes priority.
+
+## Color logic
+All color pickers in Companion Dashboard have three options, in this order of priority:
+1. Variable color
+2. Default Variable or HEX color
+3. Default color picker
+
+Clicking the green plus icon creates a new variable color. You input the Companion Variable, the value you want to look for, and then pick the color you want to apply when that variable has that value.
+
+Dashboard prioritizes the variable colors from the top down. If all variable colors are false, it will check for a default variable or HEX color from that text field. If that text field is empty, it will use the default color picker value.
+
+## Markdown and HTML tags
+All text fields support HTML tags and the following markdown syntax.
+- **Bold**
+    - `<b>Text\</b>`
+    - `**Text\*\*`
+    - `__Text__`
+- *Italics*
+    - ```<i>Text</i>```
+    - ```*Text*```
+    - ```_Text_```
+- New Line
+    - `<br>`
+- Image
+    - `!(Sample Image)[https://website.com/image.png]`
+        - Image with this tag will fill the height of the box and automatically determine width
+    - `<img src="https://website.com/image.png" width="100px" height="100px" />`
+- Links
+    - `(Link Text)[https://website.com]`
+- Video / iFrame
+    - `<iframe src="https://website.com" width="100px" height="100px" />`
+
+
 
 ## Custom Variable / Trigger Demo
 [A tutorial on how to use Custom Variables & Triggers in Companion to change the color on a box in Companion Dashboard](https://wearecreativeland.com/tools/dashboard/custom-variables-triggers)
+
+NOTE: This functionality is now essentially built into Companion Dashboard natively, however in some more complicated circumstances may need to be necessary.
 
 ## Tips & Tricks
 - Text fields automatically concatenate, so you can include multiple variables and strings
 - Option + Click a box and it will duplicate
 - Select a box and hit "backspace" or "delete" to delete
+- Swipe left on touch screens to open the Settings menu
 
 ## Demos
 [Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
@@ -45,11 +80,10 @@ Use control keys and MIDI to control Companion directly from the console, and us
 
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png)
 
-## Roadmap
+## Potential Roadmap
 
 - Grouping boxes together, both to move/resize them as well as more options to visually group boxes together
 - Connect to multiple Companion instances at the same time
-- Clean up UI and Menus, evolve the UI based on how people use it
 - Use Companion variables to set box size, position, and the other attributes
 
 ## Acknowledgements
