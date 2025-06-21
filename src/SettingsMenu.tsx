@@ -464,7 +464,7 @@ export default function SettingsMenu({
                         onChange={handleFileRestore}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.1.0<br />Created by <a href='http://tomhillmeyer.com'>Tom Hillmeyer</a></span>
+                    <span className='footer'>v1.1.1<br />Created by <a href='http://tomhillmeyer.com'>Tom Hillmeyer</a></span>
                 </div>
             </div>
         </div>
