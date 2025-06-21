@@ -6,6 +6,11 @@ import './BoxSettingsModal.css';
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
 
+import backgroundIcon from './assets/background_icon.png';
+import headerIcon from './assets/header_icon.png';
+import leftIcon from './assets/left_icon.png';
+import rightIcon from './assets/right_icon.png';
+
 
 interface BoxSettingsModalProps {
     boxData: BoxData;
@@ -435,25 +440,25 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             className={`nav-item ${activeSection === 'background' ? 'active' : ''}`}
                             onClick={() => setActiveSection('background')}
                         >
-                            Background
+                            <img src={backgroundIcon} alt="Background" className="nav-icon" />
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'header' ? 'active' : ''}`}
                             onClick={() => setActiveSection('header')}
                         >
-                            Header
+                            <img src={headerIcon} alt="Header" className="nav-icon" />
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'left' ? 'active' : ''}`}
                             onClick={() => setActiveSection('left')}
                         >
-                            Left
+                            <img src={leftIcon} alt="Left" className="nav-icon" />
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'right' ? 'active' : ''}`}
                             onClick={() => setActiveSection('right')}
                         >
-                            Right
+                            <img src={rightIcon} alt="Right" className="nav-icon" />
                         </div>
                     </div>
 
