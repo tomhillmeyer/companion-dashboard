@@ -207,6 +207,9 @@
     padding-bottom: 15px;
     margin-bottom: 20px;
     border-bottom: 1px solid rgba(97, 186, 250, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .setting-group {

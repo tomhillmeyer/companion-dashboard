@@ -5,7 +5,7 @@ This is an application for displaying variables from Bitfocus Companion.
 
 ## Example Layouts
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/sample-layout.png)
-
+![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo.png)
 
 
 ## How to use
@@ -71,6 +71,7 @@ NOTE: This functionality is now essentially built into Companion Dashboard nativ
 - Option + Click a box and it will duplicate
 - Select a box and hit "backspace" or "delete" to delete
 - Swipe left on touch screens to open the Settings menu
+- Use `&nbsp` in some circumstances where a white space isn't recognized
 
 ## Demos
 [Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
