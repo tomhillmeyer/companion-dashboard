@@ -7,7 +7,6 @@ import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
 
-
 import './SettingsMenu.css';
 // Import the image directly - this is the most reliable approach
 import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
@@ -32,6 +31,11 @@ export default function SettingsMenu({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isActive, setIsActive] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Touch gesture state
+    const [touchStartX, setTouchStartX] = useState<number | null>(null);
+    const [touchStartY, setTouchStartY] = useState<number | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
 
     const downloadConfig = async () => {
         try {
@@ -189,6 +193,65 @@ export default function SettingsMenu({
         return () => clearInterval(interval); // Cleanup
     }, [connectionUrl]);
 
+    // Touch gesture handlers
+    useEffect(() => {
+        const handleTouchStart = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            const startX = touch.clientX;
+            const startY = touch.clientY;
+
+            // Only start tracking if touch begins within 30px of left edge
+            if (startX <= 30) {
+                setTouchStartX(startX);
+                setTouchStartY(startY);
+                setIsDragging(true);
+            }
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!isDragging || touchStartX === null || touchStartY === null) return;
+
+            const touch = e.touches[0];
+            const currentX = touch.clientX;
+            const currentY = touch.clientY;
+
+            const deltaX = currentX - touchStartX;
+            const deltaY = Math.abs(currentY - touchStartY);
+
+            // If user has dragged right more than 50px and vertical movement is less than 100px
+            if (deltaX > 50 && deltaY < 100) {
+                setIsActive(true);
+                setIsDragging(false);
+                setTouchStartX(null);
+                setTouchStartY(null);
+            }
+
+            // Cancel if user moves too far vertically or backwards
+            if (deltaY > 100 || deltaX < -20) {
+                setIsDragging(false);
+                setTouchStartX(null);
+                setTouchStartY(null);
+            }
+        };
+
+        const handleTouchEnd = () => {
+            setIsDragging(false);
+            setTouchStartX(null);
+            setTouchStartY(null);
+        };
+
+        // Add touch event listeners to document
+        document.addEventListener('touchstart', handleTouchStart, { passive: true });
+        document.addEventListener('touchmove', handleTouchMove, { passive: true });
+        document.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+        return () => {
+            document.removeEventListener('touchstart', handleTouchStart);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+        };
+    }, [isDragging, touchStartX, touchStartY]);
+
     // Click outside handler to close menu
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -259,11 +322,11 @@ export default function SettingsMenu({
                                             'red'
                             }}
                         />
-                        <button onClick={handleUrlSubmit}>Set</button>
+                        <button onClick={handleUrlSubmit}>SET</button>
                     </div>
                     <span className='section-label'>Boxes</span>
                     <div className='menu-section'>
-                        <button onClick={onNewBox}>New Box</button>
+                        <button onClick={onNewBox}>NEW BOX</button>
                         <button
                             onClick={() => {
                                 const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
@@ -273,7 +336,7 @@ export default function SettingsMenu({
                             }}
                             className='clear-boxes'
                         >
-                            Clear All Boxes
+                            CLEAR ALL
                         </button>
                     </div>
 

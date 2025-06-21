@@ -104,6 +104,32 @@ export default function Box({
         }
     }, [showModal, onDeselect]);
 
+    // Collect all variable names from variable colors arrays
+    const getAllVariableNames = () => {
+        const allVariables: { [key: string]: string } = {};
+        
+        // Add variable colors
+        const variableColorArrays = [
+            boxData.backgroundVariableColors,
+            boxData.headerVariableColors,
+            boxData.headerLabelVariableColors,
+            boxData.leftLabelVariableColors,
+            boxData.rightLabelVariableColors
+        ];
+        
+        variableColorArrays.forEach(varColors => {
+            if (varColors && Array.isArray(varColors)) {
+                varColors.forEach(varColor => {
+                    if (varColor.variable) {
+                        allVariables[varColor.variable] = varColor.variable;
+                    }
+                });
+            }
+        });
+        
+        return allVariables;
+    };
+
     // Use the enhanced variable fetcher
     const { values: variableValues, htmlValues: variableHtmlValues } = useVariableFetcher(companionBaseUrl, {
         headerLabelSource: boxData.headerLabelSource,
@@ -114,7 +140,31 @@ export default function Box({
         headerLabelColorTextSource: boxData.headerLabelColorText,
         leftLabelColorTextSource: boxData.leftLabelColorText,
         rightLabelColorTextSource: boxData.rightLabelColorText,
+        ...getAllVariableNames() // Add all variable color variables
     });
+
+    // Utility function to resolve color with priority: variable colors > colorText > fallback color
+    const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any) => {
+        // 1. Check variable colors first - find first matching variable that evaluates to true
+        if (variableColors && Array.isArray(variableColors)) {
+            for (const varColor of variableColors) {
+                if (varColor && varColor.variable && varColor.value) {
+                    const variableValue = variableValues[varColor.variable] || '';
+                    if (variableValue === varColor.value) {
+                        return varColor.color;
+                    }
+                }
+            }
+        }
+        
+        // 2. If no variable colors match, check if colorText has a value
+        if (colorText && colorText.trim()) {
+            return variableValues[colorText] || colorText;
+        }
+        
+        // 3. Fall back to the picker color
+        return fallbackColor;
+    };
 
     // Use the fetched values or fall back to manual labels
     const displayLabels = {
@@ -158,43 +208,43 @@ export default function Box({
 
     // Memoize styles to prevent unnecessary re-renders
     const headerStyle = useMemo(() => ({
-        backgroundColor: boxData.headerColorText ? displayLabels.headerColor : boxData.headerColor,
-        color: boxData.headerLabelColorText ? displayLabels.headerLabelColor : boxData.headerLabelColor,
+        backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues),
+        color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues),
         fontSize: `${boxData.headerLabelSize}px`,
         textAlign: 'center' as const,
         display: boxData.headerLabelVisible ? 'flex' : 'none',
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
     }), [
-        boxData.headerColorText, displayLabels.headerColor, boxData.headerColor,
-        boxData.headerLabelColorText, displayLabels.headerLabelColor, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible
+        boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
+        boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
+        boxData.headerLabelSize, boxData.headerLabelVisible, variableValues
     ]);
 
     const leftStyle = useMemo(() => ({
-        color: boxData.leftLabelColorText ? displayLabels.leftLabelColorTextSource : boxData.leftLabelColor,
+        color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
         fontSize: `${boxData.leftLabelSize}px`,
         display: boxData.leftVisible ? 'flex' : 'none',
         justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
         textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
         alignItems: 'center' as const,
     }), [
-        boxData.leftLabelColorText, displayLabels.leftLabelColorTextSource, boxData.leftLabelColor,
+        boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
         boxData.leftLabelSize, boxData.leftVisible,
-        boxData.rightVisible
+        boxData.rightVisible, variableValues
     ]);
 
     const rightStyle = useMemo(() => ({
-        color: boxData.rightLabelColorText ? displayLabels.rightLabelColorTextSource : boxData.rightLabelColor,
+        color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
         fontSize: `${boxData.rightLabelSize}px`,
         display: boxData.rightVisible ? 'flex' : 'none',
         justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
         textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
         alignItems: 'center' as const,
     }), [
-        boxData.rightLabelColorText, displayLabels.rightLabelColorTextSource, boxData.rightLabelColor,
+        boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
         boxData.rightLabelSize, boxData.rightVisible,
-        boxData.leftVisible
+        boxData.leftVisible, variableValues
     ]);
 
     return (
@@ -232,7 +282,7 @@ export default function Box({
                             width: `${frame.width}px`,
                             height: `${frame.height}px`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
-                            backgroundColor: boxData.backgroundColorText ? displayLabels.backgroundColor : boxData.backgroundColor,
+                            backgroundColor: resolveColor(boxData.backgroundVariableColors, boxData.backgroundColorText, boxData.backgroundColor, variableValues),
                         }}
                     >
                         {/* Header */}

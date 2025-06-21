@@ -4,34 +4,47 @@ import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
 import './App.css';
 import defaultBoxes from './defaultBoxes.json';
+import dashboardLogo from './assets/dashboard.png';
 
 
 const STORAGE_KEY = 'boxes';
+
+export interface VariableColor {
+    id: string;
+    variable: string;
+    value: string;
+    color: string;
+}
 
 export interface BoxData {
     id: string;
     frame: { translate: [number, number]; width: number; height: number };
     backgroundColor: string;
     backgroundColorText: string;
+    backgroundVariableColors: VariableColor[];
     headerColor: string;
     headerColorText: string;
+    headerVariableColors: VariableColor[];
     headerLabelSource: string;
     headerLabel: string;
     headerLabelSize: number;
     headerLabelColor: string;
     headerLabelColorText: string;
+    headerLabelVariableColors: VariableColor[];
     headerLabelVisible: boolean;
     leftLabelSource: string;
     leftLabel: string;
     leftLabelSize: number;
     leftLabelColor: string;
     leftLabelColorText: string;
+    leftLabelVariableColors: VariableColor[];
     leftVisible: boolean;
     rightLabelSource: string;
     rightLabel: string;
     rightLabelSize: number;
     rightLabelColor: string;
     rightLabelColorText: string;
+    rightLabelVariableColors: VariableColor[];
     rightVisible: boolean;
 }
 
@@ -98,30 +111,35 @@ export default function App() {
         const newBox: BoxData = {
             id: uuid(),
             frame: {
-                translate: [15, 15] as [number, number],
+                translate: [30, 60] as [number, number],
                 width: 600,
                 height: 105,
             },
             backgroundColor: "#262626",
             backgroundColorText: "",
+            backgroundVariableColors: [],
             headerColor: '#19325c',
             headerColorText: "",
+            headerVariableColors: [],
             headerLabelSource: 'Time of Day',
             headerLabel: 'NO CONNECTION',
             headerLabelSize: 16,
             headerLabelColor: '#ffffff',
             headerLabelColorText: "",
+            headerLabelVariableColors: [],
             leftLabelSource: 'Time',
             leftLabel: '',
             leftLabelSize: 14,
             leftLabelColor: '#FFFFFF',
             leftLabelColorText: "",
+            leftLabelVariableColors: [],
             leftVisible: true,
             rightLabelSource: '$(internal:time_hms_12)',
             rightLabel: '',
             rightLabelSize: 20,
             rightLabelColor: '#FFFFFF',
             rightLabelColorText: "",
+            rightLabelVariableColors: [],
             rightVisible: true,
             headerLabelVisible: true,
         };
@@ -154,7 +172,43 @@ export default function App() {
                 onConfigRestore={handleConfigRestore}
                 onDeleteAllBoxes={deleteAllBoxes}
             />
-            {
+            {boxes.length === 0 ? (
+                <div style={{
+                    position: 'fixed',
+                    top: '0',
+                    left: '0',
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                    zIndex: -1,
+                }}>
+                    <img
+                        src={dashboardLogo}
+                        alt="Dashboard"
+                        style={{
+                            width: '500px',
+                            height: 'auto',
+                            opacity: 0.2,
+                            filter: 'grayscale(100%)'
+                        }}
+                    />
+                    <div style={{
+                        position: 'fixed',
+                        bottom: '32px',
+                        left: '60px',
+                        color: '#666',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        opacity: 1,
+                    }}>
+                        Open the menu to add boxes!
+                    </div>
+                </div>
+            ) : (
                 boxes.map((box) => (
                     <Box
                         key={box.id}
@@ -173,7 +227,7 @@ export default function App() {
                         companionBaseUrl={companionBaseUrl}
                     />
                 ))
-            }
+            )}
         </div >
     );
 }

@@ -45,7 +45,7 @@
     border-radius: 4px;
     cursor: pointer;
     font-weight: 500;
-    max-width: 200px;
+    max-width: 125px;
 }
 
 .modal-save-button {
@@ -108,12 +108,11 @@
     flex: 1;
     overflow-y: auto;
     padding: 20px;
+    background-color: rgba(0, 0, 0, .2);
 }
 
 .settings-section {
-    background-color: rgba(0, 0, 0, .2);
     padding: 20px;
-    border: 1px #61BAFA solid;
     border-radius: 10px;
     margin-bottom: 20px;
 }
@@ -131,6 +130,7 @@
 
 .setting-group {
     display: flex;
+    flex-wrap: wrap;
     flex-direction: column;
     gap: 15px;
     margin-bottom: 20px;
@@ -142,7 +142,25 @@
     align-items: center;
     gap: 15px;
     flex-wrap: wrap;
-    width: 100%;
+    flex-grow: 1;
+}
+
+.setting-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    background-color: #262626;
+    padding: 20px;
+}
+
+.variable-header-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    background-color: #262626;
 }
 
 .setting-label {
@@ -212,11 +230,12 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-left: 20px;
 }
 
 .checkbox-container input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+    width: 35px;
+    height: 35px;
     accent-color: #61BAFA;
 }
 
@@ -241,6 +260,75 @@
 
 .full-width-input {
     width: 100%;
+}
+
+.variable-color-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.add-variable-color-button {
+    background-color: #059669;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    padding: 4px 5px 0px 5px;
+}
+
+.add-variable-color-button:hover {
+    background-color: #047857;
+}
+
+.variable-color-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.variable-input {
+    flex: 1;
+    min-width: 80px;
+}
+
+.value-input {
+    flex: 1;
+    min-width: 80px;
+}
+
+.color-picker {
+    width: 40px;
+    height: 32px;
+    flex-shrink: 0;
+}
+
+.remove-variable-color-button {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    flex-shrink: 0;
+    padding: 4px 5px 0px 5px;
+    transition: background-color 0.2s ease;
+}
+
+.remove-variable-color-button:hover {
+    background-color: #dc2626;
 }
 
 @media (max-width: 768px) {
@@ -269,5 +357,16 @@
 
     .setting-label {
         min-width: auto;
+    }
+
+    .variable-color-row {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .variable-input,
+    .value-input {
+        min-width: 70px;
+        max-width: 100px;
     }
 }

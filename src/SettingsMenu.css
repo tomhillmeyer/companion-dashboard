@@ -50,7 +50,9 @@
 
 .menu-open {
     transform: translateX(0);
-    outline: 2px solid white;
+    box-shadow: 7px 0px 30px -9px rgba(0, 0, 0, 0.75);
+    -webkit-box-shadow: 7px 0px 30px -9px rgba(0, 0, 0, 0.75);
+    -moz-box-shadow: 7px 0px 30px -9px rgba(0, 0, 0, 0.75);
 }
 
 .menu-icon {
@@ -122,3 +124,6 @@ button {
 a {
     color: white;
 }
+
+
+@media (max-width: 768px) {}
