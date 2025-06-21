@@ -33,7 +33,7 @@ export default function SettingsMenu({
     onNewBox: () => void;
     connectionUrl: string;
     onConnectionUrlChange: (url: string) => void;
-    onConfigRestore: (boxes: any[], connectionUrl: string) => void;
+    onConfigRestore: (boxes: any[], connectionUrl: string, canvasSettings?: any) => void;
     onDeleteAllBoxes: () => void;
     canvasBackgroundColor?: string;
     canvasBackgroundColorText?: string;
@@ -58,13 +58,15 @@ export default function SettingsMenu({
             // Get data from localStorage
             const boxes = localStorage.getItem('boxes');
             const connectionUrl = localStorage.getItem('companion_connection_url');
+            const canvasSettings = localStorage.getItem('canvas_settings');
 
             // Create config object
             const config = {
                 version: '1.0',
                 timestamp: new Date().toISOString(),
                 boxes: boxes ? JSON.parse(boxes) : [],
-                companion_connection_url: connectionUrl || ''
+                companion_connection_url: connectionUrl || '',
+                canvas_settings: canvasSettings ? JSON.parse(canvasSettings) : {}
             };
 
             const dataStr = JSON.stringify(config, null, 2);
@@ -139,15 +141,19 @@ export default function SettingsMenu({
                 // Clear current localStorage
                 localStorage.removeItem('boxes');
                 localStorage.removeItem('companion_connection_url');
+                localStorage.removeItem('canvas_settings');
 
                 // Set new data
                 localStorage.setItem('boxes', JSON.stringify(config.boxes));
                 if (config.companion_connection_url) {
                     localStorage.setItem('companion_connection_url', config.companion_connection_url);
                 }
+                if (config.canvas_settings) {
+                    localStorage.setItem('canvas_settings', JSON.stringify(config.canvas_settings));
+                }
 
                 // Update parent state
-                onConfigRestore(config.boxes, config.companion_connection_url || '');
+                onConfigRestore(config.boxes, config.companion_connection_url || '', config.canvas_settings);
 
                 // Update local input state
                 setInputUrl(config.companion_connection_url || '');

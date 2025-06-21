@@ -117,6 +117,7 @@ export default function Box({
         // Add variable colors
         const variableColorArrays = [
             boxData.backgroundVariableColors,
+            boxData.borderVariableColors,
             boxData.headerVariableColors,
             boxData.headerLabelVariableColors,
             boxData.leftLabelVariableColors,
@@ -142,6 +143,7 @@ export default function Box({
         leftLabelSource: boxData.leftLabelSource,
         rightLabelSource: boxData.rightLabelSource,
         backgroundColorTextSource: boxData.backgroundColorText,
+        borderColorTextSource: boxData.borderColorText,
         headerColorTextSource: boxData.headerColorText,
         headerLabelColorTextSource: boxData.headerLabelColorText,
         leftLabelColorTextSource: boxData.leftLabelColorText,
@@ -306,6 +308,8 @@ export default function Box({
                             height: `${frame.height}px`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
                             backgroundColor: resolveColor(boxData.backgroundVariableColors, boxData.backgroundColorText, boxData.backgroundColor, variableValues),
+                            border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues)}`,
+                            borderRadius: boxData.noBorder ? '10px' : `15px`,
                             zIndex: boxData.zIndex,
                         }}
                     >

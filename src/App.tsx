@@ -25,6 +25,10 @@ export interface BoxData {
     backgroundColor: string;
     backgroundColorText: string;
     backgroundVariableColors: VariableColor[];
+    borderColor: string;
+    borderColorText: string;
+    borderVariableColors: VariableColor[];
+    noBorder: boolean;
     headerColor: string;
     headerColorText: string;
     headerVariableColors: VariableColor[];
@@ -74,10 +78,23 @@ export default function App() {
 
 
 
-    const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string) => {
+    const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any) => {
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
         setSelectedBoxId(null); // Clear any selection
+        
+        // Apply canvas settings if provided
+        if (canvasSettings) {
+            if (canvasSettings.canvasBackgroundColor !== undefined) {
+                setCanvasBackgroundColor(canvasSettings.canvasBackgroundColor);
+            }
+            if (canvasSettings.canvasBackgroundColorText !== undefined) {
+                setCanvasBackgroundColorText(canvasSettings.canvasBackgroundColorText);
+            }
+            if (canvasSettings.canvasBackgroundVariableColors !== undefined) {
+                setCanvasBackgroundVariableColors(canvasSettings.canvasBackgroundVariableColors);
+            }
+        }
     };
 
     const deleteAllBoxes = () => {
@@ -103,7 +120,7 @@ export default function App() {
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>('');
-    
+
     // Canvas background color state - initialize from localStorage
     const [canvasBackgroundColor, setCanvasBackgroundColor] = useState<string>(() => {
         const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
@@ -161,12 +178,12 @@ export default function App() {
     // Collect canvas variable names for fetching
     const getCanvasVariableNames = () => {
         const allVariables: { [key: string]: string } = {};
-        
+
         // Add canvas background color text if it exists
         if (canvasBackgroundColorText) {
             allVariables[canvasBackgroundColorText] = canvasBackgroundColorText;
         }
-        
+
         // Add canvas variable colors
         if (canvasBackgroundVariableColors && Array.isArray(canvasBackgroundVariableColors)) {
             canvasBackgroundVariableColors.forEach(varColor => {
@@ -175,7 +192,7 @@ export default function App() {
                 }
             });
         }
-        
+
         return allVariables;
     };
 
@@ -224,6 +241,10 @@ export default function App() {
             backgroundColor: "#262626",
             backgroundColorText: "",
             backgroundVariableColors: [],
+            borderColor: "#61BAFA",
+            borderColorText: "",
+            borderVariableColors: [],
+            noBorder: true,
             headerColor: '#19325c',
             headerColorText: "",
             headerVariableColors: [],
@@ -270,10 +291,10 @@ export default function App() {
     }, [selectedBoxId]);
 
     return (
-        <div style={{ 
-            minHeight: '100vh', 
-            width: '100%', 
-            backgroundColor: actualCanvasBackgroundColor 
+        <div style={{
+            minHeight: '100vh',
+            width: '100%',
+            backgroundColor: actualCanvasBackgroundColor
         }}>
             <SettingsMenu
                 onNewBox={createNewBox}
@@ -316,10 +337,10 @@ export default function App() {
                         position: 'fixed',
                         bottom: '32px',
                         left: '60px',
-                        color: '#666',
+                        color: '#FFF',
                         fontSize: '14px',
                         fontWeight: '500',
-                        opacity: 1,
+                        opacity: .5,
                     }}>
                         Open the menu to add boxes!
                     </div>

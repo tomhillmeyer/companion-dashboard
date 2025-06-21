@@ -159,6 +159,38 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                     {renderVariableColorSection('Variable Background Color', 'backgroundVariableColors')}
                 </div>
+
+                <div className='setting-container'>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Default Border Color</span>
+                            <div className="color-input-group">
+                                <input
+                                    type="color"
+                                    value={formData.borderColor}
+                                    onChange={(e) => updateField('borderColor', e.target.value)}
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.borderColorText}
+                                    onChange={(e) => updateField('borderColorText', e.target.value)}
+                                    placeholder="Variable or HEX"
+                                />
+                            </div>
+                            <div className="checkbox-container" style={{ marginLeft: '0px', }}>
+                                <input
+                                    type="checkbox"
+                                    id="no-border"
+                                    checked={formData.noBorder}
+                                    onChange={(e) => updateField('noBorder', e.target.checked)}
+                                />
+                                <label htmlFor="no-border">No border</label>
+                            </div>
+                        </div>
+                    </div>
+                    {renderVariableColorSection('Variable Border Color', 'borderVariableColors')}
+
+                </div>
             </div>
         </div>
     );

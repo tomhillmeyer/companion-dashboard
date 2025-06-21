@@ -1,6 +1,6 @@
 /* Box.css */
 .box {
-    border-radius: 5px;
+    border-radius: 15px;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
