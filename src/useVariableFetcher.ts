@@ -41,7 +41,7 @@ const parseMarkdown = (text: string): string => {
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/_(.*?)_/g, '<em>$1</em>')
         // Images: ![alt](url)
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
         // Links: [text](url)
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
         // Line breaks
