@@ -34,6 +34,8 @@ All color pickers in Companion Dashboard have three options, in this order of pr
 
 Clicking the green plus icon creates a new variable color. You input the Companion Variable, the value you want to look for, and then pick the color you want to apply when that variable has that value.
 
+![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/variable-color-modal.png)
+
 Dashboard prioritizes the variable colors from the top down. If all variable colors are false, it will check for a default variable or HEX color from that text field. If that text field is empty, it will use the default color picker value.
 
 ## Markdown and HTML tags
