@@ -14,7 +14,6 @@ notarize.cjs
 notarize.js
 entitlements.plist
 node_modules
-dist
 out
 dist-ssr
 dist-final
