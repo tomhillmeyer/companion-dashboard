@@ -1,0 +1,27 @@
+.title-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0);
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    -webkit-app-region: drag;
+    /* ✅ allow dragging */
+    padding-left: 80px;
+    /* leave space for traffic lights */
+    pointer-events: none;
+}
+
+.title-bar.visible .fake-traffic-lights {
+    opacity: 1;
+}
+
+/* If you have children like text/buttons inside, they must be no-drag */
+.title-bar * {
+    -webkit-app-region: no-drag;
+}

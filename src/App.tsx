@@ -6,6 +6,7 @@ import './App.css';
 import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
 import { useVariableFetcher } from './useVariableFetcher';
+import { TitleBar } from './TitleBar.tsx';
 
 
 const STORAGE_KEY = 'boxes';
@@ -82,7 +83,7 @@ export default function App() {
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
         setSelectedBoxId(null); // Clear any selection
-        
+
         // Apply canvas settings if provided
         if (canvasSettings) {
             if (canvasSettings.canvasBackgroundColor !== undefined) {
@@ -296,6 +297,7 @@ export default function App() {
             width: '100%',
             backgroundColor: actualCanvasBackgroundColor
         }}>
+            <TitleBar />
             <SettingsMenu
                 onNewBox={createNewBox}
                 connectionUrl={companionBaseUrl}

@@ -9,6 +9,9 @@ const isDev = process.env.NODE_ENV === 'development';
 // Path to store window state
 const windowStateFile = path.join(app.getPath('userData'), 'window-state.json');
 
+const isMac = process.platform === 'darwin';
+
+
 // Default window dimensions
 const defaultWindowState = {
     width: 1200,
@@ -43,6 +46,8 @@ function createWindow() {
     mainWindow = new BrowserWindow({
         width: windowState.width,
         height: windowState.height,
+        frame: !isMac,
+        titleBarStyle: isMac ? 'customButtonsOnHover' : undefined,
         x: windowState.x,
         y: windowState.y,
         webPreferences: {

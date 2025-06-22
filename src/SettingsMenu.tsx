@@ -291,6 +291,30 @@ export default function SettingsMenu({
         };
     }, [isActive]);
 
+    const [visible, setVisible] = useState(true);
+    const timeoutRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const handleMouseMove = () => {
+            setVisible(true);
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+            timeoutRef.current = window.setTimeout(() => {
+                setVisible(false);
+            }, 2000); // 2 seconds of inactivity
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+            }
+        };
+    }, []);
+
     const handleUrlSubmit = () => {
         try {
             const url = new URL(inputUrl.trim());
@@ -344,7 +368,12 @@ export default function SettingsMenu({
 
     return (
         <div ref={menuRef}>
-            <div className="menu-icon" onClick={toggleClass}>
+            <div id="menu-icon"
+                className="menu-icon"
+                style={{
+                    opacity: visible ? 1 : 0,
+                    transition: 'opacity 0.5s ease',
+                }} onClick={toggleClass}>
                 <FaAngleRight style={{ display: isActive ? 'none' : 'inline' }} />
                 <FaAngleLeft style={{ display: isActive ? 'inline' : 'none' }} />
             </div>
