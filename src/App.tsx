@@ -230,6 +230,43 @@ export default function App() {
         canvasBackgroundColor
     );
 
+    // Check if the resolved color is an image (http/https URL, data URL, or ends with image extensions)
+    const isImageUrl = (value: string) => {
+        if (!value) return false;
+        // Check for HTTP URLs
+        if (value.startsWith('http://') || value.startsWith('https://')) return true;
+        // Check for base64 data URLs
+        if (value.startsWith('data:image/')) return true;
+        // Check for image extensions
+        return /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(value);
+    };
+
+    // Generate background style
+    const getCanvasBackgroundStyle = () => {
+        if (isImageUrl(actualCanvasBackgroundColor)) {
+            let imageUrl = actualCanvasBackgroundColor;
+            
+            // Check if this is a cached image reference
+            if (actualCanvasBackgroundColor.startsWith('./src/assets/background_')) {
+                const filename = actualCanvasBackgroundColor.split('/').pop();
+                const cachedBase64 = localStorage.getItem(`cached_bg_${filename}`);
+                if (cachedBase64) {
+                    imageUrl = cachedBase64; // This is already a data URL (data:image/jpeg;base64,...)
+                }
+            }
+            
+            return {
+                backgroundImage: `url("${imageUrl}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center center',
+                backgroundRepeat: 'no-repeat'
+            };
+        }
+        return {
+            backgroundColor: actualCanvasBackgroundColor
+        };
+    };
+
     const createNewBox = () => {
         const newBox: BoxData = {
             id: uuid(),
@@ -295,7 +332,7 @@ export default function App() {
         <div style={{
             minHeight: '100vh',
             width: '100%',
-            backgroundColor: actualCanvasBackgroundColor
+            ...getCanvasBackgroundStyle()
         }}>
             <TitleBar />
             <SettingsMenu

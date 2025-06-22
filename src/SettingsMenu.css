@@ -120,6 +120,7 @@ button {
 .footer {
     margin-top: 50px;
     color: white;
+    text-align: right;
 }
 
 a {
@@ -247,6 +248,52 @@ a {
 
 .canvas-add-variable-color-button:hover {
     background-color: #047857;
+}
+
+.canvas-image-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.canvas-browse-button {
+    background-color: #61BAFA;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s ease;
+    flex: 1;
+}
+
+.canvas-browse-button:hover {
+    background-color: #4a9ae8;
+}
+
+.canvas-clear-button {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s ease;
+    flex: 1;
+}
+
+.canvas-clear-button:hover {
+    background-color: #dc2626;
 }
 
 

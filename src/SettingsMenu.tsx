@@ -53,6 +53,9 @@ export default function SettingsMenu({
     const [touchStartY, setTouchStartY] = useState<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
+    // Background image file input ref
+    const backgroundImageInputRef = useRef<HTMLInputElement>(null);
+
     const downloadConfig = async () => {
         try {
             // Get data from localStorage
@@ -60,13 +63,26 @@ export default function SettingsMenu({
             const connectionUrl = localStorage.getItem('companion_connection_url');
             const canvasSettings = localStorage.getItem('canvas_settings');
 
+            // Get cached background image data if it exists
+            const canvasSettingsObj = canvasSettings ? JSON.parse(canvasSettings) : {};
+            let backgroundImageData = null;
+
+            if (canvasSettingsObj.canvasBackgroundColorText &&
+                canvasSettingsObj.canvasBackgroundColorText.startsWith('./src/assets/background_')) {
+                const filename = canvasSettingsObj.canvasBackgroundColorText.split('/').pop();
+                if (filename) {
+                    backgroundImageData = localStorage.getItem(`cached_bg_${filename}`);
+                }
+            }
+
             // Create config object
             const config = {
                 version: '1.0',
                 timestamp: new Date().toISOString(),
                 boxes: boxes ? JSON.parse(boxes) : [],
                 companion_connection_url: connectionUrl || '',
-                canvas_settings: canvasSettings ? JSON.parse(canvasSettings) : {}
+                canvas_settings: canvasSettingsObj,
+                background_image_data: backgroundImageData
             };
 
             const dataStr = JSON.stringify(config, null, 2);
@@ -150,6 +166,17 @@ export default function SettingsMenu({
                 }
                 if (config.canvas_settings) {
                     localStorage.setItem('canvas_settings', JSON.stringify(config.canvas_settings));
+                }
+
+                // Restore background image if it exists
+                if (config.background_image_data && config.canvas_settings?.canvasBackgroundColorText) {
+                    const backgroundPath = config.canvas_settings.canvasBackgroundColorText;
+                    if (backgroundPath.startsWith('./src/assets/background_')) {
+                        const filename = backgroundPath.split('/').pop();
+                        if (filename) {
+                            localStorage.setItem(`cached_bg_${filename}`, config.background_image_data);
+                        }
+                    }
                 }
 
                 // Update parent state
@@ -366,6 +393,105 @@ export default function SettingsMenu({
         onCanvasBackgroundVariableColorsChange?.(updated);
     };
 
+    const handleBackgroundImageBrowse = () => {
+        backgroundImageInputRef.current?.click();
+    };
+
+    const compressImage = (file: File, maxWidth: number = 1920, maxHeight: number = 1080, quality: number = 1): Promise<string> => {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            img.onload = () => {
+                // Calculate new dimensions while maintaining aspect ratio
+                let { width, height } = img;
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = (width * maxHeight) / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                // Draw and compress
+                ctx?.drawImage(img, 0, 0, width, height);
+
+                // Convert to base64 data URL
+                const base64DataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(base64DataUrl);
+            };
+
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const handleBackgroundImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Check if it's an image file
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+
+
+        try {
+            // Compress image for better performance on mobile
+            const base64DataUrl = await compressImage(file);
+
+            // Create a unique filename with timestamp
+            const timestamp = Date.now();
+            const cachedFilename = `background_${timestamp}.jpg`; // Always save as JPG after compression
+
+            // Delete old cached background image if it exists
+            const currentBgText = canvasBackgroundColorText || '';
+            if (currentBgText.startsWith('./src/assets/background_') && currentBgText.includes('.')) {
+                const oldFilename = currentBgText.split('/').pop();
+                if (oldFilename) {
+                    localStorage.removeItem(`cached_bg_${oldFilename}`);
+                }
+            }
+
+            // Set the new background image path
+            onCanvasBackgroundColorTextChange?.(`./src/assets/${cachedFilename}`);
+
+            // Store the base64 data URL
+            localStorage.setItem(`cached_bg_${cachedFilename}`, base64DataUrl);
+
+            console.log('Background image compressed and cached:', cachedFilename);
+        } catch (error) {
+            console.error('Failed to cache background image:', error);
+            alert('Failed to set background image.');
+        }
+
+        // Reset file input
+        event.target.value = '';
+    };
+
+    const clearCachedBackground = () => {
+        const currentBgText = canvasBackgroundColorText || '';
+        if (currentBgText.startsWith('./src/assets/background_')) {
+            // Clear the cached image reference
+            onCanvasBackgroundColorTextChange?.('');
+
+            // Remove cached image from localStorage
+            const filename = currentBgText.split('/').pop();
+            if (filename) {
+                localStorage.removeItem(`cached_bg_${filename}`);
+                console.log('Cleared cached background image:', filename);
+            }
+        }
+    };
+
     return (
         <div ref={menuRef}>
             <div id="menu-icon"
@@ -403,7 +529,7 @@ export default function SettingsMenu({
                     <span className='section-label'>Canvas</span>
                     <div className='menu-section canvas-section'>
                         <div className="canvas-color-container">
-                            <span className="canvas-color-label">Default Background Color</span>
+                            <span className="canvas-color-label">Default Background</span>
                             <div className="canvas-color-input-group">
                                 <input
                                     type="color"
@@ -415,9 +541,27 @@ export default function SettingsMenu({
                                     type="text"
                                     value={canvasBackgroundColorText || ''}
                                     onChange={(e) => onCanvasBackgroundColorTextChange?.(e.target.value)}
-                                    placeholder="Variable or HEX"
+                                    placeholder="Variable, HEX, or Image URL"
                                     className="canvas-color-text"
                                 />
+                            </div>
+                            <div className="canvas-image-controls">
+                                <button
+                                    type="button"
+                                    onClick={handleBackgroundImageBrowse}
+                                    className="canvas-browse-button"
+                                >
+                                    Browse Image
+                                </button>
+                                {canvasBackgroundColorText && canvasBackgroundColorText.startsWith('./src/assets/background_') && (
+                                    <button
+                                        type="button"
+                                        onClick={clearCachedBackground}
+                                        className="canvas-clear-button"
+                                    >
+                                        Clear Image
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <div className="canvas-variable-color-container">
@@ -491,6 +635,13 @@ export default function SettingsMenu({
                         type="file"
                         accept=".json"
                         onChange={handleFileRestore}
+                        style={{ display: 'none' }}
+                    />
+                    <input
+                        ref={backgroundImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
                     <span className='footer'>v1.1.1<br />Created by Tom Hillmeyer</span>
