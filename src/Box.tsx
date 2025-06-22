@@ -17,11 +17,40 @@ const MarkdownContent = React.memo(({
     style: React.CSSProperties;
     className?: string;
 }) => {
-    // Check if content contains HTML tags (indicating it's not plain text)
-    const hasHtmlTags = /<[^>]*>/.test(content);
+    // Check for media content that should not have padding (images, iframes, etc.)
+    const isTextOnly = (() => {
+        if (!content || typeof content !== 'string') return true;
+        
+        try {
+            // Check for HTML image/media tags
+            const hasImageTags = /<img[^>]*>/i.test(content);
+            const hasIframeTags = /<iframe[^>]*>/i.test(content);
+            const hasVideoTags = /<video[^>]*>/i.test(content);
+            
+            // Check for markdown image syntax that will become HTML
+            const hasMarkdownImages = /!\[.*?\]\(.*?\)/.test(content);
+            
+            // Only media content should have no padding
+            const hasMediaContent = hasImageTags || hasIframeTags || hasVideoTags || hasMarkdownImages;
+            
+            // Everything else (including formatted text, links, etc.) gets padding
+            return !hasMediaContent;
+        } catch (error) {
+            console.error('Error in media detection:', error);
+            return true; // Default to text-only (with padding) if error
+        }
+    })();
 
-    // If it's plain text, wrap in span with text-only-content class
-    const processedContent = hasHtmlTags ? content : `<span class="text-only-content">${content}</span>`;
+    // If it's text content (not media), wrap in span with text-only-content class for padding
+    const processedContent = (() => {
+        try {
+            if (!content || typeof content !== 'string') return '';
+            return isTextOnly ? `<span class="text-only-content">${content}</span>` : content;
+        } catch (error) {
+            console.error('Error processing content:', error);
+            return content || '';
+        }
+    })();
 
     return (
         <div
@@ -57,6 +86,7 @@ export default function Box({
     const targetRef = useRef<HTMLDivElement>(null);
     const [frame, setFrame] = useState(boxData.frame);
     const [showModal, setShowModal] = useState(false);
+    const [loadedBackgroundImage, setLoadedBackgroundImage] = useState<string>('');
 
     // Update local frame when initialFrame changes
     useEffect(() => {
@@ -109,6 +139,104 @@ export default function Box({
             onDeselect();
         }
     }, [showModal, onDeselect]);
+
+    // Function to check if a string is an image URL
+    const isImageUrl = (text: string): boolean => {
+        if (!text || typeof text !== 'string') return false;
+        
+        try {
+            // Check for HTTP/HTTPS URLs
+            if (text.startsWith('http://') || text.startsWith('https://')) {
+                return true;
+            }
+            
+            // Check for data URLs
+            if (text.startsWith('data:image/')) {
+                return true;
+            }
+            
+            // Check for file extensions
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+            return imageExtensions.some(ext => text.toLowerCase().endsWith(ext));
+        } catch (error) {
+            console.error('Error in isImageUrl:', error);
+            return false;
+        }
+    };
+
+    // Load background image from storage when backgroundImage changes
+    useEffect(() => {
+        const loadBackgroundImage = async () => {
+            if (!boxData.backgroundImage || typeof boxData.backgroundImage !== 'string') {
+                setLoadedBackgroundImage('');
+                return;
+            }
+
+            try {
+                // If it's already a data URL or HTTP URL, use it directly
+                if (isImageUrl(boxData.backgroundImage) && !boxData.backgroundImage.startsWith('./src/assets/')) {
+                    setLoadedBackgroundImage(boxData.backgroundImage);
+                    return;
+                }
+
+                // If it's a cached image path, load from storage
+                if (boxData.backgroundImage.startsWith('./src/assets/')) {
+                    const filename = boxData.backgroundImage.split('/').pop();
+                    if (filename) {
+                        try {
+                            // Try IndexedDB first
+                            const imageData = await getImageFromDB(filename);
+                            if (imageData) {
+                                setLoadedBackgroundImage(imageData);
+                                return;
+                            }
+                            
+                            // Fallback to localStorage
+                            const cachedData = localStorage.getItem(`cached_bg_${filename}`);
+                            if (cachedData) {
+                                setLoadedBackgroundImage(cachedData);
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('Failed to load background image:', error);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error in loadBackgroundImage:', error);
+            }
+
+            setLoadedBackgroundImage('');
+        };
+
+        loadBackgroundImage();
+    }, [boxData.backgroundImage]);
+
+    // IndexedDB helper function
+    const getImageFromDB = async (filename: string): Promise<string | null> => {
+        try {
+            const request = indexedDB.open('CompanionDashboardImages', 3);
+            
+            return new Promise((resolve, reject) => {
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    const db = request.result;
+                    const transaction = db.transaction(['images'], 'readonly');
+                    const store = transaction.objectStore('images');
+                    const getRequest = store.get(filename);
+                    
+                    getRequest.onerror = () => reject(getRequest.error);
+                    getRequest.onsuccess = () => {
+                        const result = getRequest.result;
+                        resolve(result ? result.data : null);
+                    };
+                };
+            });
+        } catch (error) {
+            console.error('Error getting image from IndexedDB:', error);
+            return null;
+        }
+    };
 
     // Collect all variable names from variable colors arrays
     const getAllVariableNames = () => {
@@ -174,6 +302,74 @@ export default function Box({
         return fallbackColor;
     };
 
+    // Resolve background color similar to canvas implementation
+    const resolveBoxBackgroundColor = () => {
+        try {
+            // 1. Check variable colors first
+            if (boxData.backgroundVariableColors && Array.isArray(boxData.backgroundVariableColors)) {
+                for (const varColor of boxData.backgroundVariableColors) {
+                    if (varColor && varColor.variable && varColor.value) {
+                        const variableValue = variableValues[varColor.variable] || '';
+                        if (variableValue === varColor.value) {
+                            return varColor.color || '';
+                        }
+                    }
+                }
+            }
+
+            // 2. Check if backgroundColorText has a value and resolve it
+            if (boxData.backgroundColorText && typeof boxData.backgroundColorText === 'string' && boxData.backgroundColorText.trim()) {
+                const resolvedValue = variableValues.backgroundColorTextSource || boxData.backgroundColorText;
+                return resolvedValue || '';
+            }
+
+            // 3. Fall back to the picker color
+            return boxData.backgroundColor || '#262626';
+        } catch (error) {
+            console.error('Error in resolveBoxBackgroundColor:', error);
+            return boxData.backgroundColor || '#262626';
+        }
+    };
+
+    // Generate background style that handles both color and image
+    const getBackgroundStyle = () => {
+        try {
+            const actualBackgroundColor = resolveBoxBackgroundColor();
+            
+            // Check if the resolved background color is actually an image URL
+            if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
+                return {
+                    backgroundImage: `url("${actualBackgroundColor}")`,
+                    backgroundSize: boxData.backgroundImageSize || 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundColor: boxData.backgroundColor || '#262626', // Fallback color behind the image
+                };
+            }
+            
+            // If there's a manually set background image, use it
+            if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
+                return {
+                    backgroundImage: `url(${loadedBackgroundImage})`,
+                    backgroundSize: boxData.backgroundImageSize || 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundColor: actualBackgroundColor || '#262626', // Fallback color behind the image
+                };
+            }
+            
+            // Otherwise, use as background color
+            return {
+                backgroundColor: actualBackgroundColor || '#262626',
+            };
+        } catch (error) {
+            console.error('Error in getBackgroundStyle:', error);
+            return {
+                backgroundColor: boxData.backgroundColor || '#262626',
+            };
+        }
+    };
+
     // Use the fetched values or fall back to manual labels
     /*
     const displayLabels = {
@@ -189,47 +385,65 @@ export default function Box({
 
     // HTML versions for markdown rendering - need to parse even the fallback values
     const parseMarkdownFallback = (text: string): string => {
-        if (!text) return '';
+        try {
+            if (!text || typeof text !== 'string') return '';
 
-        // First, store escaped characters with unique placeholders
-        const escapedChars: { [key: string]: string } = {};
-        let placeholderIndex = 0;
+            // First, store escaped characters with unique placeholders
+            const escapedChars: { [key: string]: string } = {};
+            let placeholderIndex = 0;
 
-        let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (char) => {
-            const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
-            escapedChars[placeholder] = char;
-            placeholderIndex++;
-            return placeholder;
-        });
+            let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (char) => {
+                const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
+                escapedChars[placeholder] = char;
+                placeholderIndex++;
+                return placeholder;
+            });
 
-        // Now apply markdown formatting
-        processedText = processedText
-            // Bold: **text** or __text__
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/__(.*?)__/g, '<strong>$1</strong>')
-            // Italic: *text* or _text_
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/_(.*?)_/g, '<em>$1</em>')
-            // Images: ![alt](url)
-            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
-            // Links: [text](url)
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-            // Line breaks
-            .replace(/\n/g, '<br>');
+            // Now apply markdown formatting
+            processedText = processedText
+                // Bold: **text** or __text__
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/__(.*?)__/g, '<strong>$1</strong>')
+                // Italic: *text* or _text_
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/_(.*?)_/g, '<em>$1</em>')
+                // Images: ![alt](url)
+                .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
+                // Links: [text](url)
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+                // Line breaks
+                .replace(/\n/g, '<br>');
 
-        // Finally, restore escaped characters
-        Object.keys(escapedChars).forEach(placeholder => {
-            processedText = processedText.replace(new RegExp(placeholder, 'g'), escapedChars[placeholder]);
-        });
+            // Finally, restore escaped characters
+            Object.keys(escapedChars).forEach(placeholder => {
+                if (typeof processedText === 'string' && typeof placeholder === 'string') {
+                    processedText = processedText.replace(new RegExp(placeholder, 'g'), escapedChars[placeholder]);
+                }
+            });
 
-        return processedText;
+            return processedText || '';
+        } catch (error) {
+            console.error('Error in parseMarkdownFallback:', error);
+            return text || '';
+        }
     };
 
-    const displayHtmlLabels = useMemo(() => ({
-        header: variableHtmlValues.headerLabelSource || parseMarkdownFallback(boxData.headerLabelSource),
-        left: variableHtmlValues.leftLabelSource || parseMarkdownFallback(boxData.leftLabelSource),
-        right: variableHtmlValues.rightLabelSource || parseMarkdownFallback(boxData.rightLabelSource),
-    }), [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource, boxData.headerLabelSource, boxData.leftLabelSource, boxData.rightLabelSource]);
+    const displayHtmlLabels = useMemo(() => {
+        try {
+            return {
+                header: variableHtmlValues.headerLabelSource || parseMarkdownFallback(boxData.headerLabelSource || ''),
+                left: variableHtmlValues.leftLabelSource || parseMarkdownFallback(boxData.leftLabelSource || ''),
+                right: variableHtmlValues.rightLabelSource || parseMarkdownFallback(boxData.rightLabelSource || ''),
+            };
+        } catch (error) {
+            console.error('Error in displayHtmlLabels:', error);
+            return {
+                header: boxData.headerLabelSource || '',
+                left: boxData.leftLabelSource || '',
+                right: boxData.rightLabelSource || '',
+            };
+        }
+    }, [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource, boxData.headerLabelSource, boxData.leftLabelSource, boxData.rightLabelSource]);
 
     // Memoize styles to prevent unnecessary re-renders
     const headerStyle = useMemo(() => ({
@@ -307,7 +521,7 @@ export default function Box({
                             width: `${frame.width}px`,
                             height: `${frame.height}px`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
-                            backgroundColor: resolveColor(boxData.backgroundVariableColors, boxData.backgroundColorText, boxData.backgroundColor, variableValues),
+                            ...getBackgroundStyle(),
                             border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues)}`,
                             borderRadius: boxData.noBorder ? '10px' : `15px`,
                             zIndex: boxData.zIndex,

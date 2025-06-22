@@ -49,6 +49,9 @@ const rgbaToHex = (rgba: { r: number; g: number; b: number; a: number }) => {
 export default function ColorPicker({ value, onChange, className = '' }: ColorPickerProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [color, setColor] = useState(() => {
+        if (!value || typeof value !== 'string') {
+            return { r: 0, g: 0, b: 0, a: 1 };
+        }
         if (value.startsWith('#')) {
             return hexToRgba(value, 1);
         } else if (value.startsWith('rgba') || value.startsWith('rgb')) {
@@ -63,12 +66,15 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
 
     // Update color when value prop changes
     useEffect(() => {
+        if (!value || typeof value !== 'string') {
+            return;
+        }
         if (value.startsWith('#')) {
             setColor(hexToRgba(value, color.a)); // Keep existing alpha
         } else if (value.startsWith('rgba') || value.startsWith('rgb')) {
             setColor(rgbaStringToRgba(value));
         }
-    }, [value]);
+    }, [value, color.a]);
 
     // Close picker when clicking outside
     useEffect(() => {

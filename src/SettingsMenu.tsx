@@ -409,7 +409,7 @@ export default function SettingsMenu({
                 // Draw and compress image
                 ctx?.drawImage(img, 0, 0, width, height);
                 const base64DataUrl = canvas.toDataURL('image/jpeg', quality);
-                
+
                 console.log(`Compressed image with quality: ${quality}, estimated size: ${(base64DataUrl.length * 0.75 / 1024 / 1024).toFixed(2)}MB`);
                 resolve(base64DataUrl);
             };
@@ -432,7 +432,7 @@ export default function SettingsMenu({
 
         try {
             console.log(`Original file size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-            
+
             // Check current localStorage usage
             let totalSize = 0;
             for (let key in localStorage) {
@@ -441,7 +441,7 @@ export default function SettingsMenu({
                 }
             }
             console.log(`Current localStorage usage: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
-            
+
             // Compress image for better performance on mobile
             const base64DataUrl = await compressImage(file);
 
@@ -493,10 +493,10 @@ export default function SettingsMenu({
         return new Promise((resolve, reject) => {
             // Use a higher version to avoid conflicts
             const request = indexedDB.open('CompanionDashboardImages', 3);
-            
+
             request.onerror = () => reject(request.error);
             request.onsuccess = () => resolve(request.result);
-            
+
             request.onupgradeneeded = (event) => {
                 const db = (event.target as IDBOpenDBRequest).result;
                 if (!db.objectStoreNames.contains('images')) {
@@ -511,7 +511,7 @@ export default function SettingsMenu({
             const db = await openImageDB();
             const transaction = db.transaction(['images'], 'readwrite');
             const store = transaction.objectStore('images');
-            
+
             return new Promise((resolve, reject) => {
                 const request = store.put({ id: filename, data: base64Data });
                 request.onerror = () => reject(request.error);
@@ -531,7 +531,7 @@ export default function SettingsMenu({
             const db = await openImageDB();
             const transaction = db.transaction(['images'], 'readonly');
             const store = transaction.objectStore('images');
-            
+
             return new Promise((resolve, reject) => {
                 const request = store.get(filename);
                 request.onerror = () => reject(request.error);
@@ -551,7 +551,7 @@ export default function SettingsMenu({
             const db = await openImageDB();
             const transaction = db.transaction(['images'], 'readwrite');
             const store = transaction.objectStore('images');
-            
+
             return new Promise((resolve, reject) => {
                 const request = store.delete(filename);
                 request.onerror = () => reject(request.error);
@@ -813,7 +813,7 @@ export default function SettingsMenu({
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.1.1<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.2.0<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 

@@ -26,6 +26,8 @@ export interface BoxData {
     backgroundColor: string;
     backgroundColorText: string;
     backgroundVariableColors: VariableColor[];
+    backgroundImage?: string;
+    backgroundImageSize?: 'cover' | 'contain';
     borderColor: string;
     borderColorText: string;
     borderVariableColors: VariableColor[];
@@ -232,13 +234,18 @@ export default function App() {
 
     // Check if the resolved color is an image (http/https URL, data URL, or ends with image extensions)
     const isImageUrl = (value: string) => {
-        if (!value) return false;
-        // Check for HTTP URLs
-        if (value.startsWith('http://') || value.startsWith('https://')) return true;
-        // Check for base64 data URLs
-        if (value.startsWith('data:image/')) return true;
-        // Check for image extensions
-        return /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(value);
+        if (!value || typeof value !== 'string') return false;
+        try {
+            // Check for HTTP URLs
+            if (value.startsWith('http://') || value.startsWith('https://')) return true;
+            // Check for base64 data URLs
+            if (value.startsWith('data:image/')) return true;
+            // Check for image extensions
+            return /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(value);
+        } catch (error) {
+            console.error('Error in isImageUrl:', error);
+            return false;
+        }
     };
 
     // State for loaded background image
@@ -289,7 +296,7 @@ export default function App() {
     // Effect to load background image from IndexedDB when needed
     useEffect(() => {
         const loadBackgroundImage = async () => {
-            if (actualCanvasBackgroundColor.startsWith('./src/assets/background_')) {
+            if (actualCanvasBackgroundColor && typeof actualCanvasBackgroundColor === 'string' && actualCanvasBackgroundColor.startsWith('./src/assets/background_')) {
                 const filename = actualCanvasBackgroundColor.split('/').pop();
                 if (filename) {
                     // Try IndexedDB first
@@ -314,7 +321,7 @@ export default function App() {
             let imageUrl = actualCanvasBackgroundColor;
 
             // Check if this is a cached image reference and we have loaded data
-            if (actualCanvasBackgroundColor.startsWith('./src/assets/background_') && loadedBackgroundImage) {
+            if (actualCanvasBackgroundColor && typeof actualCanvasBackgroundColor === 'string' && actualCanvasBackgroundColor.startsWith('./src/assets/background_') && loadedBackgroundImage) {
                 imageUrl = loadedBackgroundImage;
             }
 

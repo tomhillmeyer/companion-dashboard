@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { BoxData, VariableColor } from './App';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
@@ -26,6 +26,7 @@ type SettingSection = 'background' | 'header' | 'left' | 'right';
 export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate }: BoxSettingsModalProps) {
     const [formData, setFormData] = useState(boxData);
     const [activeSection, setActiveSection] = useState<SettingSection>('background');
+    const backgroundImageInputRef = useRef<HTMLInputElement>(null);
 
     const handleSave = () => {
         onSave(formData);
@@ -80,6 +81,151 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             vc.id === id ? { ...vc, [property]: value } : vc
         );
         updateField(field, updated);
+    };
+
+    const handleBackgroundImageBrowse = () => {
+        backgroundImageInputRef.current?.click();
+    };
+
+    const compressImage = (file: File, maxWidth: number = 1920, maxHeight: number = 1080, quality: number = 0.9): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            img.onload = () => {
+                // Calculate new dimensions while maintaining aspect ratio
+                let { width, height } = img;
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = (height * maxWidth) / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = (width * maxHeight) / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                // Draw and compress image
+                ctx?.drawImage(img, 0, 0, width, height);
+                const base64DataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                resolve(base64DataUrl);
+            };
+
+            img.onerror = () => reject(new Error('Failed to load image'));
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const handleBackgroundImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        // Check if it's an image file
+        if (!file.type || typeof file.type !== 'string' || !file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            return;
+        }
+
+        try {
+            // Compress image for better performance
+            const base64DataUrl = await compressImage(file);
+
+            // Create a unique filename with timestamp and box ID
+            const timestamp = Date.now();
+            const cachedFilename = `box_bg_${formData.id}_${timestamp}.jpg`;
+
+            // Clear old cached background image if it exists
+            if (formData.backgroundImage) {
+                const oldFilename = formData.backgroundImage.split('/').pop();
+                if (oldFilename) {
+                    await deleteImageFromDB(oldFilename);
+                }
+            }
+
+            // Set the new background image path
+            updateField('backgroundImage', `./src/assets/${cachedFilename}`);
+
+            // Store the base64 data URL in IndexedDB
+            try {
+                await storeImageInDB(cachedFilename, base64DataUrl);
+            } catch (dbError) {
+                console.error('IndexedDB storage failed:', dbError);
+                throw new Error('Failed to store background image.');
+            }
+        } catch (error) {
+            console.error('Failed to set background image:', error);
+            alert('Failed to set background image.');
+        }
+
+        // Reset file input
+        event.target.value = '';
+    };
+
+    const clearBackgroundImage = async () => {
+        if (formData.backgroundImage) {
+            const filename = formData.backgroundImage.split('/').pop();
+            if (filename) {
+                await deleteImageFromDB(filename);
+            }
+            updateField('backgroundImage', '');
+        }
+    };
+
+    // IndexedDB helper functions
+    const openImageDB = (): Promise<IDBDatabase> => {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('CompanionDashboardImages', 3);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result;
+                if (!db.objectStoreNames.contains('images')) {
+                    db.createObjectStore('images', { keyPath: 'id' });
+                }
+            };
+        });
+    };
+
+    const storeImageInDB = async (filename: string, base64Data: string): Promise<void> => {
+        try {
+            const db = await openImageDB();
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+
+            return new Promise((resolve, reject) => {
+                const request = store.put({ id: filename, data: base64Data });
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve();
+            });
+        } catch (error) {
+            console.error('Error in storeImageInDB:', error);
+            throw error;
+        }
+    };
+
+    const deleteImageFromDB = async (filename: string): Promise<void> => {
+        try {
+            const db = await openImageDB();
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+
+            return new Promise((resolve, reject) => {
+                const request = store.delete(filename);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve();
+            });
+        } catch (error) {
+            console.error('Error deleting image from IndexedDB:', error);
+        }
     };
 
     const renderVariableColorSection = (title: string, field: keyof BoxData) => {
@@ -138,6 +284,58 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="setting-title">Background</div>
             <div className="setting-group">
                 <div className='setting-container'>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Background Image</span>
+                            <div className="image-controls">
+                                <button
+                                    type="button"
+                                    className="browse-image-button"
+                                    onClick={handleBackgroundImageBrowse}
+                                >
+                                    Browse Image
+                                </button>
+                                {formData.backgroundImage && (
+                                    <button
+                                        type="button"
+                                        className="clear-image-button"
+                                        onClick={clearBackgroundImage}
+                                    >
+                                        Clear Image
+                                    </button>
+                                )}
+                                <input
+                                    ref={backgroundImageInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleBackgroundImageChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </div>
+                            <div className="image-size-controls">
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="backgroundImageSize"
+                                        value="cover"
+                                        checked={formData.backgroundImageSize !== 'contain'}
+                                        onChange={() => updateField('backgroundImageSize', 'cover')}
+                                    />
+                                    Cover
+                                </label>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="backgroundImageSize"
+                                        value="contain"
+                                        checked={formData.backgroundImageSize === 'contain'}
+                                        onChange={() => updateField('backgroundImageSize', 'contain')}
+                                    />
+                                    Contain
+                                </label>
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="setting-row">
                         <div className="setting-label">
@@ -444,6 +642,63 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <button onClick={onCancel} className="modal-cancel-button">CANCEL</button>
                         <button onClick={handleDuplicate} className="modal-duplicate-button">DUPLICATE</button>
                         <button onClick={handleDelete} className="modal-delete-button">DELETE</button>
+                    </div>
+                    <div className='layer-input-row'>
+
+                        <div className="layer-input-container">
+                            <label htmlFor="x-input">X-Position</label>
+                            <input
+                                id="x-input"
+                                type="number"
+                                value={formData.frame.translate[0]}
+                                onChange={(e) => updateField('frame', {
+                                    ...formData.frame,
+                                    translate: [parseInt(e.target.value) || 0, formData.frame.translate[1]] as [number, number]
+                                })}
+                                className="layer-input"
+                            />
+                        </div>
+                        <div className="layer-input-container">
+                            <label htmlFor="y-input">Y-POSITION</label>
+                            <input
+                                id="y-input"
+                                type="number"
+                                value={formData.frame.translate[1]}
+                                onChange={(e) => updateField('frame', {
+                                    ...formData.frame,
+                                    translate: [formData.frame.translate[0], parseInt(e.target.value) || 0] as [number, number]
+                                })}
+                                className="layer-input"
+                            />
+                        </div>
+                        <div className="layer-input-container">
+                            <label htmlFor="width-input">Width</label>
+                            <input
+                                id="width-input"
+                                type="number"
+                                value={formData.frame.width}
+                                onChange={(e) => updateField('frame', {
+                                    ...formData.frame,
+                                    width: parseInt(e.target.value) || 100
+                                })}
+                                min="10"
+                                className="layer-input"
+                            />
+                        </div>
+                        <div className="layer-input-container">
+                            <label htmlFor="height-input">Height</label>
+                            <input
+                                id="height-input"
+                                type="number"
+                                value={formData.frame.height}
+                                onChange={(e) => updateField('frame', {
+                                    ...formData.frame,
+                                    height: parseInt(e.target.value) || 100
+                                })}
+                                min="10"
+                                className="layer-input"
+                            />
+                        </div>
                         <div className="layer-input-container">
                             <label htmlFor="layer-input">Layer</label>
                             <input
@@ -491,6 +746,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

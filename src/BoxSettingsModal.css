@@ -84,8 +84,18 @@
     letter-spacing: 1px;
 }
 
+.layer-input-row {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    width: 100%;
+    gap: 10px;
+}
+
 .layer-input {
-    width: 60px;
+    width: 100% !important;
     padding: 8px;
     border: 1px solid #61BAFA;
     border-radius: 4px;
@@ -414,6 +424,65 @@
 
 .remove-variable-color-button:hover {
     background-color: #dc2626;
+}
+
+.image-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.browse-image-button,
+.clear-image-button {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s ease;
+}
+
+.browse-image-button:hover {
+    background-color: #2563eb;
+}
+
+.clear-image-button {
+    background-color: #ef4444;
+}
+
+.clear-image-button:hover {
+    background-color: #dc2626;
+}
+
+.image-size-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.image-size-controls label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #61BAFA;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+}
+
+.image-size-controls input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #61BAFA;
 }
 
 @media (max-width: 768px) {
