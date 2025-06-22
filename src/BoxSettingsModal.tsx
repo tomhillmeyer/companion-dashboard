@@ -286,7 +286,19 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 <div className='setting-container'>
                     <div className="setting-row">
                         <div className="setting-label">
-                            <span className="setting-header">Background Image</span>
+                            <span className="setting-header">Default Background</span>
+                            <div className="color-input-group">
+                                <ColorPicker
+                                    value={formData.backgroundColor}
+                                    onChange={(color) => updateField('backgroundColor', color)}
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.backgroundColorText}
+                                    onChange={(e) => updateField('backgroundColorText', e.target.value)}
+                                    placeholder="Variable, HEX, or Image URL"
+                                />
+                            </div>
                             <div className="image-controls">
                                 <button
                                     type="button"
@@ -337,23 +349,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         </div>
                     </div>
 
-                    <div className="setting-row">
-                        <div className="setting-label">
-                            <span className="setting-header">Default Background Color</span>
-                            <div className="color-input-group">
-                                <ColorPicker
-                                    value={formData.backgroundColor}
-                                    onChange={(color) => updateField('backgroundColor', color)}
-                                />
-                                <input
-                                    type="text"
-                                    value={formData.backgroundColorText}
-                                    onChange={(e) => updateField('backgroundColorText', e.target.value)}
-                                    placeholder="Variable or HEX"
-                                />
-                            </div>
-                        </div>
-                    </div>
+
                     {renderVariableColorSection('Variable Background Color', 'backgroundVariableColors')}
                 </div>
 
