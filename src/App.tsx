@@ -241,20 +241,83 @@ export default function App() {
         return /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(value);
     };
 
+    // State for loaded background image
+    const [loadedBackgroundImage, setLoadedBackgroundImage] = useState<string | null>(null);
+
+    // IndexedDB helper function for App.tsx
+    const getImageFromDB = async (filename: string): Promise<string | null> => {
+        try {
+            const request = indexedDB.open('CompanionDashboardImages', 3);
+            return new Promise((resolve) => {
+                request.onerror = () => resolve(null); // Gracefully handle errors
+                request.onsuccess = () => {
+                    const db = request.result;
+                    // Check if object store exists
+                    if (!db.objectStoreNames.contains('images')) {
+                        resolve(null);
+                        return;
+                    }
+
+                    try {
+                        const transaction = db.transaction(['images'], 'readonly');
+                        const store = transaction.objectStore('images');
+                        const getRequest = store.get(filename);
+
+                        getRequest.onerror = () => resolve(null);
+                        getRequest.onsuccess = () => {
+                            const result = getRequest.result;
+                            resolve(result ? result.data : null);
+                        };
+                    } catch (transactionError) {
+                        console.error('IndexedDB transaction error:', transactionError);
+                        resolve(null);
+                    }
+                };
+                request.onupgradeneeded = (event) => {
+                    const db = (event.target as IDBOpenDBRequest).result;
+                    if (!db.objectStoreNames.contains('images')) {
+                        db.createObjectStore('images', { keyPath: 'id' });
+                    }
+                };
+            });
+        } catch (error) {
+            console.error('IndexedDB error:', error);
+            return null;
+        }
+    };
+
+    // Effect to load background image from IndexedDB when needed
+    useEffect(() => {
+        const loadBackgroundImage = async () => {
+            if (actualCanvasBackgroundColor.startsWith('./src/assets/background_')) {
+                const filename = actualCanvasBackgroundColor.split('/').pop();
+                if (filename) {
+                    // Try IndexedDB first
+                    let cachedBase64 = await getImageFromDB(filename);
+                    // Fallback to localStorage
+                    if (!cachedBase64) {
+                        cachedBase64 = localStorage.getItem(`cached_bg_${filename}`);
+                    }
+                    setLoadedBackgroundImage(cachedBase64);
+                }
+            } else {
+                setLoadedBackgroundImage(null);
+            }
+        };
+
+        loadBackgroundImage();
+    }, [actualCanvasBackgroundColor]);
+
     // Generate background style
     const getCanvasBackgroundStyle = () => {
         if (isImageUrl(actualCanvasBackgroundColor)) {
             let imageUrl = actualCanvasBackgroundColor;
-            
-            // Check if this is a cached image reference
-            if (actualCanvasBackgroundColor.startsWith('./src/assets/background_')) {
-                const filename = actualCanvasBackgroundColor.split('/').pop();
-                const cachedBase64 = localStorage.getItem(`cached_bg_${filename}`);
-                if (cachedBase64) {
-                    imageUrl = cachedBase64; // This is already a data URL (data:image/jpeg;base64,...)
-                }
+
+            // Check if this is a cached image reference and we have loaded data
+            if (actualCanvasBackgroundColor.startsWith('./src/assets/background_') && loadedBackgroundImage) {
+                imageUrl = loadedBackgroundImage;
             }
-            
+
             return {
                 backgroundImage: `url("${imageUrl}")`,
                 backgroundSize: 'cover',
@@ -360,6 +423,7 @@ export default function App() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     pointerEvents: 'none',
+                    backgroundColor: 'rgba(0,0,0,.9)',
                     zIndex: 1,
                 }}>
                     <img

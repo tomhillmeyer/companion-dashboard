@@ -1,0 +1,188 @@
+.color-picker-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.color-picker-button {
+    width: 50px;
+    height: 40px;
+    border: 2px solid #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.color-picker-button:hover {
+    border-color: #61BAFA;
+}
+
+.color-picker-button:focus {
+    outline: none;
+    border-color: #61BAFA;
+    box-shadow: 0 0 0 2px rgba(97, 186, 250, 0.2);
+}
+
+.color-picker-preview {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    position: relative;
+}
+
+/* Checkered background for transparency */
+.color-picker-preview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        linear-gradient(45deg, #ccc 25%, transparent 25%), 
+        linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #ccc 75%), 
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    border-radius: 6px;
+    z-index: -1;
+}
+
+.color-picker-popover {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 10000;
+    background: #262626;
+    border: 1px solid #61BAFA;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    padding: 16px;
+    margin-top: 4px;
+    min-width: 200px;
+    color: white;
+    /* Mobile optimizations */
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* Adjust popover position on mobile to prevent off-screen issues */
+@media (max-width: 768px) {
+    .color-picker-popover {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        margin: 0;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: hidden;
+    }
+}
+
+.color-picker-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #444;
+}
+
+.color-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.color-input-row label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #61BAFA;
+    min-width: 40px;
+}
+
+.hex-input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    text-transform: uppercase;
+    background: #333;
+    color: white;
+}
+
+.hex-input:focus {
+    outline: none;
+    border-color: #61BAFA;
+}
+
+.alpha-input {
+    width: 50px;
+    padding: 4px 6px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: center;
+    background: #333;
+    color: white;
+}
+
+.alpha-input:focus {
+    outline: none;
+    border-color: #61BAFA;
+}
+
+.color-input-row span {
+    font-size: 12px;
+    color: #ccc;
+}
+
+
+/* Override react-colorful styles to match our theme */
+.react-colorful {
+    width: 200px;
+    height: 150px;
+    touch-action: none; /* Prevent touch scrolling/zooming conflicts */
+}
+
+.react-colorful__saturation {
+    border-radius: 6px 6px 0 0;
+    touch-action: none;
+}
+
+.react-colorful__hue,
+.react-colorful__alpha {
+    height: 16px;
+    border-radius: 8px;
+    touch-action: none;
+}
+
+.react-colorful__pointer {
+    width: 16px;
+    height: 16px;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    touch-action: none;
+    /* Improve touch target size for mobile */
+    padding: 4px;
+    margin: -4px;
+}
+
+.react-colorful__hue .react-colorful__pointer {
+    border: 2px solid white;
+}
+
+.react-colorful__alpha .react-colorful__pointer {
+    border: 2px solid white;
+}
+
+/* Color picker now uses dark theme by default to match the app */

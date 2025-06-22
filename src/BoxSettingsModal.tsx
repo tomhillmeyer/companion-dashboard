@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { BoxData, VariableColor } from './App';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
+import ColorPicker from './ColorPicker';
 
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
@@ -105,10 +106,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     placeholder="Value"
                                     className="value-input"
                                 />
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={vc.color}
-                                    onChange={(e) => updateVariableColor(field, vc.id, 'color', e.target.value)}
+                                    onChange={(color) => updateVariableColor(field, vc.id, 'color', color)}
                                     className="color-picker"
                                 />
                                 <button
@@ -143,10 +143,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <div className="setting-label">
                             <span className="setting-header">Default Background Color</span>
                             <div className="color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={formData.backgroundColor}
-                                    onChange={(e) => updateField('backgroundColor', e.target.value)}
+                                    onChange={(color) => updateField('backgroundColor', color)}
                                 />
                                 <input
                                     type="text"
@@ -165,10 +164,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <div className="setting-label">
                             <span className="setting-header">Default Border Color</span>
                             <div className="color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={formData.borderColor}
-                                    onChange={(e) => updateField('borderColor', e.target.value)}
+                                    onChange={(color) => updateField('borderColor', color)}
                                 />
                                 <input
                                     type="text"
@@ -242,10 +240,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
                             <div className="color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={formData.headerLabelColor}
-                                    onChange={(e) => updateField('headerLabelColor', e.target.value)}
+                                    onChange={(color) => updateField('headerLabelColor', color)}
                                 />
                                 <input
                                     type="text"
@@ -265,10 +262,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <div className="setting-label">
                             <span className="setting-header">Default Background Color</span>
                             <div className="color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={formData.headerColor}
-                                    onChange={(e) => updateField('headerColor', e.target.value)}
+                                    onChange={(color) => updateField('headerColor', color)}
                                 />
                                 <input
                                     type="text"
@@ -335,10 +331,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
                             <div className="color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={formData.leftLabelColor}
-                                    onChange={(e) => updateField('leftLabelColor', e.target.value)}
+                                    onChange={(color) => updateField('leftLabelColor', color)}
                                 />
                                 <input
                                     type="text"
@@ -404,10 +399,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
                             <div className="color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={formData.rightLabelColor}
-                                    onChange={(e) => updateField('rightLabelColor', e.target.value)}
+                                    onChange={(color) => updateField('rightLabelColor', color)}
                                 />
                                 <input
                                     type="text"

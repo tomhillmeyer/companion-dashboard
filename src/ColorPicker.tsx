@@ -1,0 +1,170 @@
+import { useState, useRef, useEffect } from 'react';
+import { RgbaColorPicker } from 'react-colorful';
+import './ColorPicker.css';
+
+interface ColorPickerProps {
+    value: string; // Can be hex (#ffffff) or rgba(255,255,255,1)
+    onChange: (color: string) => void;
+    className?: string;
+}
+
+// Convert hex to rgba object
+const hexToRgba = (hex: string, alpha: number = 1) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+        a: alpha
+    } : { r: 0, g: 0, b: 0, a: 1 };
+};
+
+// Convert rgba string to rgba object
+const rgbaStringToRgba = (rgbaString: string) => {
+    const match = rgbaString.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+    if (match) {
+        return {
+            r: parseInt(match[1], 10),
+            g: parseInt(match[2], 10),
+            b: parseInt(match[3], 10),
+            a: match[4] ? parseFloat(match[4]) : 1
+        };
+    }
+    return { r: 0, g: 0, b: 0, a: 1 };
+};
+
+// Convert rgba object to rgba string
+const rgbaToString = (rgba: { r: number; g: number; b: number; a: number }) => {
+    return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a})`;
+};
+
+// Convert rgba object to hex (ignoring alpha)
+const rgbaToHex = (rgba: { r: number; g: number; b: number; a: number }) => {
+    return `#${[rgba.r, rgba.g, rgba.b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('')}`;
+};
+
+export default function ColorPicker({ value, onChange, className = '' }: ColorPickerProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [color, setColor] = useState(() => {
+        if (value.startsWith('#')) {
+            return hexToRgba(value, 1);
+        } else if (value.startsWith('rgba') || value.startsWith('rgb')) {
+            return rgbaStringToRgba(value);
+        } else {
+            return { r: 0, g: 0, b: 0, a: 1 };
+        }
+    });
+
+    const pickerRef = useRef<HTMLDivElement>(null);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    // Update color when value prop changes
+    useEffect(() => {
+        if (value.startsWith('#')) {
+            setColor(hexToRgba(value, color.a)); // Keep existing alpha
+        } else if (value.startsWith('rgba') || value.startsWith('rgb')) {
+            setColor(rgbaStringToRgba(value));
+        }
+    }, [value]);
+
+    // Close picker when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (pickerRef.current &&
+                !pickerRef.current.contains(event.target as Node) &&
+                !buttonRef.current?.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isOpen]);
+
+    const handleColorChange = (newColor: { r: number; g: number; b: number; a: number }) => {
+        setColor(newColor);
+        onChange(rgbaToString(newColor));
+    };
+
+    const currentColorStyle = {
+        backgroundColor: rgbaToString(color)
+    };
+
+    return (
+        <div className={`color-picker-wrapper ${className}`}>
+            <button
+                ref={buttonRef}
+                type="button"
+                className="color-picker-button"
+                onClick={() => setIsOpen(!isOpen)}
+                style={currentColorStyle}
+                title={`Color: ${rgbaToString(color)}`}
+            >
+                <span className="color-picker-preview" style={currentColorStyle}></span>
+            </button>
+
+            {isOpen && (
+                <div ref={pickerRef} className="color-picker-popover">
+                    <RgbaColorPicker
+                        color={color}
+                        onChange={handleColorChange}
+                    />
+                    <div className="color-picker-info">
+                        <div className="color-input-row">
+                            <label>Hex:</label>
+                            <input
+                                type="text"
+                                value={rgbaToHex(color)}
+                                onChange={(e) => {
+                                    const hexValue = e.target.value;
+                                    if (/^#[0-9A-Fa-f]{6}$/.test(hexValue)) {
+                                        const newColor = hexToRgba(hexValue, color.a);
+                                        handleColorChange(newColor);
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    // Try to fix incomplete hex values on blur
+                                    let hexValue = e.target.value.replace('#', '');
+                                    if (/^[0-9A-Fa-f]{3}$/.test(hexValue)) {
+                                        // Convert 3-char hex to 6-char hex
+                                        hexValue = hexValue.split('').map(c => c + c).join('');
+                                        const newColor = hexToRgba('#' + hexValue, color.a);
+                                        handleColorChange(newColor);
+                                    } else if (/^[0-9A-Fa-f]{6}$/.test(hexValue)) {
+                                        const newColor = hexToRgba('#' + hexValue, color.a);
+                                        handleColorChange(newColor);
+                                    }
+                                }}
+                                className="hex-input"
+                                placeholder="#ffffff"
+                            />
+                        </div>
+                        <div className="color-input-row">
+                            <label>Alpha:</label>
+                            <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={Math.round(color.a * 100)}
+                                onChange={(e) => {
+                                    const alpha = Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) / 100;
+                                    handleColorChange({ ...color, a: alpha });
+                                }}
+                                className="alpha-input"
+                            />
+                            <span>%</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}

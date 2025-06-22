@@ -390,7 +390,8 @@
     min-width: 80px;
 }
 
-.color-picker {
+/* Updated for ColorPicker component */
+.color-picker .color-picker-button {
     width: 40px;
     height: 32px;
     flex-shrink: 0;

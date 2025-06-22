@@ -6,6 +6,7 @@ import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
 import type { VariableColor } from './App';
+import ColorPicker from './ColorPicker';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -56,6 +57,10 @@ export default function SettingsMenu({
     // Background image file input ref
     const backgroundImageInputRef = useRef<HTMLInputElement>(null);
 
+    // Config load dialog state
+    const [showConfigDialog, setShowConfigDialog] = useState(false);
+    const [pendingConfig, setPendingConfig] = useState<any>(null);
+
     const downloadConfig = async () => {
         try {
             // Get data from localStorage
@@ -71,7 +76,11 @@ export default function SettingsMenu({
                 canvasSettingsObj.canvasBackgroundColorText.startsWith('./src/assets/background_')) {
                 const filename = canvasSettingsObj.canvasBackgroundColorText.split('/').pop();
                 if (filename) {
-                    backgroundImageData = localStorage.getItem(`cached_bg_${filename}`);
+                    // Try IndexedDB first, then localStorage fallback
+                    backgroundImageData = await getImageFromDB(filename);
+                    if (!backgroundImageData) {
+                        backgroundImageData = localStorage.getItem(`cached_bg_${filename}`);
+                    }
                 }
             }
 
@@ -84,6 +93,11 @@ export default function SettingsMenu({
                 canvas_settings: canvasSettingsObj,
                 background_image_data: backgroundImageData
             };
+
+            console.log('Config export:', {
+                hasBackgroundImage: !!backgroundImageData,
+                backgroundImageSize: backgroundImageData ? `${(backgroundImageData.length / 1024 / 1024).toFixed(2)}MB` : 'none'
+            });
 
             const dataStr = JSON.stringify(config, null, 2);
             const fileName = `companion-dashboard-${new Date().toISOString().split('T')[0]}.json`;
@@ -154,38 +168,9 @@ export default function SettingsMenu({
                     throw new Error('Invalid config format: missing or invalid boxes array');
                 }
 
-                // Clear current localStorage
-                localStorage.removeItem('boxes');
-                localStorage.removeItem('companion_connection_url');
-                localStorage.removeItem('canvas_settings');
-
-                // Set new data
-                localStorage.setItem('boxes', JSON.stringify(config.boxes));
-                if (config.companion_connection_url) {
-                    localStorage.setItem('companion_connection_url', config.companion_connection_url);
-                }
-                if (config.canvas_settings) {
-                    localStorage.setItem('canvas_settings', JSON.stringify(config.canvas_settings));
-                }
-
-                // Restore background image if it exists
-                if (config.background_image_data && config.canvas_settings?.canvasBackgroundColorText) {
-                    const backgroundPath = config.canvas_settings.canvasBackgroundColorText;
-                    if (backgroundPath.startsWith('./src/assets/background_')) {
-                        const filename = backgroundPath.split('/').pop();
-                        if (filename) {
-                            localStorage.setItem(`cached_bg_${filename}`, config.background_image_data);
-                        }
-                    }
-                }
-
-                // Update parent state
-                onConfigRestore(config.boxes, config.companion_connection_url || '', config.canvas_settings);
-
-                // Update local input state
-                setInputUrl(config.companion_connection_url || '');
-
-                console.log('Config restored successfully');
+                // Store config and show dialog
+                setPendingConfig(config);
+                setShowConfigDialog(true);
                 //alert('Configuration restored successfully!');
 
             } catch (error) {
@@ -397,8 +382,8 @@ export default function SettingsMenu({
         backgroundImageInputRef.current?.click();
     };
 
-    const compressImage = (file: File, maxWidth: number = 1920, maxHeight: number = 1080, quality: number = 1): Promise<string> => {
-        return new Promise((resolve) => {
+    const compressImage = (file: File, maxWidth: number = 1920, maxHeight: number = 1080, quality: number = 0.9): Promise<string> => {
+        return new Promise((resolve, reject) => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
@@ -421,14 +406,15 @@ export default function SettingsMenu({
                 canvas.width = width;
                 canvas.height = height;
 
-                // Draw and compress
+                // Draw and compress image
                 ctx?.drawImage(img, 0, 0, width, height);
-
-                // Convert to base64 data URL
                 const base64DataUrl = canvas.toDataURL('image/jpeg', quality);
+                
+                console.log(`Compressed image with quality: ${quality}, estimated size: ${(base64DataUrl.length * 0.75 / 1024 / 1024).toFixed(2)}MB`);
                 resolve(base64DataUrl);
             };
 
+            img.onerror = () => reject(new Error('Failed to load image'));
             img.src = URL.createObjectURL(file);
         });
     };
@@ -445,6 +431,17 @@ export default function SettingsMenu({
 
 
         try {
+            console.log(`Original file size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+            
+            // Check current localStorage usage
+            let totalSize = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    totalSize += localStorage[key].length;
+                }
+            }
+            console.log(`Current localStorage usage: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+            
             // Compress image for better performance on mobile
             const base64DataUrl = await compressImage(file);
 
@@ -464,10 +461,24 @@ export default function SettingsMenu({
             // Set the new background image path
             onCanvasBackgroundColorTextChange?.(`./src/assets/${cachedFilename}`);
 
-            // Store the base64 data URL
-            localStorage.setItem(`cached_bg_${cachedFilename}`, base64DataUrl);
-
-            console.log('Background image compressed and cached:', cachedFilename);
+            // Store the base64 data URL in IndexedDB (much larger capacity)
+            try {
+                await storeImageInDB(cachedFilename, base64DataUrl);
+                console.log('Background image stored in IndexedDB:', cachedFilename);
+            } catch (dbError) {
+                console.error('IndexedDB storage failed, falling back to localStorage:', dbError);
+                // Fallback to localStorage with compression
+                try {
+                    localStorage.setItem(`cached_bg_${cachedFilename}`, base64DataUrl);
+                    console.log('Background image stored in localStorage (fallback)');
+                } catch (quotaError) {
+                    if (quotaError instanceof DOMException && quotaError.name === 'QuotaExceededError') {
+                        throw new Error(`Storage quota exceeded. Current localStorage usage: ${(totalSize / 1024 / 1024).toFixed(2)}MB. Please clear some data or use a smaller image.`);
+                    } else {
+                        throw quotaError;
+                    }
+                }
+            }
         } catch (error) {
             console.error('Failed to cache background image:', error);
             alert('Failed to set background image.');
@@ -477,19 +488,179 @@ export default function SettingsMenu({
         event.target.value = '';
     };
 
-    const clearCachedBackground = () => {
+    // IndexedDB helper functions for larger image storage
+    const openImageDB = (): Promise<IDBDatabase> => {
+        return new Promise((resolve, reject) => {
+            // Use a higher version to avoid conflicts
+            const request = indexedDB.open('CompanionDashboardImages', 3);
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result;
+                if (!db.objectStoreNames.contains('images')) {
+                    db.createObjectStore('images', { keyPath: 'id' });
+                }
+            };
+        });
+    };
+
+    const storeImageInDB = async (filename: string, base64Data: string): Promise<void> => {
+        try {
+            const db = await openImageDB();
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.put({ id: filename, data: base64Data });
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    console.log('Successfully stored image in IndexedDB');
+                    resolve();
+                };
+            });
+        } catch (error) {
+            console.error('Error in storeImageInDB:', error);
+            throw error;
+        }
+    };
+
+    const getImageFromDB = async (filename: string): Promise<string | null> => {
+        try {
+            const db = await openImageDB();
+            const transaction = db.transaction(['images'], 'readonly');
+            const store = transaction.objectStore('images');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.get(filename);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    const result = request.result;
+                    resolve(result ? result.data : null);
+                };
+            });
+        } catch (error) {
+            console.error('Error getting image from IndexedDB:', error);
+            return null;
+        }
+    };
+
+    const deleteImageFromDB = async (filename: string): Promise<void> => {
+        try {
+            const db = await openImageDB();
+            const transaction = db.transaction(['images'], 'readwrite');
+            const store = transaction.objectStore('images');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.delete(filename);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve();
+            });
+        } catch (error) {
+            console.error('Error deleting image from IndexedDB:', error);
+        }
+    };
+
+    const clearCachedBackground = async () => {
         const currentBgText = canvasBackgroundColorText || '';
         if (currentBgText.startsWith('./src/assets/background_')) {
             // Clear the cached image reference
             onCanvasBackgroundColorTextChange?.('');
 
-            // Remove cached image from localStorage
+            // Remove cached image from both localStorage and IndexedDB
             const filename = currentBgText.split('/').pop();
             if (filename) {
                 localStorage.removeItem(`cached_bg_${filename}`);
+                await deleteImageFromDB(filename);
                 console.log('Cleared cached background image:', filename);
             }
         }
+    };
+
+    const handleAddBoxesOnly = () => {
+        if (!pendingConfig) return;
+
+        // Add boxes only - generate new UUIDs
+        const existingBoxes = localStorage.getItem('boxes');
+        const currentBoxes = existingBoxes ? JSON.parse(existingBoxes) : [];
+
+        // Create new boxes with fresh UUIDs
+        const newBoxes = pendingConfig.boxes.map((box: any) => ({
+            ...box,
+            id: uuid(), // Generate new UUID for each box
+            frame: {
+                ...box.frame,
+                translate: [
+                    box.frame.translate[0] + 20, // Offset slightly to avoid overlap
+                    box.frame.translate[1] + 20
+                ]
+            }
+        }));
+
+        const mergedBoxes = [...currentBoxes, ...newBoxes];
+        localStorage.setItem('boxes', JSON.stringify(mergedBoxes));
+
+        // Update parent state with merged boxes, keep existing settings
+        onConfigRestore(mergedBoxes, connectionUrl, null);
+
+        console.log('Boxes added successfully with new UUIDs');
+        setShowConfigDialog(false);
+        setPendingConfig(null);
+    };
+
+    const handleReplaceEntireConfig = async () => {
+        if (!pendingConfig) return;
+
+        // Ask for confirmation
+        const confirmReplace = window.confirm(
+            "Are you sure you want to replace the entire configuration? This cannot be undone."
+        );
+
+        if (confirmReplace) {
+            // Clear current localStorage
+            localStorage.removeItem('boxes');
+            localStorage.removeItem('companion_connection_url');
+            localStorage.removeItem('canvas_settings');
+
+            // Set new data
+            localStorage.setItem('boxes', JSON.stringify(pendingConfig.boxes));
+            if (pendingConfig.companion_connection_url) {
+                localStorage.setItem('companion_connection_url', pendingConfig.companion_connection_url);
+            }
+            if (pendingConfig.canvas_settings) {
+                localStorage.setItem('canvas_settings', JSON.stringify(pendingConfig.canvas_settings));
+            }
+
+            // Restore background image if it exists
+            if (pendingConfig.background_image_data && pendingConfig.canvas_settings?.canvasBackgroundColorText) {
+                const backgroundPath = pendingConfig.canvas_settings.canvasBackgroundColorText;
+                if (backgroundPath.startsWith('./src/assets/background_')) {
+                    const filename = backgroundPath.split('/').pop();
+                    if (filename) {
+                        try {
+                            await storeImageInDB(filename, pendingConfig.background_image_data);
+                            console.log('Background image restored to IndexedDB');
+                        } catch (error) {
+                            // Fallback to localStorage
+                            localStorage.setItem(`cached_bg_${filename}`, pendingConfig.background_image_data);
+                            console.log('Background image restored to localStorage (fallback)');
+                        }
+                    }
+                }
+            }
+
+            // Update parent state
+            onConfigRestore(pendingConfig.boxes, pendingConfig.companion_connection_url || '', pendingConfig.canvas_settings);
+
+            // Update local input state
+            setInputUrl(pendingConfig.companion_connection_url || '');
+
+            console.log('Full configuration replaced successfully');
+        }
+
+        setShowConfigDialog(false);
+        setPendingConfig(null);
     };
 
     return (
@@ -531,10 +702,9 @@ export default function SettingsMenu({
                         <div className="canvas-color-container">
                             <span className="canvas-color-label">Default Background</span>
                             <div className="canvas-color-input-group">
-                                <input
-                                    type="color"
+                                <ColorPicker
                                     value={canvasBackgroundColor || '#000000'}
-                                    onChange={(e) => onCanvasBackgroundColorChange?.(e.target.value)}
+                                    onChange={(color) => onCanvasBackgroundColorChange?.(color)}
                                     className="canvas-color-picker"
                                 />
                                 <input
@@ -583,10 +753,9 @@ export default function SettingsMenu({
                                             placeholder="Value"
                                             className="canvas-value-input"
                                         />
-                                        <input
-                                            type="color"
+                                        <ColorPicker
                                             value={vc.color}
-                                            onChange={(e) => updateCanvasVariableColor(vc.id, 'color', e.target.value)}
+                                            onChange={(color) => updateCanvasVariableColor(vc.id, 'color', color)}
                                             className="canvas-variable-color-picker"
                                         />
                                         <button
@@ -647,6 +816,41 @@ export default function SettingsMenu({
                     <span className='footer'>v1.1.1<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
+
+            {/* Config Load Dialog */}
+            {showConfigDialog && (
+                <div className="config-dialog-overlay">
+                    <div className="config-dialog">
+                        <h3>Load Configuration</h3>
+                        <p>How would you like to load this configuration?</p>
+                        <div className="config-dialog-buttons">
+                            <button
+                                className="config-dialog-button add-boxes"
+                                onClick={handleAddBoxesOnly}
+                            >
+                                Add Boxes Only
+                                <span className="button-description">Keep current settings</span>
+                            </button>
+                            <button
+                                className="config-dialog-button replace-all"
+                                onClick={handleReplaceEntireConfig}
+                            >
+                                Replace Everything
+                                <span className="button-description">Replace all settings</span>
+                            </button>
+                        </div>
+                        <button
+                            className="config-dialog-cancel"
+                            onClick={() => {
+                                setShowConfigDialog(false);
+                                setPendingConfig(null);
+                            }}
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
