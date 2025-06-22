@@ -492,7 +492,7 @@ export default function Box({
                 <div className="box-container">
                     <div
                         ref={targetRef}
-                        className="box"
+                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (e.altKey) {
@@ -520,10 +520,10 @@ export default function Box({
                         style={{
                             width: `${frame.width}px`,
                             height: `${frame.height}px`,
-                            transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px)`,
                             ...getBackgroundStyle(),
                             border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues)}`,
-                            borderRadius: boxData.noBorder ? '10px' : `15px`,
+                            WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
+                            transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             zIndex: boxData.zIndex,
                         }}
                     >

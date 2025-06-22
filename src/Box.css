@@ -1,6 +1,5 @@
 /* Box.css */
 .box {
-    border-radius: 15px;
     display: flex;
     flex-direction: column;
     flex-wrap: wrap;
@@ -13,6 +12,14 @@
     left: 0px;
     overflow: hidden;
     line-height: 1;
+}
+
+.box.with-border {
+    border-radius: 15px;
+}
+
+.box.no-border {
+    border-radius: 10px;
 }
 
 
