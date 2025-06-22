@@ -346,6 +346,18 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     Contain
                                 </label>
                             </div>
+                            <div className="opacity-controls">
+                                <label htmlFor="background-opacity">Background Image Opacity (%)</label>
+                                <input
+                                    id="background-opacity"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={formData.backgroundImageOpacity || 100}
+                                    onChange={(e) => updateField('backgroundImageOpacity', parseInt(e.target.value) || 100)}
+                                    className="opacity-input"
+                                />
+                            </div>
                         </div>
                     </div>
 

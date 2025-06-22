@@ -96,10 +96,19 @@
 input[type="text"] {
     width: 250%;
     height: 40px;
-    border-radius: 8px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: white;
     text-align: center;
     font-size: 18px;
+    padding: 8px 12px;
     box-sizing: border-box;
+}
+
+input[type="text"]:focus {
+    outline: none;
+    border-color: #61BAFA;
 }
 
 button {
@@ -167,13 +176,20 @@ a {
 .canvas-color-text {
     flex: 1;
     height: 40px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: white;
     padding: 0 12px;
     font-size: 14px;
     text-align: left;
     box-sizing: border-box;
     width: auto;
+}
+
+.canvas-color-text:focus {
+    outline: none;
+    border-color: #61BAFA;
 }
 
 .canvas-variable-color-section {
@@ -193,11 +209,19 @@ a {
 .canvas-value-input {
     flex: 1;
     height: 35px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: white;
     padding: 0 8px;
     font-size: 13px;
     box-sizing: border-box;
+}
+
+.canvas-variable-input:focus,
+.canvas-value-input:focus {
+    outline: none;
+    border-color: #61BAFA;
 }
 
 /* Updated for ColorPicker component */
@@ -287,6 +311,41 @@ a {
 
 .canvas-clear-button:hover {
     background-color: #dc2626;
+}
+
+.canvas-opacity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.canvas-opacity-controls label {
+    color: #61BAFA;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 150px;
+}
+
+.canvas-opacity-input {
+    width: 80px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: white;
+    padding: 0 12px;
+    font-size: 14px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.canvas-opacity-input:focus {
+    outline: none;
+    border-color: #61BAFA;
 }
 
 .config-dialog-overlay {

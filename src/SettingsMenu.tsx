@@ -29,7 +29,9 @@ export default function SettingsMenu({
     canvasBackgroundVariableColors,
     onCanvasBackgroundColorChange,
     onCanvasBackgroundColorTextChange,
-    onCanvasBackgroundVariableColorsChange
+    onCanvasBackgroundVariableColorsChange,
+    canvasBackgroundImageOpacity,
+    onCanvasBackgroundImageOpacityChange
 }: {
     onNewBox: () => void;
     connectionUrl: string;
@@ -42,6 +44,8 @@ export default function SettingsMenu({
     onCanvasBackgroundColorChange?: (color: string) => void;
     onCanvasBackgroundColorTextChange?: (text: string) => void;
     onCanvasBackgroundVariableColorsChange?: (variableColors: VariableColor[]) => void;
+    canvasBackgroundImageOpacity?: number;
+    onCanvasBackgroundImageOpacityChange?: (opacity: number) => void;
 }) {
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
@@ -732,6 +736,18 @@ export default function SettingsMenu({
                                         Clear Image
                                     </button>
                                 )}
+                            </div>
+                            <div className="canvas-opacity-controls">
+                                <label htmlFor="canvas-background-opacity">Background Image Opacity (%)</label>
+                                <input
+                                    id="canvas-background-opacity"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={canvasBackgroundImageOpacity || 100}
+                                    onChange={(e) => onCanvasBackgroundImageOpacityChange?.(parseInt(e.target.value) || 100)}
+                                    className="canvas-opacity-input"
+                                />
                             </div>
                         </div>
                         <div className="canvas-variable-color-container">

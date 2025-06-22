@@ -335,26 +335,27 @@ export default function Box({
     const getBackgroundStyle = () => {
         try {
             const actualBackgroundColor = resolveBoxBackgroundColor();
+            const opacity = (boxData.backgroundImageOpacity || 100) / 100;
             
             // Check if the resolved background color is actually an image URL
             if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
                 return {
-                    backgroundImage: `url("${actualBackgroundColor}")`,
-                    backgroundSize: boxData.backgroundImageSize || 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundColor: boxData.backgroundColor || '#262626', // Fallback color behind the image
+                    backgroundColor: boxData.backgroundColor || '#262626', // Always use solid color as base
+                    position: 'relative' as const,
+                    '--background-image': `url("${actualBackgroundColor}")`,
+                    '--background-size': boxData.backgroundImageSize || 'cover',
+                    '--background-opacity': opacity
                 };
             }
             
             // If there's a manually set background image, use it
             if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
                 return {
-                    backgroundImage: `url(${loadedBackgroundImage})`,
-                    backgroundSize: boxData.backgroundImageSize || 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundColor: actualBackgroundColor || '#262626', // Fallback color behind the image
+                    backgroundColor: boxData.backgroundColor || '#262626', // Always use solid color as base
+                    position: 'relative' as const,
+                    '--background-image': `url(${loadedBackgroundImage})`,
+                    '--background-size': boxData.backgroundImageSize || 'cover',
+                    '--background-opacity': opacity
                 };
             }
             
@@ -492,7 +493,7 @@ export default function Box({
                 <div className="box-container">
                     <div
                         ref={targetRef}
-                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'}`}
+                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'} ${(loadedBackgroundImage || (resolveBoxBackgroundColor() && isImageUrl(resolveBoxBackgroundColor()))) ? 'has-background-image' : ''}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (e.altKey) {

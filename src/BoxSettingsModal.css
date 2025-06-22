@@ -485,6 +485,38 @@
     accent-color: #61BAFA;
 }
 
+.opacity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.opacity-controls label {
+    color: #61BAFA;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 150px;
+}
+
+.opacity-input {
+    width: 80px;
+    padding: 8px 12px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #1a1a1a;
+    color: white;
+    text-align: center;
+    font-size: 14px;
+}
+
+.opacity-input:focus {
+    outline: none;
+    border-color: #61BAFA;
+}
+
 @media (max-width: 768px) {
     .modal-content {
         width: 95%;

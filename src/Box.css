@@ -22,6 +22,23 @@
     border-radius: 10px;
 }
 
+/* Background image with opacity support */
+.box.has-background-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: var(--background-image);
+    background-size: var(--background-size, cover);
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: var(--background-opacity, 1);
+    z-index: -1;
+    border-radius: 10px;
+}
+
 
 .moveable-line {
     background: #2dbcff !important;
@@ -76,6 +93,28 @@
     box-sizing: border-box;
     overflow: auto;
     flex-shrink: 0;
+}
+
+/* Header border radius to match parent box - accounting for border width */
+.box.with-border .header {
+    border-top-left-radius: 10px;  /* 15px box radius - 5px border = 10px */
+    border-top-right-radius: 10px;
+}
+
+.box.no-border .header {
+    border-top-left-radius: 10px;  /* Same as box radius since no border */
+    border-top-right-radius: 10px;
+}
+
+/* Content container border radius for bottom - accounting for border width */
+.box.with-border .content-container {
+    border-bottom-left-radius: 10px;  /* 15px box radius - 5px border = 10px */
+    border-bottom-right-radius: 10px;
+}
+
+.box.no-border .content-container {
+    border-bottom-left-radius: 10px;  /* Same as box radius since no border */
+    border-bottom-right-radius: 10px;
 }
 
 .content-container {

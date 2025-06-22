@@ -1,0 +1,20 @@
+/* Canvas background image with opacity support */
+.canvas-container {
+    position: relative;
+}
+
+.canvas-container.has-background-image::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: var(--canvas-background-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: var(--canvas-background-opacity, 1);
+    z-index: 0;
+    pointer-events: none;
+}

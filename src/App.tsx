@@ -28,6 +28,7 @@ export interface BoxData {
     backgroundVariableColors: VariableColor[];
     backgroundImage?: string;
     backgroundImageSize?: 'cover' | 'contain';
+    backgroundImageOpacity?: number;
     borderColor: string;
     borderColorText: string;
     borderVariableColors: VariableColor[];
@@ -97,6 +98,9 @@ export default function App() {
             if (canvasSettings.canvasBackgroundVariableColors !== undefined) {
                 setCanvasBackgroundVariableColors(canvasSettings.canvasBackgroundVariableColors);
             }
+            if (canvasSettings.canvasBackgroundImageOpacity !== undefined) {
+                setCanvasBackgroundImageOpacity(canvasSettings.canvasBackgroundImageOpacity);
+            }
         }
     };
 
@@ -162,6 +166,18 @@ export default function App() {
         }
         return [];
     });
+    const [canvasBackgroundImageOpacity, setCanvasBackgroundImageOpacity] = useState<number>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundImageOpacity || 100;
+            } catch (error) {
+                return 100;
+            }
+        }
+        return 100;
+    });
 
     // Save boxes to localStorage whenever boxes state changes
     useEffect(() => {
@@ -173,10 +189,11 @@ export default function App() {
         const canvasSettings = {
             canvasBackgroundColor,
             canvasBackgroundColorText,
-            canvasBackgroundVariableColors
+            canvasBackgroundVariableColors,
+            canvasBackgroundImageOpacity
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
-    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors]);
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity]);
 
     // Collect canvas variable names for fetching
     const getCanvasVariableNames = () => {
@@ -315,8 +332,17 @@ export default function App() {
         loadBackgroundImage();
     }, [actualCanvasBackgroundColor]);
 
-    // Generate background style
+    // Generate background style with layered backgrounds
     const getCanvasBackgroundStyle = () => {
+        const baseColor = resolveCanvasColor(
+            canvasBackgroundVariableColors,
+            canvasBackgroundColorText,
+            canvasBackgroundColor
+        );
+        
+        const opacity = canvasBackgroundImageOpacity / 100;
+        
+        // Check if the resolved background color is actually an image URL
         if (isImageUrl(actualCanvasBackgroundColor)) {
             let imageUrl = actualCanvasBackgroundColor;
 
@@ -324,16 +350,27 @@ export default function App() {
             if (actualCanvasBackgroundColor && typeof actualCanvasBackgroundColor === 'string' && actualCanvasBackgroundColor.startsWith('./src/assets/background_') && loadedBackgroundImage) {
                 imageUrl = loadedBackgroundImage;
             }
-
+            
             return {
-                backgroundImage: `url("${imageUrl}")`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center center',
-                backgroundRepeat: 'no-repeat'
+                backgroundColor: canvasBackgroundColor, // Always use the solid color picker value as base
+                position: 'relative' as const,
+                '--canvas-background-image': `url("${imageUrl}")`,
+                '--canvas-background-opacity': opacity
             };
         }
+        
+        // If there's a manually uploaded background image, use it
+        if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
+            return {
+                backgroundColor: canvasBackgroundColor, // Always use the solid color picker value as base
+                position: 'relative' as const,
+                '--canvas-background-image': `url(${loadedBackgroundImage})`,
+                '--canvas-background-opacity': opacity
+            };
+        }
+        
         return {
-            backgroundColor: actualCanvasBackgroundColor
+            backgroundColor: baseColor
         };
     };
 
@@ -398,12 +435,17 @@ export default function App() {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [selectedBoxId]);
 
+    const canvasStyle = getCanvasBackgroundStyle();
+    const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
+    
     return (
-        <div style={{
-            minHeight: '100vh',
-            width: '100%',
-            ...getCanvasBackgroundStyle()
-        }}>
+        <div 
+            className={`canvas-container ${hasBackgroundImage ? 'has-background-image' : ''}`}
+            style={{
+                minHeight: '100vh',
+                width: '100%',
+                ...canvasStyle
+            }}>
             <TitleBar />
             <SettingsMenu
                 onNewBox={createNewBox}
@@ -417,6 +459,8 @@ export default function App() {
                 onCanvasBackgroundColorChange={setCanvasBackgroundColor}
                 onCanvasBackgroundColorTextChange={setCanvasBackgroundColorText}
                 onCanvasBackgroundVariableColorsChange={setCanvasBackgroundVariableColors}
+                canvasBackgroundImageOpacity={canvasBackgroundImageOpacity}
+                onCanvasBackgroundImageOpacityChange={setCanvasBackgroundImageOpacity}
             />
             {boxes.length === 0 ? (
                 <div style={{
