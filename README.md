@@ -27,14 +27,14 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 | ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-example.png) | 
 |:--:| 
 | An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names.
-*See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/pip-box-example)* |
+*See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/pip-box-example).* |
 
 ## Use cases
 
-### Yamaha audio consoles
-Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors.
-
-![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png)
+| ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png) | 
+|:--:| 
+| **Yamaha Audio Consoles**
+Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors. |
 
 ## How to use
 
