@@ -20,11 +20,13 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 
 | ![Spotify Example](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo.png) | 
 |:--:| 
-| *You can display information from apps like Spotify, complete with album art. Learn how this specific layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).* |
+| *You can display information from apps like Spotify, complete with album art.
+See how this specific layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).* |
 
 | ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-example.png) | 
 |:--:| 
-| *An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names. Learn how this specific layout goes together [here](https://wearecreativeland.com/tools/dashboard/pip-box-example)* |
+| *An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names.
+See how this specific layout goes together [here](https://wearecreativeland.com/tools/dashboard/pip-box-example)* |
 
 ## Use cases
 
