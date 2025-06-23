@@ -829,7 +829,7 @@ export default function SettingsMenu({
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.2.0<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.2.1<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 

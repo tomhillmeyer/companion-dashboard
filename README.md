@@ -3,11 +3,35 @@
 
 This is an application for displaying variables from Bitfocus Companion.
 
-## Example Layouts
-![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/sample-layout.png)
-![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo.png)
-### [^ Click here to see how to build this Spotify demo](https://wearecreativeland.com/tools/dashboard/spotify-example)
+## Installation
+Download the latest releases [here](https://github.com/tomhillmeyer/companion-dashboard/releases) for Mac (ARM), Mac (Intel), and Windows (x64).
 
+There is a TestFlight beta test for iPhone and iPad. To be added to the beta, contact me at [tom@tomhillmeyer.com](mailto:tom@tomhillmeyer.com).
+
+## Example Layouts
+
+| ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/sample-layout.png) | 
+|:--:| 
+| *The original inspiration, displaying variables for a live event environment with PowerPoint, video playback, and switching.* |
+
+| ![Timer Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/demos/dashboard-timer/dashboard-timer-dashboard.png) | 
+|:--:| 
+| *Use Companion Dashboard to create a custom speaker timer. Check out this demo [here](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer).* |
+
+| ![Spotify Example](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo.png) | 
+|:--:| 
+| *You can display information from apps like Spotify, complete with album art. Learn how this specific layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).* |
+
+| ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-demo.png) | 
+|:--:| 
+| *An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names.* |
+
+## Use cases
+
+### Yamaha audio consoles
+Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors.
+
+![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png)
 
 ## How to use
 
@@ -77,18 +101,11 @@ NOTE: This functionality is now essentially built into Companion Dashboard nativ
 ## Demos
 [Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
 
-## Use cases
 
-### Yamaha audio consoles
-Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors.
 
-![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png)
+## Philosophy
 
-## Potential Roadmap
-
-- Grouping boxes together, both to move/resize them as well as more options to visually group boxes together
-- Connect to multiple Companion instances at the same time
-- Use Companion variables to set box size, position, and the other attributes
+This is a dashboard application that leverages the fact that Companion translates connections into a uniform variable format. The intention is to avoid re-creating features of Companion, such as logic/triggers and third-party connections. Some logic will be included for ease of use, such as variable colors, but for the most part if it can be accomplished in Companion then it does not need to be accomplished here, at least in this iteration of Dashboard.
 
 ## Acknowledgements
 
