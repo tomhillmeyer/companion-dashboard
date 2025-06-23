@@ -22,7 +22,7 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 |:--:| 
 | *You can display information from apps like Spotify, complete with album art. Learn how this specific layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).* |
 
-| ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-demo.png) | 
+| ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-example.png) | 
 |:--:| 
 | *An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names.* |
 
@@ -85,12 +85,6 @@ All text fields support HTML tags and the following markdown syntax.
     - `<iframe src="https://website.com" width="100px" height="100px" />`
 
 
-
-## Custom Variable / Trigger Demo
-[A tutorial on how to use Custom Variables & Triggers in Companion to change the color on a box in Companion Dashboard](https://wearecreativeland.com/tools/dashboard/custom-variables-triggers)
-
-NOTE: This functionality is now essentially built into Companion Dashboard natively, however in some more complicated circumstances may need to be necessary.
-
 ## Tips & Tricks
 - Text fields automatically concatenate, so you can include multiple variables and strings
 - Option + Click a box and it will duplicate
@@ -101,7 +95,7 @@ NOTE: This functionality is now essentially built into Companion Dashboard nativ
 ## Demos
 [Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
 
-
+[Custom Variables & Triggers](https://wearecreativeland.com/tools/dashboard/custom-variables-triggers)
 
 ## Philosophy
 
