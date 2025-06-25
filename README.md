@@ -14,6 +14,10 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 |:--:| 
 | The original inspiration, displaying variables for a live event environment with PowerPoint, video playback, and switching. |
 
+| ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/video-switcher-example.png) | 
+|:--:| 
+| An example of how a video switcher can use it to keep track of inputs and outputs. |
+
 | ![Timer Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/demos/dashboard-timer/dashboard-timer-dashboard.png) | 
 |:--:| 
 | Use Companion Dashboard to create a custom speaker timer. 
