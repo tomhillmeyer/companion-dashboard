@@ -61,7 +61,8 @@
 }
 
 /* Larger touch targets for mobile devices */
-@media (max-width: 768px), (pointer: coarse) {
+@media (max-width: 768px),
+(pointer: coarse) {
     .moveable-control {
         width: 28px !important;
         height: 28px !important;
@@ -69,7 +70,7 @@
         margin-left: -14px !important;
         margin-top: -14px !important;
     }
-    
+
 }
 
 /* Extra large for touch devices */
@@ -97,23 +98,23 @@
 
 /* Header border radius to match parent box - accounting for border width */
 .box.with-border .header {
-    border-top-left-radius: 10px;  /* 15px box radius - 5px border = 10px */
-    border-top-right-radius: 10px;
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
 }
 
 .box.no-border .header {
-    border-top-left-radius: 10px;  /* Same as box radius since no border */
-    border-top-right-radius: 10px;
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
 }
 
 /* Content container border radius for bottom - accounting for border width */
 .box.with-border .content-container {
-    border-bottom-left-radius: 10px;  /* 15px box radius - 5px border = 10px */
+    border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
 }
 
 .box.no-border .content-container {
-    border-bottom-left-radius: 10px;  /* Same as box radius since no border */
+    border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
 }
 

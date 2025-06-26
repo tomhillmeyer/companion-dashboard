@@ -20,19 +20,19 @@ const MarkdownContent = React.memo(({
     // Check for media content that should not have padding (images, iframes, etc.)
     const isTextOnly = (() => {
         if (!content || typeof content !== 'string') return true;
-        
+
         try {
             // Check for HTML image/media tags
             const hasImageTags = /<img[^>]*>/i.test(content);
             const hasIframeTags = /<iframe[^>]*>/i.test(content);
             const hasVideoTags = /<video[^>]*>/i.test(content);
-            
+
             // Check for markdown image syntax that will become HTML
             const hasMarkdownImages = /!\[.*?\]\(.*?\)/.test(content);
-            
+
             // Only media content should have no padding
             const hasMediaContent = hasImageTags || hasIframeTags || hasVideoTags || hasMarkdownImages;
-            
+
             // Everything else (including formatted text, links, etc.) gets padding
             return !hasMediaContent;
         } catch (error) {
@@ -143,18 +143,18 @@ export default function Box({
     // Function to check if a string is an image URL
     const isImageUrl = (text: string): boolean => {
         if (!text || typeof text !== 'string') return false;
-        
+
         try {
             // Check for HTTP/HTTPS URLs
             if (text.startsWith('http://') || text.startsWith('https://')) {
                 return true;
             }
-            
+
             // Check for data URLs
             if (text.startsWith('data:image/')) {
                 return true;
             }
-            
+
             // Check for file extensions
             const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
             return imageExtensions.some(ext => text.toLowerCase().endsWith(ext));
@@ -190,7 +190,7 @@ export default function Box({
                                 setLoadedBackgroundImage(imageData);
                                 return;
                             }
-                            
+
                             // Fallback to localStorage
                             const cachedData = localStorage.getItem(`cached_bg_${filename}`);
                             if (cachedData) {
@@ -216,7 +216,7 @@ export default function Box({
     const getImageFromDB = async (filename: string): Promise<string | null> => {
         try {
             const request = indexedDB.open('CompanionDashboardImages', 3);
-            
+
             return new Promise((resolve, reject) => {
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => {
@@ -224,7 +224,7 @@ export default function Box({
                     const transaction = db.transaction(['images'], 'readonly');
                     const store = transaction.objectStore('images');
                     const getRequest = store.get(filename);
-                    
+
                     getRequest.onerror = () => reject(getRequest.error);
                     getRequest.onsuccess = () => {
                         const result = getRequest.result;
@@ -336,7 +336,7 @@ export default function Box({
         try {
             const actualBackgroundColor = resolveBoxBackgroundColor();
             const opacity = (boxData.backgroundImageOpacity || 100) / 100;
-            
+
             // Check if the resolved background color is actually an image URL
             if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
                 return {
@@ -347,7 +347,7 @@ export default function Box({
                     '--background-opacity': opacity
                 };
             }
-            
+
             // If there's a manually set background image, use it
             if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
                 return {
@@ -358,7 +358,7 @@ export default function Box({
                     '--background-opacity': opacity
                 };
             }
-            
+
             // Otherwise, use as background color
             return {
                 backgroundColor: actualBackgroundColor || '#262626',
