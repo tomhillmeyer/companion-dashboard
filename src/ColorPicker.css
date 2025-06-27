@@ -4,6 +4,10 @@
     z-index: 1000;
 }
 
+.color-picker-wrapper:has(.color-picker-popover) {
+    z-index: 10001;
+}
+
 .color-picker-button {
     width: 50px;
     height: 40px;
