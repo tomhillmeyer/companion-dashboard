@@ -340,7 +340,7 @@ export default function Box({
             // Check if the resolved background color is actually an image URL
             if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
                 return {
-                    backgroundColor: boxData.backgroundColor || '#262626', // Always use solid color as base
+                    backgroundColor: 'transparent', // Use transparent to support alpha
                     position: 'relative' as const,
                     '--background-image': `url("${actualBackgroundColor}")`,
                     '--background-size': boxData.backgroundImageSize || 'cover',
@@ -351,7 +351,7 @@ export default function Box({
             // If there's a manually set background image, use it
             if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
                 return {
-                    backgroundColor: boxData.backgroundColor || '#262626', // Always use solid color as base
+                    backgroundColor: 'transparent', // Use transparent to support alpha
                     position: 'relative' as const,
                     '--background-image': `url(${loadedBackgroundImage})`,
                     '--background-size': boxData.backgroundImageSize || 'cover',

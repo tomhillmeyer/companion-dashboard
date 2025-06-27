@@ -113,7 +113,12 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
                 // Draw and compress image
                 ctx?.drawImage(img, 0, 0, width, height);
-                const base64DataUrl = canvas.toDataURL('image/jpeg', quality);
+                
+                // Preserve PNG format for images with transparency
+                const isPNG = file.type === 'image/png';
+                const base64DataUrl = isPNG 
+                    ? canvas.toDataURL('image/png')
+                    : canvas.toDataURL('image/jpeg', quality);
 
                 resolve(base64DataUrl);
             };
