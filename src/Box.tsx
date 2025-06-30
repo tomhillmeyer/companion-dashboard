@@ -384,67 +384,23 @@ export default function Box({
         rightLabelColorTextSource: variableValues.rightLabelColorTextSource || boxData.rightLabelColorText,
     };*/
 
-    // HTML versions for markdown rendering - need to parse even the fallback values
-    const parseMarkdownFallback = (text: string): string => {
-        try {
-            if (!text || typeof text !== 'string') return '';
-
-            // First, store escaped characters with unique placeholders
-            const escapedChars: { [key: string]: string } = {};
-            let placeholderIndex = 0;
-
-            let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (char) => {
-                const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
-                escapedChars[placeholder] = char;
-                placeholderIndex++;
-                return placeholder;
-            });
-
-            // Now apply markdown formatting
-            processedText = processedText
-                // Bold: **text** or __text__
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/__(.*?)__/g, '<strong>$1</strong>')
-                // Italic: *text* or _text_
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/_(.*?)_/g, '<em>$1</em>')
-                // Images: ![alt](url)
-                .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
-                // Links: [text](url)
-                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-                // Line breaks
-                .replace(/\n/g, '<br>');
-
-            // Finally, restore escaped characters
-            Object.keys(escapedChars).forEach(placeholder => {
-                if (typeof processedText === 'string' && typeof placeholder === 'string') {
-                    processedText = processedText.replace(new RegExp(placeholder, 'g'), escapedChars[placeholder]);
-                }
-            });
-
-            return processedText || '';
-        } catch (error) {
-            console.error('Error in parseMarkdownFallback:', error);
-            return text || '';
-        }
-    };
 
     const displayHtmlLabels = useMemo(() => {
         try {
             return {
-                header: variableHtmlValues.headerLabelSource || parseMarkdownFallback(boxData.headerLabelSource || ''),
-                left: variableHtmlValues.leftLabelSource || parseMarkdownFallback(boxData.leftLabelSource || ''),
-                right: variableHtmlValues.rightLabelSource || parseMarkdownFallback(boxData.rightLabelSource || ''),
+                header: variableHtmlValues.headerLabelSource || '',
+                left: variableHtmlValues.leftLabelSource || '',
+                right: variableHtmlValues.rightLabelSource || '',
             };
         } catch (error) {
             console.error('Error in displayHtmlLabels:', error);
             return {
-                header: boxData.headerLabelSource || '',
-                left: boxData.leftLabelSource || '',
-                right: boxData.rightLabelSource || '',
+                header: '',
+                left: '',
+                right: '',
             };
         }
-    }, [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource, boxData.headerLabelSource, boxData.leftLabelSource, boxData.rightLabelSource]);
+    }, [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource]);
 
     // Memoize styles to prevent unnecessary re-renders
     const headerStyle = useMemo(() => ({

@@ -87,14 +87,19 @@ export const useVariableFetcher = (
 
                         if (response.ok) {
                             const data = await response.text(); // API returns plain text
-                            processedString = processedString.replace(`$(${variable})`, data);
+                            // If API returns the variable name itself or null, treat as empty
+                            if (data === variable || data === 'null' || data === null || data === undefined) {
+                                processedString = processedString.replace(`$(${variable})`, ``);
+                            } else {
+                                processedString = processedString.replace(`$(${variable})`, data);
+                            }
                         } else {
                             console.warn(`Failed to fetch ${variable}:`, response.status);
-                            processedString = processedString.replace(`$(${variable})`, `[${variable}]`);
+                            processedString = processedString.replace(`$(${variable})`, ``);
                         }
                     } catch (error) {
                         console.error(`Error fetching ${variable}:`, error);
-                        processedString = processedString.replace(`$(${variable})`, `[${variable}]`);
+                        processedString = processedString.replace(`$(${variable})`, ``);
                     }
                 }
 
