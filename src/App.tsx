@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
@@ -178,6 +178,8 @@ export default function App() {
         }
         return 100;
     });
+
+    const settingsMenuRef = useRef<{ toggle: () => void }>(null);
 
     // Save boxes to localStorage whenever boxes state changes
     useEffect(() => {
@@ -419,15 +421,26 @@ export default function App() {
     };
 
 
-    // Handle keyboard shortcuts for deleting selected box
+    // Handle keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            // Delete selected box
             if (selectedBoxId && (event.key === 'Backspace' || event.key === 'Delete')) {
                 // Prevent default behavior (like navigating back in browser)
                 event.preventDefault();
                 // Delete the selected box
                 setBoxes((prev) => prev.filter((b) => b.id !== selectedBoxId));
                 setSelectedBoxId(null);
+            }
+            // Create new box with Cmd+N (Mac) or Ctrl+N (Windows/Linux)
+            else if (event.key === 'n' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                createNewBox();
+            }
+            // Toggle settings menu with Cmd+, (Mac) or Ctrl+, (Windows/Linux)
+            else if (event.key === ',' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                settingsMenuRef.current?.toggle();
             }
         };
 
@@ -448,6 +461,7 @@ export default function App() {
             }}>
             <TitleBar />
             <SettingsMenu
+                ref={settingsMenuRef}
                 onNewBox={createNewBox}
                 connectionUrl={companionBaseUrl}
                 onConnectionUrlChange={setCompanionBaseUrl}

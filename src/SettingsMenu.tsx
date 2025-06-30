@@ -1,5 +1,5 @@
 // SettingsMenu.tsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { FaAngleRight } from "react-icons/fa6";
 import { FaAngleLeft } from "react-icons/fa6";
 import { FaCirclePlus } from "react-icons/fa6";
@@ -18,21 +18,7 @@ import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your
 
 const STORAGE_KEY = 'companion_connection_url';
 
-export default function SettingsMenu({
-    onNewBox,
-    connectionUrl,
-    onConnectionUrlChange,
-    onConfigRestore,
-    onDeleteAllBoxes,
-    canvasBackgroundColor,
-    canvasBackgroundColorText,
-    canvasBackgroundVariableColors,
-    onCanvasBackgroundColorChange,
-    onCanvasBackgroundColorTextChange,
-    onCanvasBackgroundVariableColorsChange,
-    canvasBackgroundImageOpacity,
-    onCanvasBackgroundImageOpacityChange
-}: {
+const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox: () => void;
     connectionUrl: string;
     onConnectionUrlChange: (url: string) => void;
@@ -46,7 +32,23 @@ export default function SettingsMenu({
     onCanvasBackgroundVariableColorsChange?: (variableColors: VariableColor[]) => void;
     canvasBackgroundImageOpacity?: number;
     onCanvasBackgroundImageOpacityChange?: (opacity: number) => void;
-}) {
+    onToggle?: () => void;
+}>(({
+    onNewBox,
+    connectionUrl,
+    onConnectionUrlChange,
+    onConfigRestore,
+    onDeleteAllBoxes,
+    canvasBackgroundColor,
+    canvasBackgroundColorText,
+    canvasBackgroundVariableColors,
+    onCanvasBackgroundColorChange,
+    onCanvasBackgroundColorTextChange,
+    onCanvasBackgroundVariableColorsChange,
+    canvasBackgroundImageOpacity,
+    onCanvasBackgroundImageOpacityChange,
+    onToggle
+}, ref) => {
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -355,7 +357,12 @@ export default function SettingsMenu({
 
     const toggleClass = () => {
         setIsActive(prev => !prev);
+        onToggle?.();
     };
+
+    useImperativeHandle(ref, () => ({
+        toggle: toggleClass
+    }));
 
     const addCanvasVariableColor = () => {
         const variableColors = canvasBackgroundVariableColors || [];
@@ -874,4 +881,6 @@ export default function SettingsMenu({
             )}
         </div>
     );
-}
+});
+
+export default SettingsMenu;
