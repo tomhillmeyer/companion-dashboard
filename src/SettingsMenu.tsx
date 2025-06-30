@@ -419,10 +419,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
                 // Draw and compress image
                 ctx?.drawImage(img, 0, 0, width, height);
-                
+
                 // Preserve PNG format for images with transparency
                 const isPNG = file.type === 'image/png';
-                const base64DataUrl = isPNG 
+                const base64DataUrl = isPNG
                     ? canvas.toDataURL('image/png')
                     : canvas.toDataURL('image/jpeg', quality);
 
@@ -841,7 +841,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.2.1<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.2.2<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 

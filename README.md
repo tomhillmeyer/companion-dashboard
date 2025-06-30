@@ -81,6 +81,7 @@ All text fields support HTML tags and the following markdown syntax.
     - ```*Text*```
     - ```_Text_```
 - New Line
+    - `\n`
     - `<br>`
 - Image
     - `!(Sample Image)[https://website.com/image.png]`
@@ -94,7 +95,9 @@ All text fields support HTML tags and the following markdown syntax.
 
 ## Tips & Tricks
 - Text fields automatically concatenate, so you can include multiple variables and strings
-- Option + Click a box and it will duplicate
+- Option + click a box and it will duplicate
+- Command/control + n will make a new box
+- Command/control + , is a shortcut to open/close the settings menu
 - Select a box and hit "backspace" or "delete" to delete
 - Swipe left on touch screens to open the Settings menu
 - Use `&nbsp` in some circumstances where a white space isn't recognized
