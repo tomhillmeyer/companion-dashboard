@@ -44,6 +44,8 @@ const parseMarkdown = (text: string): string => {
         .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
         // Links: [text](url)
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+        // Handle literal \n strings
+        .replace(/\\n/g, '\n')
         // Line breaks
         .replace(/\n/g, '<br>');
 
