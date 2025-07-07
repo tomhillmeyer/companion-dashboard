@@ -80,6 +80,98 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [showConfigDialog, setShowConfigDialog] = useState(false);
     const [pendingConfig, setPendingConfig] = useState<any>(null);
 
+    // Platform detection - web server available on desktop (Electron) and dev mode
+    const isDesktop = typeof window !== 'undefined' && (window as any).electronAPI;
+    const isDev = import.meta.env.DEV;
+    const showWebServer = isDesktop || isDev;
+
+    // Web server state
+    const [webServerPort, setWebServerPort] = useState<number>(8100);
+    const [webServerRunning, setWebServerRunning] = useState<boolean>(false);
+    const [webServerStatus, setWebServerStatus] = useState<string>('Stopped');
+    const [webServerEndpoints, setWebServerEndpoints] = useState<any[]>([]);
+
+    // Web server functions
+    const startWebServer = async () => {
+        try {
+            if (isDev && !isDesktop) {
+                setWebServerStatus('Web server not available in dev mode without Electron');
+                return;
+            }
+            // @ts-ignore - electronAPI is available via preload script
+            const result = await window.electronAPI?.webServer.start(webServerPort);
+            if (result?.success) {
+                setWebServerRunning(true);
+                setWebServerStatus(`Running on port ${result.port}`);
+                localStorage.setItem('web_server_port', webServerPort.toString());
+                console.log(`Web server started on port ${result.port}`);
+            } else {
+                setWebServerStatus(`Failed: ${result?.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Failed to start web server:', error);
+            setWebServerStatus('Failed to start');
+        }
+    };
+
+    const stopWebServer = async () => {
+        try {
+            // @ts-ignore - electronAPI is available via preload script
+            const result = await window.electronAPI?.webServer.stop();
+            if (result?.success) {
+                setWebServerRunning(false);
+                setWebServerStatus('Stopped');
+                console.log('Web server stopped');
+            } else {
+                setWebServerStatus(`Failed to stop: ${result?.error || 'Unknown error'}`);
+            }
+        } catch (error) {
+            console.error('Failed to stop web server:', error);
+            setWebServerStatus('Failed to stop');
+        }
+    };
+
+    const checkWebServerStatus = async () => {
+        try {
+            if (isDev && !isDesktop) {
+                setWebServerStatus('Web server not available in dev mode without Electron');
+                return;
+            }
+            // @ts-ignore - electronAPI is available via preload script
+            const status = await window.electronAPI?.webServer.getStatus();
+            if (status) {
+                setWebServerRunning(status.isRunning);
+                setWebServerStatus(status.isRunning ? `Running on port ${status.port}` : 'Stopped');
+                setWebServerEndpoints(status.endpoints || []);
+                if (status.isRunning) {
+                    setWebServerPort(status.port);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to check web server status:', error);
+        }
+    };
+
+
+    // Load saved web server port on mount
+    useEffect(() => {
+        if (showWebServer) {
+            const savedPort = localStorage.getItem('web_server_port');
+            if (savedPort) {
+                setWebServerPort(parseInt(savedPort, 10));
+            }
+            checkWebServerStatus();
+        }
+    }, [showWebServer]);
+
+    // Check web server status periodically
+    useEffect(() => {
+        if (showWebServer) {
+            const interval = setInterval(checkWebServerStatus, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [showWebServer]);
+
     const downloadConfig = async () => {
         try {
             // Get data from localStorage
@@ -1017,6 +1109,59 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             CLEAR ALL
                         </button>
                     </div>
+
+                    {showWebServer && (
+                        <>
+                            <span className='section-label'>WEB SERVER</span>
+                            <div className='menu-section'>
+                                <div className="web-server-controls">
+                                    <div className="web-server-port-container">
+                                        <label htmlFor="web-server-port">Port:</label>
+                                        <input
+                                            id="web-server-port"
+                                            type="number"
+                                            min="1024"
+                                            max="65535"
+                                            value={webServerPort}
+                                            onChange={(e) => {
+                                                const port = parseInt(e.target.value, 10);
+                                                if (!isNaN(port)) {
+                                                    setWebServerPort(port);
+                                                }
+                                            }}
+                                            disabled={webServerRunning}
+                                            style={{ width: '80px', marginLeft: '10px' }}
+                                        />
+                                    </div>
+                                    <div className="web-server-actions">
+                                        {webServerRunning ? (
+                                            <button onClick={stopWebServer} className="web-server-stop">
+                                                STOP SERVER
+                                            </button>
+                                        ) : (
+                                            <button onClick={startWebServer} className="web-server-start">
+                                                START SERVER
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="web-server-status">
+                                        Status: {webServerStatus}
+                                    </div>
+                                    {webServerRunning && webServerEndpoints.length > 0 && (
+                                        <div className="web-server-endpoints">
+                                            <div className="endpoints-list">
+                                                {webServerEndpoints.map((endpoint, index) => (
+                                                    <div key={index} className="endpoint-item">
+                                                        <code>{endpoint.url}</code>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     <span className='section-label'>CONFIGURATION</span>
                     <div className='menu-section'>

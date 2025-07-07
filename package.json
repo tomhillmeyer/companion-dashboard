@@ -25,14 +25,17 @@
     "@capacitor/filesystem": "^7.1.1",
     "@capacitor/ios": "^7.0.0",
     "@capacitor/share": "^7.0.1",
+    "cors": "^2.8.5",
     "electron-notarize": "^1.2.2",
+    "express": "^5.1.0",
     "react": "^19.1.0",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "react-moveable": "^0.56.0",
     "react-selecto": "^1.26.3",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
@@ -61,7 +64,11 @@
     "productName": "Companion Dashboard",
     "files": [
       "dist/**/*",
+      "public/web-dashboard.html",
+      "src/assets/**/*",
       "src/main.js",
+      "src/webServer.js",
+      "src/preload.js",
       "package.json"
     ],
     "directories": {

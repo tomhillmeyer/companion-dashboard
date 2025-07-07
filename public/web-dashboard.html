@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Companion Dashboard - Web View</title>
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            height: 100%;
+            font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-weight: 400;
+            line-height: 1.5;
+            font-synthesis: none;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100vw;
+            min-height: 100vh;
+            background-color: #000000;
+        }
+
+        .canvas-container.has-background-image::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: var(--canvas-background-image);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: var(--canvas-background-opacity, 1);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .box {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            border-radius: 8px;
+            overflow: hidden;
+            user-select: none;
+            transition: none;
+        }
+
+        .box.has-background-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: var(--background-image);
+            background-size: var(--background-size, cover);
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: var(--background-opacity, 1);
+            z-index: -1;
+        }
+
+        .box.no-border {
+            border: none;
+        }
+
+        .box.with-border {
+            border: 5px solid;
+        }
+
+        .header {
+            width: 100%;
+            height: 30px;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .content-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            height: calc(100% - 30px);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .text-only-content {
+            padding: 10px;
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1000;
+        }
+
+        .status-connected {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .status-disconnected {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .status-connecting {
+            background-color: #ff9800;
+            color: white;
+        }
+
+        .watermark {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            z-index: 1000;
+        }
+
+        /* Link styling to match Electron app */
+        a {
+            font-weight: 500;
+            color: #00f0ff;
+            text-decoration: inherit;
+        }
+
+        a:hover {
+            color: #00f0ff;
+        }
+
+        /* Strong and emphasis styling */
+        strong {
+            font-weight: 700;
+        }
+
+        em {
+            font-style: italic;
+        }
+
+        /* Media queries for responsive design */
+        @media (max-width: 768px) {
+            .content {
+                padding: 5px;
+                font-size: 14px;
+            }
+
+            .header {
+                height: 25px;
+                min-height: 25px;
+                font-size: 14px;
+            }
+
+            .content-container {
+                height: calc(100% - 25px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="dashboard-container" class="canvas-container">
+        <div class="status-indicator status-connecting" id="status-indicator">
+            Connecting...
+        </div>
+        <div class="watermark">
+            Companion Dashboard - Web View
+        </div>
+    </div>
+
+    <script>
+        class WebDashboard {
+            constructor() {
+                this.ws = null;
+                this.reconnectInterval = null;
+                this.statusIndicator = document.getElementById('status-indicator');
+                this.container = document.getElementById('dashboard-container');
+                this.currentState = {
+                    boxes: [],
+                    canvasSettings: {},
+                    connections: []
+                };
+                this.variableValues = {};
+                this.htmlVariableValues = {};
+                this.connect();
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}`;
+
+                try {
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => {
+                        console.log('Connected to dashboard server');
+                        this.updateStatus('connected');
+                        if (this.reconnectInterval) {
+                            clearInterval(this.reconnectInterval);
+                            this.reconnectInterval = null;
+                        }
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const message = JSON.parse(event.data);
+                            this.handleMessage(message);
+                        } catch (error) {
+                            console.error('Error parsing message:', error);
+                        }
+                    };
+
+                    this.ws.onclose = () => {
+                        console.log('Disconnected from dashboard server');
+                        this.updateStatus('disconnected');
+                        this.startReconnect();
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateStatus('disconnected');
+                    };
+                } catch (error) {
+                    console.error('Error creating WebSocket:', error);
+                    this.updateStatus('disconnected');
+                    this.startReconnect();
+                }
+            }
+
+            startReconnect() {
+                if (this.reconnectInterval) return;
+
+                this.updateStatus('connecting');
+                this.reconnectInterval = setInterval(() => {
+                    console.log('Attempting to reconnect...');
+                    this.connect();
+                }, 3000);
+            }
+
+            updateStatus(status) {
+                this.statusIndicator.className = `status-indicator status-${status}`;
+                this.statusIndicator.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            }
+
+            handleMessage(message) {
+                if (message.type === 'state') {
+                    this.currentState = message.data;
+                    if (message.data.variableValues) {
+                        this.variableValues = message.data.variableValues;
+                    }
+                    if (message.data.htmlVariableValues) {
+                        this.htmlVariableValues = message.data.htmlVariableValues;
+                    }
+                    this.renderDashboard();
+                } else if (message.type === 'variables') {
+                    this.variableValues = message.data;
+                    this.renderDashboard();
+                }
+            }
+
+            renderDashboard() {
+                // Clear existing boxes
+                this.container.innerHTML = `
+                    <div class="status-indicator status-connected" id="status-indicator">Connected</div>
+                    <div class="watermark">Companion Dashboard - Web View</div>
+                `;
+                this.statusIndicator = document.getElementById('status-indicator');
+
+                // Apply canvas background
+                this.applyCanvasBackground();
+
+                // Render boxes
+                if (this.currentState.boxes) {
+                    this.currentState.boxes.forEach(box => {
+                        this.renderBox(box);
+                    });
+                }
+            }
+
+            applyCanvasBackground() {
+                const canvas = this.currentState.canvasSettings || {};
+                let backgroundColor = canvas.canvasBackgroundColor || '#000000';
+                let backgroundColorText = canvas.canvasBackgroundColorText || '';
+                let backgroundImage = null;
+                let opacity = (canvas.canvasBackgroundImageOpacity || 100) / 100;
+
+                // Check variable colors
+                if (canvas.canvasBackgroundVariableColors) {
+                    for (const varColor of canvas.canvasBackgroundVariableColors) {
+                        if (varColor.variable && varColor.value) {
+                            const variableValue = this.variableValues[varColor.variable] || '';
+                            if (variableValue === varColor.value) {
+                                backgroundColor = varColor.color;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Check if backgroundColorText resolves to a color or image
+                if (backgroundColorText) {
+                    const resolvedValue = this.variableValues[backgroundColorText] || backgroundColorText;
+                    if (this.isImageUrl(resolvedValue)) {
+                        backgroundImage = this.resolveImageUrl(resolvedValue);
+                    } else {
+                        backgroundColor = resolvedValue;
+                    }
+                }
+
+                // Also check if backgroundColorText itself is an image path
+                if (!backgroundImage && backgroundColorText && this.isImageUrl(backgroundColorText)) {
+                    backgroundImage = this.resolveImageUrl(backgroundColorText);
+                }
+
+                // Apply styles
+                this.container.style.backgroundColor = backgroundColor;
+
+                if (backgroundImage) {
+                    this.container.classList.add('has-background-image');
+                    this.container.style.setProperty('--canvas-background-image', `url("${backgroundImage}")`);
+                    this.container.style.setProperty('--canvas-background-opacity', opacity);
+                } else {
+                    this.container.classList.remove('has-background-image');
+                }
+            }
+
+            isImageUrl(text) {
+                if (!text || typeof text !== 'string') return false;
+                return text.startsWith('http://') ||
+                    text.startsWith('https://') ||
+                    text.startsWith('data:image/') ||
+                    text.startsWith('./src/assets/') ||
+                    /\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i.test(text);
+            }
+
+            resolveImageUrl(imagePath) {
+                if (!imagePath) return null;
+
+                // Handle data URLs directly
+                if (imagePath.startsWith('data:')) {
+                    return imagePath;
+                }
+
+                // Handle http/https URLs directly
+                if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+                    return imagePath;
+                }
+
+                // Handle local asset paths
+                if (imagePath.startsWith('./src/assets/')) {
+                    const filename = imagePath.replace('./src/assets/', '');
+                    return `/api/image/${filename}`;
+                }
+
+                // Handle built-in static assets
+                if (imagePath.startsWith('/assets/')) {
+                    return imagePath;
+                }
+
+                return imagePath;
+            }
+
+            renderBox(boxData) {
+                const box = document.createElement('div');
+                box.className = `box ${boxData.noBorder ? 'no-border' : 'with-border'}`;
+
+                // Position and size
+                box.style.left = `${boxData.frame.translate[0]}px`;
+                box.style.top = `${boxData.frame.translate[1]}px`;
+                box.style.width = `${boxData.frame.width}px`;
+                box.style.height = `${boxData.frame.height}px`;
+                box.style.zIndex = boxData.zIndex || 1;
+
+                // Background
+                this.applyBoxBackground(box, boxData);
+
+                // Border
+                if (!boxData.noBorder) {
+                    const borderColor = this.resolveColor(
+                        boxData.borderVariableColors,
+                        boxData.borderColorText,
+                        boxData.borderColor
+                    );
+                    box.style.borderColor = borderColor;
+                }
+
+                // Header
+                if (boxData.headerLabelVisible) {
+                    const header = document.createElement('div');
+                    header.className = 'header';
+                    header.style.backgroundColor = this.resolveColor(
+                        boxData.headerVariableColors,
+                        boxData.headerColorText,
+                        boxData.headerColor
+                    );
+                    header.style.color = this.resolveColor(
+                        boxData.headerLabelVariableColors,
+                        boxData.headerLabelColorText,
+                        boxData.headerLabelColor
+                    );
+                    header.style.fontSize = `${boxData.headerLabelSize}px`;
+
+                    const headerContent = this.htmlVariableValues[boxData.headerLabelSource] || this.variableValues[boxData.headerLabelSource] || boxData.headerLabelSource || '';
+                    header.innerHTML = this.processContent(headerContent);
+
+                    box.appendChild(header);
+                }
+
+                // Content container
+                const contentContainer = document.createElement('div');
+                contentContainer.className = 'content-container';
+
+                // Left content
+                if (boxData.leftVisible) {
+                    const leftContent = document.createElement('div');
+                    leftContent.className = 'content';
+                    leftContent.style.color = this.resolveColor(
+                        boxData.leftLabelVariableColors,
+                        boxData.leftLabelColorText,
+                        boxData.leftLabelColor
+                    );
+                    leftContent.style.fontSize = `${boxData.leftLabelSize}px`;
+                    leftContent.style.justifyContent = boxData.rightVisible ? 'flex-start' : 'center';
+                    leftContent.style.textAlign = boxData.rightVisible ? 'left' : 'center';
+
+                    const leftText = this.htmlVariableValues[boxData.leftLabelSource] || this.variableValues[boxData.leftLabelSource] || boxData.leftLabelSource || '';
+                    leftContent.innerHTML = this.processContent(leftText);
+
+                    contentContainer.appendChild(leftContent);
+                }
+
+                // Right content
+                if (boxData.rightVisible) {
+                    const rightContent = document.createElement('div');
+                    rightContent.className = 'content';
+                    rightContent.style.color = this.resolveColor(
+                        boxData.rightLabelVariableColors,
+                        boxData.rightLabelColorText,
+                        boxData.rightLabelColor
+                    );
+                    rightContent.style.fontSize = `${boxData.rightLabelSize}px`;
+                    rightContent.style.justifyContent = boxData.leftVisible ? 'flex-end' : 'center';
+                    rightContent.style.textAlign = boxData.leftVisible ? 'right' : 'center';
+
+                    const rightText = this.htmlVariableValues[boxData.rightLabelSource] || this.variableValues[boxData.rightLabelSource] || boxData.rightLabelSource || '';
+                    rightContent.innerHTML = this.processContent(rightText);
+
+                    contentContainer.appendChild(rightContent);
+                }
+
+                box.appendChild(contentContainer);
+                this.container.appendChild(box);
+            }
+
+            applyBoxBackground(box, boxData) {
+                const backgroundColor = this.resolveBoxBackgroundColor(boxData);
+                const opacity = (boxData.backgroundImageOpacity || 100) / 100;
+
+                if (this.isImageUrl(backgroundColor)) {
+                    box.classList.add('has-background-image');
+                    const resolvedImageUrl = this.resolveImageUrl(backgroundColor);
+                    box.style.setProperty('--background-image', `url("${resolvedImageUrl}")`);
+                    box.style.setProperty('--background-size', boxData.backgroundImageSize || 'cover');
+                    box.style.setProperty('--background-opacity', opacity);
+                    box.style.backgroundColor = 'transparent';
+                } else if (boxData.backgroundImage) {
+                    box.classList.add('has-background-image');
+                    const resolvedImageUrl = this.resolveImageUrl(boxData.backgroundImage);
+                    box.style.setProperty('--background-image', `url("${resolvedImageUrl}")`);
+                    box.style.setProperty('--background-size', boxData.backgroundImageSize || 'cover');
+                    box.style.setProperty('--background-opacity', opacity);
+                    box.style.backgroundColor = backgroundColor || '#262626';
+                } else {
+                    box.style.backgroundColor = backgroundColor || '#262626';
+                }
+            }
+
+            resolveBoxBackgroundColor(boxData) {
+                // Check variable colors first
+                if (boxData.backgroundVariableColors) {
+                    for (const varColor of boxData.backgroundVariableColors) {
+                        if (varColor.variable && varColor.value) {
+                            const variableValue = this.variableValues[varColor.variable] || '';
+                            if (variableValue === varColor.value) {
+                                return varColor.color;
+                            }
+                        }
+                    }
+                }
+
+                // Check backgroundColorText
+                if (boxData.backgroundColorText) {
+                    return this.variableValues[boxData.backgroundColorText] || boxData.backgroundColorText;
+                }
+
+                // Fall back to picker color
+                return boxData.backgroundColor;
+            }
+
+            resolveColor(variableColors, colorText, fallbackColor) {
+                // Check variable colors first
+                if (variableColors) {
+                    for (const varColor of variableColors) {
+                        if (varColor.variable && varColor.value) {
+                            const variableValue = this.variableValues[varColor.variable] || '';
+                            if (variableValue === varColor.value) {
+                                return varColor.color;
+                            }
+                        }
+                    }
+                }
+
+                // Check colorText
+                if (colorText) {
+                    return this.variableValues[colorText] || colorText;
+                }
+
+                // Fall back to picker color
+                return fallbackColor;
+            }
+
+            parseMarkdown(text) {
+                if (!text || typeof text !== 'string') return '';
+
+                return text
+                    // Bold: **text** or __text__
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+
+                    // Italic: *text* or _text_
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    .replace(/_(.*?)_/g, '<em>$1</em>')
+
+                    // Images: ![alt](url)
+                    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="width: auto; height: 100%;" />')
+
+                    // Links: [text](url)
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+
+                    // Line breaks
+                    .replace(/\\n/g, '\n')
+                    .replace(/\n/g, '<br>');
+            }
+
+            processContent(content) {
+                if (!content) return '';
+
+                // Parse markdown formatting
+                const processedContent = this.parseMarkdown(content);
+
+                // Check if content contains HTML/markdown that should not have padding
+                const hasMedia = /<img[^>]*>|<iframe[^>]*>|<video[^>]*>|!\[.*?\]\(.*?\)/i.test(processedContent);
+
+                if (hasMedia) {
+                    return processedContent;
+                } else {
+                    return `<span class="text-only-content">${processedContent}</span>`;
+                }
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new WebDashboard();
+        });
+    </script>
+</body>
+
+</html>

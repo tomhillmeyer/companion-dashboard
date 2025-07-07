@@ -531,4 +531,119 @@ a {
     background-color: #047857 !important;
 }
 
+/* Web server controls */
+.web-server-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.web-server-port-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.web-server-port-container label {
+    color: #61BAFA;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 40px;
+}
+
+.web-server-port-container input[type="number"] {
+    width: 80px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: white;
+    padding: 0 12px;
+    font-size: 14px;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.web-server-port-container input[type="number"]:focus {
+    outline: none;
+    border-color: #61BAFA;
+}
+
+.web-server-port-container input[type="number"]:disabled {
+    background-color: #333;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.web-server-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.web-server-start {
+    background-color: #059669 !important;
+    color: white;
+}
+
+.web-server-start:hover {
+    background-color: #047857 !important;
+}
+
+.web-server-stop {
+    background-color: #dc2626 !important;
+    color: white;
+}
+
+.web-server-stop:hover {
+    background-color: #b91c1c !important;
+}
+
+.web-server-status {
+    font-size: 12px;
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.web-server-url {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.web-server-url code {
+    background-color: #1a1a1a;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    color: #61BAFA;
+}
+
+/* Web server endpoints styling */
+.web-server-endpoints {
+    margin-top: 10px;
+}
+
+.endpoints-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.endpoint-item {
+    margin-bottom: 6px;
+}
+
+.endpoint-item code {
+    padding: 4px 6px;
+    background-color: #1a1a1a;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    color: #61BAFA;
+    font-size: 11px;
+    display: block;
+    word-break: break-all;
+}
+
 @media (max-width: 768px) {}

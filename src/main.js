@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import DashboardWebServer from './webServer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === 'development';
@@ -39,6 +40,7 @@ function saveWindowState(windowState) {
 }
 
 let mainWindow;
+let webServer = new DashboardWebServer();
 
 function createWindow() {
     const windowState = loadWindowState();
@@ -53,7 +55,8 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
-            enableRemoteModule: false
+            enableRemoteModule: false,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
 
@@ -105,5 +108,48 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
+    }
+});
+
+// IPC handlers for web server
+ipcMain.handle('web-server-start', async (event, port) => {
+    try {
+        webServer.start(port);
+        return { success: true, port: webServer.getPort() };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('web-server-stop', async () => {
+    try {
+        webServer.stop();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('web-server-status', async () => {
+    return {
+        isRunning: webServer.isServerRunning(),
+        port: webServer.getPort(),
+        endpoints: webServer.isServerRunning() ? webServer.getEndpoints() : []
+    };
+});
+
+ipcMain.handle('web-server-update-state', async (event, state) => {
+    try {
+        webServer.updateState(state);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+// Clean up on app quit
+app.on('before-quit', () => {
+    if (webServer.isServerRunning()) {
+        webServer.stop();
     }
 });

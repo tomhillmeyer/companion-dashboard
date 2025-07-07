@@ -239,8 +239,114 @@ export default function App() {
         return allVariables;
     };
 
-    // Use variable fetcher for canvas colors
-    const { values: canvasVariableValues } = useVariableFetcher(companionBaseUrl, getCanvasVariableNames(), connections);
+
+    // Collect all variable names from all boxes and canvas
+    const getAllVariableNames = () => {
+        const allVariables: { [key: string]: string } = {};
+
+        // Add canvas variable names
+        Object.assign(allVariables, getCanvasVariableNames());
+
+        // Add box variable names
+        boxes.forEach(box => {
+            // Add label sources
+            if (box.headerLabelSource) allVariables[box.headerLabelSource] = box.headerLabelSource;
+            if (box.leftLabelSource) allVariables[box.leftLabelSource] = box.leftLabelSource;
+            if (box.rightLabelSource) allVariables[box.rightLabelSource] = box.rightLabelSource;
+
+            // Add color text sources
+            if (box.backgroundColorText) allVariables[box.backgroundColorText] = box.backgroundColorText;
+            if (box.borderColorText) allVariables[box.borderColorText] = box.borderColorText;
+            if (box.headerColorText) allVariables[box.headerColorText] = box.headerColorText;
+            if (box.headerLabelColorText) allVariables[box.headerLabelColorText] = box.headerLabelColorText;
+            if (box.leftLabelColorText) allVariables[box.leftLabelColorText] = box.leftLabelColorText;
+            if (box.rightLabelColorText) allVariables[box.rightLabelColorText] = box.rightLabelColorText;
+
+            // Add variable color variables
+            [
+                box.backgroundVariableColors,
+                box.borderVariableColors,
+                box.headerVariableColors,
+                box.headerLabelVariableColors,
+                box.leftLabelVariableColors,
+                box.rightLabelVariableColors
+            ].forEach(varColors => {
+                if (varColors && Array.isArray(varColors)) {
+                    varColors.forEach(varColor => {
+                        if (varColor.variable) {
+                            allVariables[varColor.variable] = varColor.variable;
+                        }
+                    });
+                }
+            });
+        });
+
+        return allVariables;
+    };
+
+    // Use variable fetcher for all variables (canvas + boxes)
+    const { values: allVariableValues, htmlValues: allHtmlVariableValues } = useVariableFetcher(companionBaseUrl, getAllVariableNames(), connections);
+
+    // Update web server state when dashboard state changes
+    useEffect(() => {
+        const updateWebServer = async () => {
+            try {
+                const canvasSettings = {
+                    canvasBackgroundColor,
+                    canvasBackgroundColorText,
+                    canvasBackgroundVariableColors,
+                    canvasBackgroundImageOpacity
+                };
+
+                // Collect all image references from dashboard state
+                const imageRefs = new Set<string>();
+                
+                // Check canvas background
+                if (canvasBackgroundColorText && canvasBackgroundColorText.startsWith('./src/assets/')) {
+                    const filename = canvasBackgroundColorText.replace('./src/assets/', '');
+                    imageRefs.add(filename);
+                }
+                
+                // Check all boxes for background images
+                boxes.forEach(box => {
+                    if (box.backgroundImage && box.backgroundImage.startsWith('./src/assets/')) {
+                        const filename = box.backgroundImage.replace('./src/assets/', '');
+                        imageRefs.add(filename);
+                    }
+                    if (box.backgroundColorText && box.backgroundColorText.startsWith('./src/assets/')) {
+                        const filename = box.backgroundColorText.replace('./src/assets/', '');
+                        imageRefs.add(filename);
+                    }
+                });
+
+                // Load image data for all referenced images
+                const imageData: { [key: string]: string } = {};
+                for (const filename of imageRefs) {
+                    const data = await getImageFromDB(filename);
+                    if (data) {
+                        imageData[filename] = data;
+                    }
+                }
+
+                const state = {
+                    boxes,
+                    canvasSettings,
+                    connections,
+                    variableValues: allVariableValues,
+                    htmlVariableValues: allHtmlVariableValues,
+                    imageData
+                };
+
+                // @ts-ignore - electronAPI is available via preload script
+                await window.electronAPI?.webServer.updateState(state);
+            } catch (error) {
+                // Silently fail if web server is not available or not running
+                console.debug('Web server update failed:', error);
+            }
+        };
+
+        updateWebServer();
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, connections, allVariableValues, allHtmlVariableValues]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -248,7 +354,7 @@ export default function App() {
         if (variableColors && Array.isArray(variableColors)) {
             for (const varColor of variableColors) {
                 if (varColor && varColor.variable && varColor.value) {
-                    const variableValue = canvasVariableValues[varColor.variable] || '';
+                    const variableValue = allVariableValues[varColor.variable] || '';
                     if (variableValue === varColor.value) {
                         return varColor.color;
                     }
@@ -258,7 +364,7 @@ export default function App() {
 
         // 2. If no variable colors match, check if colorText has a value
         if (colorText && colorText.trim()) {
-            return canvasVariableValues[colorText] || colorText;
+            return allVariableValues[colorText] || colorText;
         }
 
         // 3. Fall back to the picker color
