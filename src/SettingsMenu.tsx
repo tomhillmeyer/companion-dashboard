@@ -85,6 +85,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             // Get data from localStorage
             const boxes = localStorage.getItem('boxes');
             const connectionUrl = localStorage.getItem('companion_connection_url');
+            const connections = localStorage.getItem('companion_connections');
             const canvasSettings = localStorage.getItem('canvas_settings');
 
             // Get cached background image data if it exists
@@ -109,6 +110,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 timestamp: new Date().toISOString(),
                 boxes: boxes ? JSON.parse(boxes) : [],
                 companion_connection_url: connectionUrl || '',
+                companion_connections: connections ? JSON.parse(connections) : [],
                 canvas_settings: canvasSettingsObj,
                 background_image_data: backgroundImageData
             };
@@ -774,12 +776,16 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             // Clear current localStorage
             localStorage.removeItem('boxes');
             localStorage.removeItem('companion_connection_url');
+            localStorage.removeItem('companion_connections');
             localStorage.removeItem('canvas_settings');
 
             // Set new data
             localStorage.setItem('boxes', JSON.stringify(pendingConfig.boxes));
             if (pendingConfig.companion_connection_url) {
                 localStorage.setItem('companion_connection_url', pendingConfig.companion_connection_url);
+            }
+            if (pendingConfig.companion_connections) {
+                localStorage.setItem('companion_connections', JSON.stringify(pendingConfig.companion_connections));
             }
             if (pendingConfig.canvas_settings) {
                 localStorage.setItem('canvas_settings', JSON.stringify(pendingConfig.canvas_settings));
@@ -808,6 +814,19 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
             // Update local input state
             setInputUrl(pendingConfig.companion_connection_url || '');
+            
+            // Update connections state if present
+            if (pendingConfig.companion_connections) {
+                setConnections(pendingConfig.companion_connections);
+                // Initialize connection inputs
+                const inputs: { [key: string]: string } = {};
+                pendingConfig.companion_connections.forEach((conn: CompanionConnection) => {
+                    inputs[conn.id] = conn.url;
+                });
+                setConnectionInputs(inputs);
+                // Notify parent about connections change
+                onConnectionsChange(pendingConfig.companion_connections);
+            }
 
             console.log('Full configuration replaced successfully');
         }
