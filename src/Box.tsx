@@ -7,6 +7,12 @@ import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 
+interface CompanionConnection {
+    id: string;
+    url: string;
+    label: string;
+}
+
 // Component for rendering markdown content
 const MarkdownContent = React.memo(({
     content,
@@ -71,6 +77,7 @@ export default function Box({
     onDuplicate,
     gridSize = 15,
     companionBaseUrl,
+    connections = [],
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -81,6 +88,7 @@ export default function Box({
     onDuplicate: (boxData: BoxData) => void;
     gridSize?: number;
     companionBaseUrl: string;
+    connections?: CompanionConnection[];
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
@@ -277,7 +285,7 @@ export default function Box({
         leftLabelColorTextSource: boxData.leftLabelColorText,
         rightLabelColorTextSource: boxData.rightLabelColorText,
         ...getAllVariableNames() // Add all variable color variables
-    });
+    }, connections);
 
     // Utility function to resolve color with priority: variable colors > colorText > fallback color
     const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any) => {

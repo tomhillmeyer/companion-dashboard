@@ -11,6 +11,13 @@ import { TitleBar } from './TitleBar.tsx';
 
 const STORAGE_KEY = 'boxes';
 const CANVAS_STORAGE_KEY = 'canvas_settings';
+const CONNECTIONS_STORAGE_KEY = 'companion_connections';
+
+interface CompanionConnection {
+    id: string;
+    url: string;
+    label: string;
+}
 
 export interface VariableColor {
     id: string;
@@ -127,6 +134,7 @@ export default function App() {
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>('');
+    const [connections, setConnections] = useState<CompanionConnection[]>([]);
 
     // Canvas background color state - initialize from localStorage
     const [canvasBackgroundColor, setCanvasBackgroundColor] = useState<string>(() => {
@@ -197,6 +205,19 @@ export default function App() {
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
     }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity]);
 
+    // Load connections from localStorage on component mount
+    useEffect(() => {
+        const savedConnections = localStorage.getItem(CONNECTIONS_STORAGE_KEY);
+        if (savedConnections) {
+            try {
+                const parsed = JSON.parse(savedConnections);
+                setConnections(parsed);
+            } catch (error) {
+                console.error('Failed to parse saved connections:', error);
+            }
+        }
+    }, []);
+
     // Collect canvas variable names for fetching
     const getCanvasVariableNames = () => {
         const allVariables: { [key: string]: string } = {};
@@ -219,7 +240,7 @@ export default function App() {
     };
 
     // Use variable fetcher for canvas colors
-    const { values: canvasVariableValues } = useVariableFetcher(companionBaseUrl, getCanvasVariableNames());
+    const { values: canvasVariableValues } = useVariableFetcher(companionBaseUrl, getCanvasVariableNames(), connections);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -465,6 +486,7 @@ export default function App() {
                 onNewBox={createNewBox}
                 connectionUrl={companionBaseUrl}
                 onConnectionUrlChange={setCompanionBaseUrl}
+                onConnectionsChange={setConnections}
                 onConfigRestore={handleConfigRestore}
                 onDeleteAllBoxes={deleteAllBoxes}
                 canvasBackgroundColor={canvasBackgroundColor}
@@ -530,6 +552,7 @@ export default function App() {
                         }}
                         onDuplicate={duplicateBox}
                         companionBaseUrl={companionBaseUrl}
+                        connections={connections}
                     />
                 ))
             )}

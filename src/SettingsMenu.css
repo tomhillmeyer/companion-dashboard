@@ -80,6 +80,13 @@
     width: 100%;
 }
 
+.menu-section-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
 .section-label {
     font-size: 12px;
     letter-spacing: 3px;
@@ -448,5 +455,80 @@ a {
     border-color: #777;
 }
 
+/* Connection management styles */
+.connection-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.connection-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #61BAFA;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.connection-controls {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+}
+
+.connection-controls input[type="text"] {
+    flex: 1;
+    margin: 0;
+}
+
+.connection-controls button {
+    margin: 0;
+    width: auto;
+    min-width: 50px;
+    height: 40px;
+    padding: 0 15px;
+}
+
+.delete-connection-button {
+    background-color: #C63E37 !important;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    width: 40px !important;
+    min-width: 40px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-connection-button:hover {
+    background-color: #a33329 !important;
+}
+
+.add-connection-button {
+    background-color: #059669 !important;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    width: 30px !important;
+    height: 30px;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    padding: 4px 5px 0px 5px;
+    margin: 10px 5px 5px 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-connection-button:hover {
+    background-color: #047857 !important;
+}
 
 @media (max-width: 768px) {}

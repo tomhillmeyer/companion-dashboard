@@ -4,6 +4,7 @@ import { FaAngleRight } from "react-icons/fa6";
 import { FaAngleLeft } from "react-icons/fa6";
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
+import { FaTrash } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
 import type { VariableColor } from './App';
 import ColorPicker from './ColorPicker';
@@ -17,11 +18,19 @@ import './SettingsMenu.css';
 import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
 
 const STORAGE_KEY = 'companion_connection_url';
+const CONNECTIONS_STORAGE_KEY = 'companion_connections';
+
+interface CompanionConnection {
+    id: string;
+    url: string;
+    label: string;
+}
 
 const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox: () => void;
     connectionUrl: string;
     onConnectionUrlChange: (url: string) => void;
+    onConnectionsChange: (connections: CompanionConnection[]) => void;
     onConfigRestore: (boxes: any[], connectionUrl: string, canvasSettings?: any) => void;
     onDeleteAllBoxes: () => void;
     canvasBackgroundColor?: string;
@@ -37,6 +46,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox,
     connectionUrl,
     onConnectionUrlChange,
+    onConnectionsChange,
     onConfigRestore,
     onDeleteAllBoxes,
     canvasBackgroundColor,
@@ -51,6 +61,9 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 }, ref) => {
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
+    const [connections, setConnections] = useState<CompanionConnection[]>([]);
+    const [connectionInputs, setConnectionInputs] = useState<{ [key: string]: string }>({});
+    const [connectionValidities, setConnectionValidities] = useState<{ [key: string]: boolean | null }>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isActive, setIsActive] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -191,7 +204,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         event.target.value = '';
     };
 
-    // Load cached URL on component mount
+    // Load cached URL and connections on component mount
     useEffect(() => {
         const cachedUrl = localStorage.getItem(STORAGE_KEY);
         if (cachedUrl) {
@@ -202,6 +215,24 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             }
         } else {
             setInputUrl(connectionUrl);
+        }
+
+        // Load additional connections
+        const cachedConnections = localStorage.getItem(CONNECTIONS_STORAGE_KEY);
+        if (cachedConnections) {
+            try {
+                const parsedConnections = JSON.parse(cachedConnections);
+                setConnections(parsedConnections);
+
+                // Initialize connection inputs
+                const inputs: { [key: string]: string } = {};
+                parsedConnections.forEach((conn: CompanionConnection) => {
+                    inputs[conn.id] = conn.url;
+                });
+                setConnectionInputs(inputs);
+            } catch (error) {
+                console.error('Failed to parse cached connections:', error);
+            }
         }
     }, [connectionUrl, onConnectionUrlChange]);
 
@@ -232,6 +263,42 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
         return () => clearInterval(interval); // Cleanup
     }, [connectionUrl]);
+
+    // Check connections validity
+    useEffect(() => {
+        const checkConnections = async () => {
+            const validities: { [key: string]: boolean | null } = {};
+
+            for (const connection of connections) {
+                if (!connection.url) {
+                    validities[connection.id] = null;
+                    continue;
+                }
+
+                try {
+                    const response = await fetch(`${connection.url}/api/variable/internal/time_unix/value`);
+                    if (!response.ok) throw new Error('Non-200 response');
+                    const data = await response.text();
+                    const timestamp = parseInt(data);
+                    if (!isNaN(timestamp)) {
+                        validities[connection.id] = true;
+                    } else {
+                        throw new Error('Invalid response');
+                    }
+                } catch (err) {
+                    validities[connection.id] = false;
+                }
+            }
+
+            setConnectionValidities(validities);
+        };
+
+        if (connections.length > 0) {
+            checkConnections();
+            const interval = setInterval(checkConnections, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [connections]);
 
     // Touch gesture handlers
     useEffect(() => {
@@ -352,6 +419,76 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         // Save to localStorage on every change (optional - you might prefer only saving on submit)
         if (newUrl.trim()) {
             localStorage.setItem(STORAGE_KEY, newUrl);
+        }
+    };
+
+    const addConnection = () => {
+        const newConnection: CompanionConnection = {
+            id: uuid(),
+            url: '',
+            label: `Connection [${connections.length + 1}]`
+        };
+
+        const updatedConnections = [...connections, newConnection];
+        setConnections(updatedConnections);
+        setConnectionInputs(prev => ({ ...prev, [newConnection.id]: '' }));
+
+        // Save to localStorage
+        localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        onConnectionsChange(updatedConnections);
+    };
+
+    const deleteConnection = (connectionId: string, event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        const updatedConnections = connections.filter(conn => conn.id !== connectionId);
+        setConnections(updatedConnections);
+
+        // Remove from inputs and validities
+        setConnectionInputs(prev => {
+            const newInputs = { ...prev };
+            delete newInputs[connectionId];
+            return newInputs;
+        });
+        setConnectionValidities(prev => {
+            const newValidities = { ...prev };
+            delete newValidities[connectionId];
+            return newValidities;
+        });
+
+        // Save to localStorage
+        localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        onConnectionsChange(updatedConnections);
+    };
+
+    const handleConnectionUrlChange = (connectionId: string, newUrl: string) => {
+        setConnectionInputs(prev => ({ ...prev, [connectionId]: newUrl }));
+
+        // Save to localStorage immediately
+        const updatedConnections = connections.map(conn =>
+            conn.id === connectionId ? { ...conn, url: newUrl } : conn
+        );
+        setConnections(updatedConnections);
+        localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        onConnectionsChange(updatedConnections);
+    };
+
+    const handleConnectionUrlSubmit = (connectionId: string) => {
+        const inputUrl = connectionInputs[connectionId] || '';
+        try {
+            const url = new URL(inputUrl.trim());
+            const baseUrl = `${url.protocol}//${url.host}`;
+
+            const updatedConnections = connections.map(conn =>
+                conn.id === connectionId ? { ...conn, url: baseUrl } : conn
+            );
+            setConnections(updatedConnections);
+            setConnectionInputs(prev => ({ ...prev, [connectionId]: baseUrl }));
+
+            localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+            onConnectionsChange(updatedConnections);
+        } catch (error) {
+            console.error('Invalid URL:', error);
+            setConnectionValidities(prev => ({ ...prev, [connectionId]: false }));
         }
     };
 
@@ -697,21 +834,61 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         <span className='wordmark'>COMPANION<b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
                     </div>
                     <span className='section-label'>Companion Connection</span>
-                    <div className="menu-section">
-                        <input
-                            type="text"
-                            value={inputUrl}
-                            onChange={handleUrlChange}
-                            placeholder="http://127.0.0.1:8888/"
-                            style={{
-                                border: '1px solid',
-                                borderColor:
-                                    isValidUrl === null ? 'gray' :
-                                        isValidUrl === true ? 'green' :
-                                            'red'
-                            }}
-                        />
-                        <button onClick={handleUrlSubmit}>SET</button>
+                    <div className="menu-section-column">
+                        <div className="connection-item">
+                            <span className="connection-label">Default Connection</span>
+                            <div className="connection-controls">
+                                <input
+                                    type="text"
+                                    value={inputUrl}
+                                    onChange={handleUrlChange}
+                                    placeholder="http://127.0.0.1:8888/"
+                                    style={{
+                                        border: '1px solid',
+                                        borderColor:
+                                            isValidUrl === null ? 'gray' :
+                                                isValidUrl === true ? 'green' :
+                                                    'red'
+                                    }}
+                                />
+                                <button onClick={handleUrlSubmit}>SET</button>
+                            </div>
+                        </div>
+
+                        {connections.map((connection, index) => (
+                            <div key={connection.id} className="connection-item">
+                                <span className="connection-label">Connection [{index + 1}]</span>
+                                <div className="connection-controls">
+                                    <input
+                                        type="text"
+                                        value={connectionInputs[connection.id] || ''}
+                                        onChange={(e) => handleConnectionUrlChange(connection.id, e.target.value)}
+                                        placeholder="http://127.0.0.1:8888/"
+                                        style={{
+                                            border: '1px solid',
+                                            borderColor:
+                                                connectionValidities[connection.id] === null ? 'gray' :
+                                                    connectionValidities[connection.id] === true ? 'green' :
+                                                        'red'
+                                        }}
+                                    />
+                                    <button onClick={() => handleConnectionUrlSubmit(connection.id)}>SET</button>
+                                    <button
+                                        onClick={(e) => deleteConnection(connection.id, e)}
+                                        className="delete-connection-button"
+                                    >
+                                        <FaTrash />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+
+                        <button
+                            className="add-connection-button"
+                            onClick={addConnection}
+                        >
+                            <FaCirclePlus />
+                        </button>
                     </div>
                     <span className='section-label'>Canvas</span>
                     <div className='menu-section canvas-section'>
@@ -841,7 +1018,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.2.2<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.3.0<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 

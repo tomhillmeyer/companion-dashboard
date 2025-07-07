@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 
-// Parse variables from a source string like "$(internal:time_hms_12)" or "$(custom:1266_active)"
-const parseVariables = (source: string): string[] => {
-    const variableRegex = /\$\(([^)]+)\)/g;
+interface CompanionConnection {
+    id: string;
+    url: string;
+    label: string;
+}
+
+// Parse variables from a source string like "$(internal:time_hms_12)" or "$(custom:1266_active)" or "[2]$(custom:test)"
+const parseVariables = (source: string): Array<{variable: string, connectionIndex?: number}> => {
+    const variableRegex = /(\[(\d+)\])?\$\(([^)]+)\)/g;
     const matches = [];
     let match;
 
     while ((match = variableRegex.exec(source)) !== null) {
-        matches.push(match[1]); // Get the content inside $()
+        const connectionIndex = match[2] ? parseInt(match[2]) : undefined;
+        const variable = match[3]; // Get the content inside $()
+        matches.push({ variable, connectionIndex });
     }
 
     return matches;
@@ -59,7 +67,8 @@ const parseMarkdown = (text: string): string => {
 
 export const useVariableFetcher = (
     baseUrl: string,
-    sources: { [key: string]: string } // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
+    sources: { [key: string]: string }, // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
+    connections: CompanionConnection[] = [] // Additional connections
 ) => {
     const [values, setValues] = useState<{ [key: string]: string }>({});
     const [htmlValues, setHtmlValues] = useState<{ [key: string]: string }>({});
@@ -82,26 +91,51 @@ export const useVariableFetcher = (
                 let processedString = sourceValue;
 
                 // Replace each variable with its fetched value
-                for (const variable of variables) {
+                for (const { variable, connectionIndex } of variables) {
                     try {
+                        let targetUrl = baseUrl;
+                        let originalPattern = `$(${variable})`;
+                        
+                        // If connectionIndex is specified, use the corresponding connection
+                        if (connectionIndex !== undefined) {
+                            originalPattern = `[${connectionIndex}]$(${variable})`;
+                            
+                            if (connectionIndex === 0) {
+                                // Connection [0] is the default connection
+                                targetUrl = baseUrl;
+                            } else {
+                                // Use the additional connection
+                                const connectionArray = connections;
+                                const targetConnection = connectionArray[connectionIndex - 1];
+                                if (targetConnection && targetConnection.url) {
+                                    targetUrl = targetConnection.url;
+                                } else {
+                                    console.warn(`Connection [${connectionIndex}] not found or has no URL`);
+                                    processedString = processedString.replace(originalPattern, '');
+                                    continue;
+                                }
+                            }
+                        }
+
                         const apiPath = variableToApiPath(variable);
-                        const response = await fetch(`${baseUrl}${apiPath}`);
+                        const response = await fetch(`${targetUrl}${apiPath}`);
 
                         if (response.ok) {
                             const data = await response.text(); // API returns plain text
                             // If API returns the variable name itself or null, treat as empty
                             if (data === variable || data === 'null' || data === null || data === undefined) {
-                                processedString = processedString.replace(`$(${variable})`, ``);
+                                processedString = processedString.replace(originalPattern, '');
                             } else {
-                                processedString = processedString.replace(`$(${variable})`, data);
+                                processedString = processedString.replace(originalPattern, data);
                             }
                         } else {
-                            console.warn(`Failed to fetch ${variable}:`, response.status);
-                            processedString = processedString.replace(`$(${variable})`, ``);
+                            console.warn(`Failed to fetch ${variable} from ${targetUrl}:`, response.status);
+                            processedString = processedString.replace(originalPattern, '');
                         }
                     } catch (error) {
                         console.error(`Error fetching ${variable}:`, error);
-                        processedString = processedString.replace(`$(${variable})`, ``);
+                        const originalPattern = connectionIndex !== undefined ? `[${connectionIndex}]$(${variable})` : `$(${variable})`;
+                        processedString = processedString.replace(originalPattern, '');
                     }
                 }
 
@@ -127,7 +161,7 @@ export const useVariableFetcher = (
         const interval = setInterval(fetchVariables, 1000);
 
         return () => clearInterval(interval);
-    }, [baseUrl, JSON.stringify(sources)]); // Re-run when baseUrl or sources change
+    }, [baseUrl, JSON.stringify(sources), JSON.stringify(connections)]); // Re-run when baseUrl, sources, or connections change
 
     return { values, htmlValues };
 };
