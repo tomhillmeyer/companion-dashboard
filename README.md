@@ -45,9 +45,11 @@ Use control keys and MIDI to control Companion directly from the console, and us
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/settings-menu.png)
 
 - The settings pane opens from the left side of the screen. Open it with the arrow / carrot in the bottom left of the viewport, or by swiping from the left on touch screen devices
-- Input the address:port of your Companion instance and click "Set Connection." The outline around the address will turn green if it's connected to Companion.
+- Input the address:port of your Companion instance and click "Set" The outline around the address will turn green if it's connected to Companion.
+    - Use the green "+" button to add more Companion connections
 - The canvas settings let you set a background color for the dashboard.
 - Click "New Box" to add a new box to the canvas. "Clear All Boxes" clears all of the boxes off of the canvas.
+- The web server lets you start the output of your Dashboard to a network location.
 - "Save" and "Load" allow you to download box details, layout, and Companion connection into a file to be restored from later. Loading a configuration replaces whatever configuration is in place.
 
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/resize-handles.png)
@@ -57,6 +59,10 @@ Use control keys and MIDI to control Companion directly from the console, and us
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/box-settings-modal.png)
 
 - Double clicking a box launches the settings window for that box.
+
+## Variables
+- Including a variable in the standard Companion notation of `$(connection:variable)` will automatically replace that variable with its value on your dashboard.
+- The variable by itself will use the default Companion connection. If you add `[X]` immediately before the variable, it'll use that connection. For example, `[1]$(connection:variable)` will pull that variable from the [1] connection rather than the default connection.
 
 ## Color logic
 All color pickers in Companion Dashboard have three options, in this order of priority:
