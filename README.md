@@ -79,8 +79,8 @@ Dashboard prioritizes the variable colors from the top down. If all variable col
 ## Markdown and HTML tags
 All text fields support HTML tags and the following markdown syntax.
 - **Bold**
-    - `<b>Text\</b>`
-    - `**Text\*\*`
+    - `<b>Text</b>`
+    - `**Text**`
     - `__Text__`
 - *Italics*
     - ```<i>Text</i>```
