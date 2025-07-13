@@ -63,6 +63,11 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
 
     const pickerRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
+    const [pickerPosition, setPickerPosition] = useState<{top: number, left: number, placement: 'bottom' | 'top'}>({
+        top: 0,
+        left: 0,
+        placement: 'bottom'
+    });
 
     // Update color when value prop changes
     useEffect(() => {
@@ -100,6 +105,74 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
         onChange(rgbaToString(newColor));
     };
 
+    const calculatePickerPosition = () => {
+        if (!buttonRef.current) return;
+
+        const buttonRect = buttonRef.current.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const pickerHeight = 300; // Approximate height of the color picker popover
+        const pickerWidth = 250; // Approximate width of the color picker popover
+
+        // Find the modal container
+        const modal = buttonRef.current.closest('.modal-content');
+        const modalRect = modal?.getBoundingClientRect();
+        
+        let top = buttonRect.bottom + 4;
+        let left = buttonRect.left;
+        let placement: 'bottom' | 'top' = 'bottom';
+
+        // If there's a modal, constrain positioning within it
+        if (modalRect) {
+            const modalBottom = modalRect.bottom;
+            const modalRight = modalRect.right;
+            const modalTop = modalRect.top;
+            const modalLeft = modalRect.left;
+
+            // Check if picker would go outside modal bounds
+            if (top + pickerHeight > modalBottom) {
+                // Try positioning above the button
+                const topPosition = buttonRect.top - pickerHeight - 4;
+                if (topPosition >= modalTop) {
+                    top = topPosition;
+                    placement = 'top';
+                } else {
+                    // If it doesn't fit above either, position at the bottom of the modal with scroll
+                    top = modalBottom - pickerHeight - 10;
+                }
+            }
+
+            // Adjust horizontal position to stay within modal
+            if (left + pickerWidth > modalRight) {
+                left = modalRight - pickerWidth - 10;
+            }
+            if (left < modalLeft) {
+                left = modalLeft + 10;
+            }
+        } else {
+            // Fallback for viewport positioning
+            if (top + pickerHeight > viewportHeight) {
+                top = buttonRect.top - pickerHeight - 4;
+                placement = 'top';
+            }
+            if (left + pickerWidth > viewportWidth) {
+                left = viewportWidth - pickerWidth - 10;
+            }
+            if (left < 10) {
+                left = 10;
+            }
+        }
+
+        setPickerPosition({ top, left, placement });
+    };
+
+    const handleTogglePicker = () => {
+        if (!isOpen) {
+            calculatePickerPosition();
+        }
+        setIsOpen(!isOpen);
+    };
+
     const currentColorStyle = {
         backgroundColor: rgbaToString(color)
     };
@@ -110,7 +183,7 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
                 ref={buttonRef}
                 type="button"
                 className="color-picker-button"
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleTogglePicker}
                 style={currentColorStyle}
                 title={`Color: ${rgbaToString(color)}`}
             >
@@ -118,7 +191,16 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
             </button>
 
             {isOpen && (
-                <div ref={pickerRef} className="color-picker-popover">
+                <div 
+                    ref={pickerRef} 
+                    className="color-picker-popover"
+                    style={{
+                        position: 'fixed',
+                        top: `${pickerPosition.top}px`,
+                        left: `${pickerPosition.left}px`,
+                        zIndex: 10001
+                    }}
+                >
                     <RgbaColorPicker
                         color={color}
                         onChange={handleColorChange}

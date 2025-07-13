@@ -9,9 +9,19 @@ import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
 
 
-const STORAGE_KEY = 'boxes';
-const CANVAS_STORAGE_KEY = 'canvas_settings';
-const CONNECTIONS_STORAGE_KEY = 'companion_connections';
+// Get window ID for isolated storage
+const getWindowId = () => {
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.windowId) {
+        return (window as any).electronAPI.windowId;
+    }
+    // Fallback to a consistent default for now
+    return '1';
+};
+
+const windowId = getWindowId();
+const STORAGE_KEY = `window_${windowId}_boxes`;
+const CANVAS_STORAGE_KEY = `window_${windowId}_canvas_settings`;
+const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 
 interface CompanionConnection {
     id: string;
@@ -449,7 +459,7 @@ export default function App() {
                     let cachedBase64 = await getImageFromDB(filename);
                     // Fallback to localStorage
                     if (!cachedBase64) {
-                        cachedBase64 = localStorage.getItem(`cached_bg_${filename}`);
+                        cachedBase64 = localStorage.getItem(`window_${windowId}_cached_bg_${filename}`);
                     }
                     setLoadedBackgroundImage(cachedBase64);
                 }

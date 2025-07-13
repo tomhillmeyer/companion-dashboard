@@ -17,8 +17,10 @@ import './SettingsMenu.css';
 // Import the image directly - this is the most reliable approach
 import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
 
-const STORAGE_KEY = 'companion_connection_url';
-const CONNECTIONS_STORAGE_KEY = 'companion_connections';
+// Get window ID for isolated storage
+const windowId = (window as any).electronAPI?.windowId || '1';
+const STORAGE_KEY = `window_${windowId}_companion_connection_url`;
+const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 
 interface CompanionConnection {
     id: string;
@@ -103,7 +105,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             if (result?.success) {
                 setWebServerRunning(true);
                 setWebServerStatus(`Running on port ${result.port}`);
-                localStorage.setItem('web_server_port', webServerPort.toString());
+                localStorage.setItem(`window_${windowId}_web_server_port`, webServerPort.toString());
                 console.log(`Web server started on port ${result.port}`);
             } else {
                 setWebServerStatus(`Failed: ${result?.error || 'Unknown error'}`);
@@ -156,7 +158,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     // Load saved web server port on mount
     useEffect(() => {
         if (showWebServer) {
-            const savedPort = localStorage.getItem('web_server_port');
+            const savedPort = localStorage.getItem(`window_${windowId}_web_server_port`);
             if (savedPort) {
                 setWebServerPort(parseInt(savedPort, 10));
             }
@@ -175,10 +177,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const downloadConfig = async () => {
         try {
             // Get data from localStorage
-            const boxes = localStorage.getItem('boxes');
+            const boxes = localStorage.getItem(`window_${windowId}_boxes`);
             const connectionUrl = localStorage.getItem('companion_connection_url');
-            const connections = localStorage.getItem('companion_connections');
-            const canvasSettings = localStorage.getItem('canvas_settings');
+            const connections = localStorage.getItem(`window_${windowId}_companion_connections`);
+            const canvasSettings = localStorage.getItem(`window_${windowId}_canvas_settings`);
 
             // Get cached background image data if it exists
             const canvasSettingsObj = canvasSettings ? JSON.parse(canvasSettings) : {};
@@ -191,7 +193,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                     // Try IndexedDB first, then localStorage fallback
                     backgroundImageData = await getImageFromDB(filename);
                     if (!backgroundImageData) {
-                        backgroundImageData = localStorage.getItem(`cached_bg_${filename}`);
+                        backgroundImageData = localStorage.getItem(`window_${windowId}_cached_bg_${filename}`);
                     }
                 }
             }
@@ -701,7 +703,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             if (currentBgText.startsWith('./src/assets/background_') && currentBgText.includes('.')) {
                 const oldFilename = currentBgText.split('/').pop();
                 if (oldFilename) {
-                    localStorage.removeItem(`cached_bg_${oldFilename}`);
+                    localStorage.removeItem(`window_${windowId}_cached_bg_${oldFilename}`);
                 }
             }
 
@@ -716,7 +718,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 console.error('IndexedDB storage failed, falling back to localStorage:', dbError);
                 // Fallback to localStorage with compression
                 try {
-                    localStorage.setItem(`cached_bg_${cachedFilename}`, base64DataUrl);
+                    localStorage.setItem(`window_${windowId}_cached_bg_${cachedFilename}`, base64DataUrl);
                     console.log('Background image stored in localStorage (fallback)');
                 } catch (quotaError) {
                     if (quotaError instanceof DOMException && quotaError.name === 'QuotaExceededError') {
@@ -818,7 +820,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             // Remove cached image from both localStorage and IndexedDB
             const filename = currentBgText.split('/').pop();
             if (filename) {
-                localStorage.removeItem(`cached_bg_${filename}`);
+                localStorage.removeItem(`window_${windowId}_cached_bg_${filename}`);
                 await deleteImageFromDB(filename);
                 console.log('Cleared cached background image:', filename);
             }
@@ -829,7 +831,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         if (!pendingConfig) return;
 
         // Add boxes only - generate new UUIDs
-        const existingBoxes = localStorage.getItem('boxes');
+        const existingBoxes = localStorage.getItem(`window_${windowId}_boxes`);
         const currentBoxes = existingBoxes ? JSON.parse(existingBoxes) : [];
 
         // Create new boxes with fresh UUIDs
@@ -846,7 +848,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         }));
 
         const mergedBoxes = [...currentBoxes, ...newBoxes];
-        localStorage.setItem('boxes', JSON.stringify(mergedBoxes));
+        localStorage.setItem(`window_${windowId}_boxes`, JSON.stringify(mergedBoxes));
 
         // Update parent state with merged boxes, keep existing settings
         onConfigRestore(mergedBoxes, connectionUrl, null);
@@ -866,21 +868,21 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
         if (confirmReplace) {
             // Clear current localStorage
-            localStorage.removeItem('boxes');
+            localStorage.removeItem(`window_${windowId}_boxes`);
             localStorage.removeItem('companion_connection_url');
-            localStorage.removeItem('companion_connections');
-            localStorage.removeItem('canvas_settings');
+            localStorage.removeItem(`window_${windowId}_companion_connections`);
+            localStorage.removeItem(`window_${windowId}_canvas_settings`);
 
             // Set new data
-            localStorage.setItem('boxes', JSON.stringify(pendingConfig.boxes));
+            localStorage.setItem(`window_${windowId}_boxes`, JSON.stringify(pendingConfig.boxes));
             if (pendingConfig.companion_connection_url) {
                 localStorage.setItem('companion_connection_url', pendingConfig.companion_connection_url);
             }
             if (pendingConfig.companion_connections) {
-                localStorage.setItem('companion_connections', JSON.stringify(pendingConfig.companion_connections));
+                localStorage.setItem(`window_${windowId}_companion_connections`, JSON.stringify(pendingConfig.companion_connections));
             }
             if (pendingConfig.canvas_settings) {
-                localStorage.setItem('canvas_settings', JSON.stringify(pendingConfig.canvas_settings));
+                localStorage.setItem(`window_${windowId}_canvas_settings`, JSON.stringify(pendingConfig.canvas_settings));
             }
 
             // Restore background image if it exists
@@ -894,7 +896,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             console.log('Background image restored to IndexedDB');
                         } catch (error) {
                             // Fallback to localStorage
-                            localStorage.setItem(`cached_bg_${filename}`, pendingConfig.background_image_data);
+                            localStorage.setItem(`window_${windowId}_cached_bg_${filename}`, pendingConfig.background_image_data);
                             console.log('Background image restored to localStorage (fallback)');
                         }
                     }
@@ -906,7 +908,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
             // Update local input state
             setInputUrl(pendingConfig.companion_connection_url || '');
-            
+
             // Update connections state if present
             if (pendingConfig.companion_connections) {
                 setConnections(pendingConfig.companion_connections);
@@ -1182,7 +1184,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.3.0<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.3.1<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 

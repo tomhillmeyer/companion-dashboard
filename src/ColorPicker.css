@@ -59,16 +59,11 @@
 }
 
 .color-picker-popover {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    z-index: 10000;
     background: #262626;
     border: 1px solid #61BAFA;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     padding: 16px;
-    margin-top: 4px;
     min-width: 200px;
     color: white;
     /* Mobile optimizations */
@@ -76,20 +71,9 @@
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
-}
-
-/* Adjust popover position on mobile to prevent off-screen issues */
-@media (max-width: 768px) {
-    .color-picker-popover {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        margin: 0;
-        max-width: 90vw;
-        max-height: 90vh;
-        overflow: hidden;
-    }
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: hidden;
 }
 
 .color-picker-info {

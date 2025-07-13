@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 interface CompanionConnection {
     id: string;
@@ -70,17 +70,57 @@ export const useVariableFetcher = (
     sources: { [key: string]: string }, // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
     connections: CompanionConnection[] = [] // Additional connections
 ) => {
-    const [values, setValues] = useState<{ [key: string]: string }>({});
-    const [htmlValues, setHtmlValues] = useState<{ [key: string]: string }>({});
+    // Initialize state with processed values - remove variables immediately to show surrounding text
+    const [values, setValues] = useState<{ [key: string]: string }>(() => {
+        const initialValues: { [key: string]: string } = {};
+        Object.entries(sources).forEach(([key, value]) => {
+            if (!value) {
+                initialValues[key] = '';
+            } else {
+                // Always process variables immediately to show surrounding text
+                const variables = parseVariables(value);
+                let processed = value;
+                variables.forEach(({ variable, connectionIndex }) => {
+                    const pattern = connectionIndex !== undefined ? 
+                        `[${connectionIndex}]$(${variable})` : `$(${variable})`;
+                    processed = processed.replace(pattern, '');
+                });
+                initialValues[key] = processed;
+            }
+        });
+        return initialValues;
+    });
+
+    const [htmlValues, setHtmlValues] = useState<{ [key: string]: string }>(() => {
+        const initialHtmlValues: { [key: string]: string } = {};
+        Object.entries(sources).forEach(([key, value]) => {
+            if (!value) {
+                initialHtmlValues[key] = '';
+            } else {
+                // Always process variables immediately to show surrounding text
+                const variables = parseVariables(value);
+                let processed = value;
+                variables.forEach(({ variable, connectionIndex }) => {
+                    const pattern = connectionIndex !== undefined ? 
+                        `[${connectionIndex}]$(${variable})` : `$(${variable})`;
+                    processed = processed.replace(pattern, '');
+                });
+                initialHtmlValues[key] = parseMarkdown(processed);
+            }
+        });
+        return initialHtmlValues;
+    });
+
+    // Create stable references for complex objects to prevent unnecessary re-renders
+    const sourcesRef = useMemo(() => sources, [JSON.stringify(sources)]);
+    const connectionsRef = useMemo(() => connections, [JSON.stringify(connections)]);
 
     useEffect(() => {
-        if (!baseUrl) return;
-
         const fetchVariables = async () => {
             const newValues: { [key: string]: string } = {};
             const newHtmlValues: { [key: string]: string } = {};
 
-            for (const [sourceKey, sourceValue] of Object.entries(sources)) {
+            for (const [sourceKey, sourceValue] of Object.entries(sourcesRef)) {
                 if (!sourceValue) {
                     newValues[sourceKey] = '';
                     newHtmlValues[sourceKey] = '';
@@ -92,20 +132,28 @@ export const useVariableFetcher = (
 
                 // Replace each variable with its fetched value
                 for (const { variable, connectionIndex } of variables) {
+                    let originalPattern = `$(${variable})`;
+                    if (connectionIndex !== undefined) {
+                        originalPattern = `[${connectionIndex}]$(${variable})`;
+                    }
+
+                    // If no base URL is configured, just replace variables with empty strings
+                    if (!baseUrl) {
+                        processedString = processedString.replace(originalPattern, '');
+                        continue;
+                    }
+
                     try {
                         let targetUrl = baseUrl;
-                        let originalPattern = `$(${variable})`;
                         
                         // If connectionIndex is specified, use the corresponding connection
                         if (connectionIndex !== undefined) {
-                            originalPattern = `[${connectionIndex}]$(${variable})`;
-                            
                             if (connectionIndex === 0) {
                                 // Connection [0] is the default connection
                                 targetUrl = baseUrl;
                             } else {
                                 // Use the additional connection
-                                const connectionArray = connections;
+                                const connectionArray = connectionsRef;
                                 const targetConnection = connectionArray[connectionIndex - 1];
                                 if (targetConnection && targetConnection.url) {
                                     targetUrl = targetConnection.url;
@@ -134,7 +182,6 @@ export const useVariableFetcher = (
                         }
                     } catch (error) {
                         console.error(`Error fetching ${variable}:`, error);
-                        const originalPattern = connectionIndex !== undefined ? `[${connectionIndex}]$(${variable})` : `$(${variable})`;
                         processedString = processedString.replace(originalPattern, '');
                     }
                 }
@@ -157,11 +204,12 @@ export const useVariableFetcher = (
         // Initial fetch
         fetchVariables();
 
-        // Set up interval for every second
-        const interval = setInterval(fetchVariables, 1000);
+        // Set up interval - less frequent when no connection is configured
+        const intervalTime = baseUrl ? 1000 : 5000; // 1 second with connection, 5 seconds without
+        const interval = setInterval(fetchVariables, intervalTime);
 
         return () => clearInterval(interval);
-    }, [baseUrl, JSON.stringify(sources), JSON.stringify(connections)]); // Re-run when baseUrl, sources, or connections change
+    }, [baseUrl, sourcesRef, connectionsRef]); // Re-run when baseUrl, sources, or connections change
 
     return { values, htmlValues };
 };

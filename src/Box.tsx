@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+
+// Get window ID for isolated storage
+const windowId = (window as any).electronAPI?.windowId || '1';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
@@ -200,7 +203,7 @@ export default function Box({
                             }
 
                             // Fallback to localStorage
-                            const cachedData = localStorage.getItem(`cached_bg_${filename}`);
+                            const cachedData = localStorage.getItem(`window_${windowId}_cached_bg_${filename}`);
                             if (cachedData) {
                                 setLoadedBackgroundImage(cachedData);
                                 return;
