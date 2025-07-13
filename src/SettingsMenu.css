@@ -520,7 +520,7 @@ a {
     font-size: 16px;
     font-weight: bold;
     transition: background-color 0.2s ease;
-    padding: 4px 5px 0px 5px;
+    padding: 0px 5px 0px 5px;
     margin: 10px 5px 5px 5px;
     display: flex;
     align-items: center;
