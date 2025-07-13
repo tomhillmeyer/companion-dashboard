@@ -1184,7 +1184,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.3.1<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v1.3.2<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 
