@@ -53,10 +53,10 @@
             position: absolute;
             display: flex;
             flex-direction: column;
-            border-radius: 8px;
             overflow: hidden;
             user-select: none;
             transition: none;
+            line-height: 1;
         }
 
         .box.has-background-image::before {
@@ -75,42 +75,50 @@
         }
 
         .box.no-border {
-            border: none;
+            border-radius: 10px;
         }
 
         .box.with-border {
-            border: 5px solid;
+            border-radius: 15px;
         }
 
         .header {
             width: 100%;
-            height: 30px;
-            min-height: 30px;
+            text-align: center;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-basis: content;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: auto;
             flex-shrink: 0;
         }
 
         .content-container {
             display: flex;
+            flex-direction: row;
             flex: 1;
-            width: 100%;
-            height: calc(100% - 30px);
+            align-items: stretch;
+            box-sizing: border-box;
+            overflow: auto;
+            min-height: 0;
         }
 
         .content {
-            flex: 1;
-            display: flex;
+            flex: 1 1 auto;
+            min-width: 0;
             align-items: center;
-            padding: 10px;
+            overflow: auto;
+            box-sizing: border-box;
             word-wrap: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
         }
 
         .text-only-content {
-            padding: 10px;
+            padding-left: 20px;
+            padding-right: 20px;
         }
 
         .status-indicator {
@@ -176,13 +184,8 @@
             }
 
             .header {
-                height: 25px;
-                min-height: 25px;
+                padding: 5px;
                 font-size: 14px;
-            }
-
-            .content-container {
-                height: calc(100% - 25px);
             }
         }
     </style>
@@ -288,6 +291,26 @@
                 }
             }
 
+            // Helper function to get variable value with proper null handling
+            getVariableValue(variableName, isHtml = false) {
+                const values = isHtml ? this.htmlVariableValues : this.variableValues;
+                const value = values[variableName];
+                
+                // If API returns the variable name itself or null, treat as empty
+                if (value === variableName || value === 'null' || value === null || value === undefined) {
+                    return '';
+                }
+                
+                return value || '';
+            }
+
+            // Helper function to determine if a string is likely a variable name (starts with variable pattern)
+            isVariableName(text) {
+                if (!text || typeof text !== 'string') return false;
+                // Check if it looks like a variable pattern (e.g., $(internal:companion_variable_myvar))
+                return text.includes('$(') && text.includes(':') && text.includes(')');
+            }
+
             renderDashboard() {
                 // Clear existing boxes
                 this.container.innerHTML = `
@@ -318,7 +341,7 @@
                 if (canvas.canvasBackgroundVariableColors) {
                     for (const varColor of canvas.canvasBackgroundVariableColors) {
                         if (varColor.variable && varColor.value) {
-                            const variableValue = this.variableValues[varColor.variable] || '';
+                            const variableValue = this.getVariableValue(varColor.variable, false);
                             if (variableValue === varColor.value) {
                                 backgroundColor = varColor.color;
                                 break;
@@ -405,13 +428,15 @@
                 this.applyBoxBackground(box, boxData);
 
                 // Border
-                if (!boxData.noBorder) {
+                if (boxData.noBorder) {
+                    box.style.border = 'none';
+                } else {
                     const borderColor = this.resolveColor(
                         boxData.borderVariableColors,
                         boxData.borderColorText,
                         boxData.borderColor
                     );
-                    box.style.borderColor = borderColor;
+                    box.style.border = `5px solid ${borderColor}`;
                 }
 
                 // Header
@@ -430,7 +455,7 @@
                     );
                     header.style.fontSize = `${boxData.headerLabelSize}px`;
 
-                    const headerContent = this.htmlVariableValues[boxData.headerLabelSource] || this.variableValues[boxData.headerLabelSource] || boxData.headerLabelSource || '';
+                    const headerContent = this.getVariableValue(boxData.headerLabelSource, true) || this.getVariableValue(boxData.headerLabelSource, false) || (this.isVariableName(boxData.headerLabelSource) ? '' : boxData.headerLabelSource) || '';
                     header.innerHTML = this.processContent(headerContent);
 
                     box.appendChild(header);
@@ -450,10 +475,12 @@
                         boxData.leftLabelColor
                     );
                     leftContent.style.fontSize = `${boxData.leftLabelSize}px`;
+                    leftContent.style.display = 'flex';
+                    leftContent.style.alignItems = 'center';
                     leftContent.style.justifyContent = boxData.rightVisible ? 'flex-start' : 'center';
                     leftContent.style.textAlign = boxData.rightVisible ? 'left' : 'center';
 
-                    const leftText = this.htmlVariableValues[boxData.leftLabelSource] || this.variableValues[boxData.leftLabelSource] || boxData.leftLabelSource || '';
+                    const leftText = this.getVariableValue(boxData.leftLabelSource, true) || this.getVariableValue(boxData.leftLabelSource, false) || (this.isVariableName(boxData.leftLabelSource) ? '' : boxData.leftLabelSource) || '';
                     leftContent.innerHTML = this.processContent(leftText);
 
                     contentContainer.appendChild(leftContent);
@@ -469,10 +496,12 @@
                         boxData.rightLabelColor
                     );
                     rightContent.style.fontSize = `${boxData.rightLabelSize}px`;
+                    rightContent.style.display = 'flex';
+                    rightContent.style.alignItems = 'center';
                     rightContent.style.justifyContent = boxData.leftVisible ? 'flex-end' : 'center';
                     rightContent.style.textAlign = boxData.leftVisible ? 'right' : 'center';
 
-                    const rightText = this.htmlVariableValues[boxData.rightLabelSource] || this.variableValues[boxData.rightLabelSource] || boxData.rightLabelSource || '';
+                    const rightText = this.getVariableValue(boxData.rightLabelSource, true) || this.getVariableValue(boxData.rightLabelSource, false) || (this.isVariableName(boxData.rightLabelSource) ? '' : boxData.rightLabelSource) || '';
                     rightContent.innerHTML = this.processContent(rightText);
 
                     contentContainer.appendChild(rightContent);
@@ -510,7 +539,7 @@
                 if (boxData.backgroundVariableColors) {
                     for (const varColor of boxData.backgroundVariableColors) {
                         if (varColor.variable && varColor.value) {
-                            const variableValue = this.variableValues[varColor.variable] || '';
+                            const variableValue = this.getVariableValue(varColor.variable, false);
                             if (variableValue === varColor.value) {
                                 return varColor.color;
                             }
@@ -532,7 +561,7 @@
                 if (variableColors) {
                     for (const varColor of variableColors) {
                         if (varColor.variable && varColor.value) {
-                            const variableValue = this.variableValues[varColor.variable] || '';
+                            const variableValue = this.getVariableValue(varColor.variable, false);
                             if (variableValue === varColor.value) {
                                 return varColor.color;
                             }
@@ -542,7 +571,8 @@
 
                 // Check colorText
                 if (colorText) {
-                    return this.variableValues[colorText] || colorText;
+                    const colorValue = this.getVariableValue(colorText, false);
+                    return colorValue || fallbackColor;
                 }
 
                 // Fall back to picker color
