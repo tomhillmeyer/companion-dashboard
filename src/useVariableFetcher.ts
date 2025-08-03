@@ -68,7 +68,8 @@ const parseMarkdown = (text: string): string => {
 export const useVariableFetcher = (
     baseUrl: string,
     sources: { [key: string]: string }, // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
-    connections: CompanionConnection[] = [] // Additional connections
+    connections: CompanionConnection[] = [], // Additional connections
+    refreshRateMs: number = 100 // Configurable refresh rate in milliseconds
 ) => {
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
@@ -204,12 +205,12 @@ export const useVariableFetcher = (
         // Initial fetch
         fetchVariables();
 
-        // Set up interval - less frequent when no connection is configured
-        const intervalTime = baseUrl ? 1000 : 5000; // 1 second with connection, 5 seconds without
+        // Set up interval - use configurable refresh rate when connection is available
+        const intervalTime = baseUrl ? refreshRateMs : 5000; // Use refreshRateMs with connection, 5 seconds without
         const interval = setInterval(fetchVariables, intervalTime);
 
         return () => clearInterval(interval);
-    }, [baseUrl, sourcesRef, connectionsRef]); // Re-run when baseUrl, sources, or connections change
+    }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs]); // Re-run when baseUrl, sources, connections, or refresh rate change
 
     return { values, htmlValues };
 };

@@ -81,6 +81,7 @@ export default function Box({
     gridSize = 15,
     companionBaseUrl,
     connections = [],
+    refreshRateMs = 100,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -92,6 +93,7 @@ export default function Box({
     gridSize?: number;
     companionBaseUrl: string;
     connections?: CompanionConnection[];
+    refreshRateMs?: number;
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
@@ -288,7 +290,7 @@ export default function Box({
         leftLabelColorTextSource: boxData.leftLabelColorText,
         rightLabelColorTextSource: boxData.rightLabelColorText,
         ...getAllVariableNames() // Add all variable color variables
-    }, connections);
+    }, connections, refreshRateMs);
 
     // Utility function to resolve color with priority: variable colors > colorText > fallback color
     const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any) => {

@@ -100,8 +100,11 @@ export default function App() {
 
 
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any) => {
+        console.log('handleConfigRestore called with URL:', newConnectionUrl);
+        console.log('Current companionBaseUrl before update:', companionBaseUrl);
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
+        console.log('Called setCompanionBaseUrl with:', newConnectionUrl);
         setSelectedBoxId(null); // Clear any selection
 
         // Apply canvas settings if provided
@@ -117,6 +120,9 @@ export default function App() {
             }
             if (canvasSettings.canvasBackgroundImageOpacity !== undefined) {
                 setCanvasBackgroundImageOpacity(canvasSettings.canvasBackgroundImageOpacity);
+            }
+            if (canvasSettings.refreshRateMs !== undefined) {
+                setRefreshRateMs(canvasSettings.refreshRateMs);
             }
         }
     };
@@ -143,7 +149,9 @@ export default function App() {
 
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
-    const [companionBaseUrl, setCompanionBaseUrl] = useState<string>('');
+    const [companionBaseUrl, setCompanionBaseUrl] = useState<string>(() => {
+        return localStorage.getItem('companion_connection_url') || '';
+    });
     const [connections, setConnections] = useState<CompanionConnection[]>([]);
 
     // Canvas background color state - initialize from localStorage
@@ -196,6 +204,18 @@ export default function App() {
         }
         return 100;
     });
+    const [refreshRateMs, setRefreshRateMs] = useState<number>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.refreshRateMs || 100;
+            } catch (error) {
+                return 100;
+            }
+        }
+        return 100;
+    });
 
     const settingsMenuRef = useRef<{ toggle: () => void }>(null);
 
@@ -210,10 +230,16 @@ export default function App() {
             canvasBackgroundColor,
             canvasBackgroundColorText,
             canvasBackgroundVariableColors,
-            canvasBackgroundImageOpacity
+            canvasBackgroundImageOpacity,
+            refreshRateMs
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
-    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity]);
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, refreshRateMs]);
+
+    // Save companion connection URL to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('companion_connection_url', companionBaseUrl);
+    }, [companionBaseUrl]);
 
     // Load connections from localStorage on component mount
     useEffect(() => {
@@ -295,7 +321,7 @@ export default function App() {
     };
 
     // Use variable fetcher for all variables (canvas + boxes)
-    const { values: allVariableValues, htmlValues: allHtmlVariableValues } = useVariableFetcher(companionBaseUrl, getAllVariableNames(), connections);
+    const { values: allVariableValues, htmlValues: allHtmlVariableValues } = useVariableFetcher(companionBaseUrl, getAllVariableNames(), connections, refreshRateMs);
 
     // Update web server state when dashboard state changes
     useEffect(() => {
@@ -305,7 +331,8 @@ export default function App() {
                     canvasBackgroundColor,
                     canvasBackgroundColorText,
                     canvasBackgroundVariableColors,
-                    canvasBackgroundImageOpacity
+                    canvasBackgroundImageOpacity,
+                    refreshRateMs
                 };
 
                 // Collect all image references from dashboard state
@@ -356,7 +383,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, connections, allVariableValues, allHtmlVariableValues]);
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, refreshRateMs, connections, allVariableValues, allHtmlVariableValues]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -613,6 +640,8 @@ export default function App() {
                 onCanvasBackgroundVariableColorsChange={setCanvasBackgroundVariableColors}
                 canvasBackgroundImageOpacity={canvasBackgroundImageOpacity}
                 onCanvasBackgroundImageOpacityChange={setCanvasBackgroundImageOpacity}
+                refreshRateMs={refreshRateMs}
+                onRefreshRateMsChange={setRefreshRateMs}
             />
             {boxes.length === 0 ? (
                 <div style={{
@@ -669,6 +698,7 @@ export default function App() {
                         onDuplicate={duplicateBox}
                         companionBaseUrl={companionBaseUrl}
                         connections={connections}
+                        refreshRateMs={refreshRateMs}
                     />
                 ))
             )}

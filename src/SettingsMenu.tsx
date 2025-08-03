@@ -43,6 +43,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundVariableColorsChange?: (variableColors: VariableColor[]) => void;
     canvasBackgroundImageOpacity?: number;
     onCanvasBackgroundImageOpacityChange?: (opacity: number) => void;
+    refreshRateMs?: number;
+    onRefreshRateMsChange?: (refreshRate: number) => void;
     onToggle?: () => void;
 }>(({
     onNewBox,
@@ -59,6 +61,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundVariableColorsChange,
     canvasBackgroundImageOpacity,
     onCanvasBackgroundImageOpacityChange,
+    refreshRateMs,
+    onRefreshRateMsChange,
     onToggle
 }, ref) => {
     const [inputUrl, setInputUrl] = useState('');
@@ -867,6 +871,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         );
 
         if (confirmReplace) {
+            console.log('Replacing configuration with:', {
+                connectionUrl: pendingConfig.companion_connection_url,
+                connections: pendingConfig.companion_connections,
+                boxCount: pendingConfig.boxes?.length
+            });
+
             // Clear current localStorage
             localStorage.removeItem(`window_${windowId}_boxes`);
             localStorage.removeItem('companion_connection_url');
@@ -875,12 +885,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
             // Set new data
             localStorage.setItem(`window_${windowId}_boxes`, JSON.stringify(pendingConfig.boxes));
-            if (pendingConfig.companion_connection_url) {
-                localStorage.setItem('companion_connection_url', pendingConfig.companion_connection_url);
-            }
-            if (pendingConfig.companion_connections) {
-                localStorage.setItem(`window_${windowId}_companion_connections`, JSON.stringify(pendingConfig.companion_connections));
-            }
+            // Always set connection URL, even if empty (for complete replacement)
+            const urlToSet = pendingConfig.companion_connection_url || '';
+            localStorage.setItem('companion_connection_url', urlToSet);
+            console.log('Set companion_connection_url to:', urlToSet);
+            // Always set connections, even if empty array (for complete replacement)
+            localStorage.setItem(`window_${windowId}_companion_connections`, JSON.stringify(pendingConfig.companion_connections || []));
             if (pendingConfig.canvas_settings) {
                 localStorage.setItem(`window_${windowId}_canvas_settings`, JSON.stringify(pendingConfig.canvas_settings));
             }
@@ -903,24 +913,26 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 }
             }
 
-            // Update parent state
-            onConfigRestore(pendingConfig.boxes, pendingConfig.companion_connection_url || '', pendingConfig.canvas_settings);
+            // Update local input state first
+            const urlForRestore = pendingConfig.companion_connection_url || '';
+            setInputUrl(urlForRestore);
+            console.log('Set local input URL to:', urlForRestore);
 
-            // Update local input state
-            setInputUrl(pendingConfig.companion_connection_url || '');
+            // Always update connections state first (even if empty array for complete replacement)
+            const connectionsToRestore = pendingConfig.companion_connections || [];
+            setConnections(connectionsToRestore);
+            // Initialize connection inputs
+            const inputs: { [key: string]: string } = {};
+            connectionsToRestore.forEach((conn: CompanionConnection) => {
+                inputs[conn.id] = conn.url;
+            });
+            setConnectionInputs(inputs);
+            // Notify parent about connections change immediately
+            onConnectionsChange(connectionsToRestore);
 
-            // Update connections state if present
-            if (pendingConfig.companion_connections) {
-                setConnections(pendingConfig.companion_connections);
-                // Initialize connection inputs
-                const inputs: { [key: string]: string } = {};
-                pendingConfig.companion_connections.forEach((conn: CompanionConnection) => {
-                    inputs[conn.id] = conn.url;
-                });
-                setConnectionInputs(inputs);
-                // Notify parent about connections change
-                onConnectionsChange(pendingConfig.companion_connections);
-            }
+            // Update parent state - this will trigger connection restart
+            console.log('Calling onConfigRestore with URL:', urlForRestore);
+            onConfigRestore(pendingConfig.boxes, urlForRestore, pendingConfig.canvas_settings);
 
             console.log('Full configuration replaced successfully');
         }
@@ -947,6 +959,21 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         <span className='wordmark'>COMPANION<b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
                     </div>
                     <span className='section-label'>Companion Connection</span>
+                    <div className='menu-section'>
+                        <div className="canvas-refresh-rate-controls">
+                            <label htmlFor="canvas-refresh-rate" className="connection-label">Variable Refresh Rate (ms)</label>
+                            <input
+                                id="canvas-refresh-rate"
+                                type="number"
+                                min="50"
+                                max="10000"
+                                value={refreshRateMs || 100}
+                                onChange={(e) => onRefreshRateMsChange?.(parseInt(e.target.value) || 100)}
+                                className="canvas-color-text"
+                                style={{ marginLeft: '15px', textAlign: 'center' }}
+                            />
+                        </div>
+                    </div>
                     <div className="menu-section-column">
                         <div className="connection-item">
                             <span className="connection-label">Default Connection</span>
