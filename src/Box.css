@@ -12,6 +12,7 @@
     left: 0px;
     overflow: hidden;
     line-height: 1;
+    touch-action: none;
 }
 
 .box.with-border {

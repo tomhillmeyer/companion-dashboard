@@ -82,6 +82,9 @@ export default function Box({
     companionBaseUrl,
     connections = [],
     refreshRateMs = 100,
+    isDragging = false,
+    onDragStart,
+    onDragEnd,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -94,12 +97,16 @@ export default function Box({
     companionBaseUrl: string;
     connections?: CompanionConnection[];
     refreshRateMs?: number;
+    isDragging?: boolean;
+    onDragStart?: () => void;
+    onDragEnd?: () => void;
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
     const [frame, setFrame] = useState(boxData.frame);
     const [showModal, setShowModal] = useState(false);
     const [loadedBackgroundImage, setLoadedBackgroundImage] = useState<string>('');
+    const [isDragStartCalled, setIsDragStartCalled] = useState(false);
 
     // Update local frame when initialFrame changes
     useEffect(() => {
@@ -290,7 +297,7 @@ export default function Box({
         leftLabelColorTextSource: boxData.leftLabelColorText,
         rightLabelColorTextSource: boxData.rightLabelColorText,
         ...getAllVariableNames() // Add all variable color variables
-    }, connections, refreshRateMs);
+    }, connections, refreshRateMs, isDragging);
 
     // Utility function to resolve color with priority: variable colors > colorText > fallback color
     const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any) => {
@@ -530,7 +537,17 @@ export default function Box({
                             verticalGuidelines={gridLines.verticalGridLines}
                             horizontalGuidelines={gridLines.horizontalGridLines}
                             isDisplaySnapDigit
+                            useResizeObserver={true}
+                            touchAction="none"
+                            dragContainer={document.body}
+                            preventDefault={true}
+                            stopDragging={false}
                             onDrag={({ beforeTranslate }) => {
+                                // Call onDragStart only once at the beginning of drag
+                                if (!isDragStartCalled) {
+                                    onDragStart?.();
+                                    setIsDragStartCalled(true);
+                                }
                                 const newFrame = {
                                     ...frame,
                                     translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number]
@@ -539,6 +556,9 @@ export default function Box({
                                 targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
                             }}
                             onDragEnd={({ lastEvent }) => {
+                                // Call onDragEnd and reset drag start flag
+                                onDragEnd?.();
+                                setIsDragStartCalled(false);
                                 if (lastEvent) {
                                     const newFrame = {
                                         ...frame,
@@ -548,6 +568,11 @@ export default function Box({
                                 }
                             }}
                             onResize={({ width, height, drag }) => {
+                                // Call onDragStart for resize operations too
+                                if (!isDragStartCalled) {
+                                    onDragStart?.();
+                                    setIsDragStartCalled(true);
+                                }
                                 const beforeTranslate = drag.beforeTranslate;
                                 const newFrame = {
                                     translate: [beforeTranslate[0], beforeTranslate[1]] as [number, number],
@@ -560,6 +585,9 @@ export default function Box({
                                 targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
                             }}
                             onResizeEnd={({ lastEvent }) => {
+                                // Call onDragEnd for resize operations too
+                                onDragEnd?.();
+                                setIsDragStartCalled(false);
                                 if (lastEvent) {
                                     const newFrame = {
                                         translate: [lastEvent.drag.beforeTranslate[0], lastEvent.drag.beforeTranslate[1]] as [number, number],

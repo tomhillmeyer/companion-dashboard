@@ -149,6 +149,7 @@ export default function App() {
 
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+    const [isDragging, setIsDragging] = useState<boolean>(false);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>(() => {
         return localStorage.getItem('companion_connection_url') || '';
     });
@@ -321,7 +322,7 @@ export default function App() {
     };
 
     // Use variable fetcher for all variables (canvas + boxes)
-    const { values: allVariableValues, htmlValues: allHtmlVariableValues } = useVariableFetcher(companionBaseUrl, getAllVariableNames(), connections, refreshRateMs);
+    const { values: allVariableValues, htmlValues: allHtmlVariableValues } = useVariableFetcher(companionBaseUrl, getAllVariableNames(), connections, refreshRateMs, isDragging);
 
     // Update web server state when dashboard state changes
     useEffect(() => {
@@ -699,6 +700,9 @@ export default function App() {
                         companionBaseUrl={companionBaseUrl}
                         connections={connections}
                         refreshRateMs={refreshRateMs}
+                        isDragging={isDragging}
+                        onDragStart={() => setIsDragging(true)}
+                        onDragEnd={() => setIsDragging(false)}
                     />
                 ))
             )}

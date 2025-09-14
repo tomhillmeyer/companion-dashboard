@@ -25,8 +25,23 @@ export function DoubleTapBox({ onDoubleTap, children }: DoubleTapBoxProps) {
     lastTapRef.current = now
   }
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Prevent iOS Safari from timing out touch events
+    e.preventDefault()
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Keep touch events alive on iOS
+    e.preventDefault()
+  }
+
   return (
-    <div onTouchEnd={handleTouchEnd}>
+    <div 
+      onTouchEnd={handleTouchEnd}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      style={{ touchAction: 'none' }}
+    >
       {children}
     </div>
   )

@@ -69,7 +69,8 @@ export const useVariableFetcher = (
     baseUrl: string,
     sources: { [key: string]: string }, // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
     connections: CompanionConnection[] = [], // Additional connections
-    refreshRateMs: number = 100 // Configurable refresh rate in milliseconds
+    refreshRateMs: number = 100, // Configurable refresh rate in milliseconds
+    isDragging: boolean = false // Pause updates during drag operations
 ) => {
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
@@ -207,10 +208,15 @@ export const useVariableFetcher = (
 
         // Set up interval - use configurable refresh rate when connection is available
         const intervalTime = baseUrl ? refreshRateMs : 5000; // Use refreshRateMs with connection, 5 seconds without
-        const interval = setInterval(fetchVariables, intervalTime);
+        const interval = setInterval(() => {
+            // Skip updates during drag operations to prevent iOS touch interference
+            if (!isDragging) {
+                fetchVariables();
+            }
+        }, intervalTime);
 
         return () => clearInterval(interval);
-    }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs]); // Re-run when baseUrl, sources, connections, or refresh rate change
+    }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs, isDragging]); // Re-run when baseUrl, sources, connections, refresh rate, or drag state change
 
     return { values, htmlValues };
 };
