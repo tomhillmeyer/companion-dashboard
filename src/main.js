@@ -26,6 +26,7 @@ const defaultWindowState = {
 let windows = new Map();
 let windowWebServers = new Map(); // windowId -> webServer instance
 let windowCounter = 0;
+let windowAlwaysOnTopStates = new Map(); // windowId -> boolean
 
 function loadWindowStates() {
     try {
@@ -50,11 +51,12 @@ function saveWindowStates() {
                 const bounds = window.getBounds();
                 const isMaximized = window.isMaximized();
                 const webServer = windowWebServers.get(window.windowId);
-                
+
                 const state = {
                     ...bounds,
                     isMaximized,
                     id: window.windowId,
+                    alwaysOnTop: windowAlwaysOnTopStates.get(window.windowId) || false,
                     webServer: webServer ? {
                         isRunning: webServer.isServerRunning(),
                         port: webServer.getPort()
@@ -65,7 +67,7 @@ function saveWindowStates() {
             }
             return null;
         }).filter(Boolean);
-        
+
         console.log('Final states to save:', states);
         fs.writeFileSync(windowStateFile, JSON.stringify(states, null, 2));
         console.log('Window states saved successfully');
@@ -76,7 +78,7 @@ function saveWindowStates() {
 
 function createWindow(windowState = null) {
     const state = windowState || { ...defaultWindowState };
-    
+
     // Use existing window ID if restoring, otherwise create new one
     let windowId;
     if (windowState && windowState.id) {
@@ -86,7 +88,7 @@ function createWindow(windowState = null) {
     } else {
         windowId = ++windowCounter;
     }
-    
+
     // Offset new windows slightly so they don't overlap exactly
     if (!windowState && windows.size > 0) {
         state.x = (state.x || 100) + (windows.size * 30);
@@ -112,7 +114,7 @@ function createWindow(windowState = null) {
     // Store window ID for tracking and create dedicated web server
     window.windowId = windowId;
     windows.set(windowId, window);
-    
+
     // Create a dedicated web server for this window
     const webServer = new DashboardWebServer();
     windowWebServers.set(windowId, webServer);
@@ -120,6 +122,12 @@ function createWindow(windowState = null) {
     // Restore maximized state
     if (state.isMaximized) {
         window.maximize();
+    }
+
+    // Restore always on top state
+    if (state.alwaysOnTop) {
+        window.setAlwaysOnTop(true);
+        windowAlwaysOnTopStates.set(windowId, true);
     }
 
     // Save window states when any window changes
@@ -132,6 +140,11 @@ function createWindow(windowState = null) {
     window.on('maximize', saveState);
     window.on('unmaximize', saveState);
 
+    // Update menu when window focus changes
+    window.on('focus', () => {
+        createMenu();
+    });
+
     // Don't save on individual window close - it interferes with web server state
     // State is already saved when web servers start/stop
 
@@ -143,7 +156,8 @@ function createWindow(windowState = null) {
             webServer.stop();
         }
         windowWebServers.delete(windowId);
-        
+        windowAlwaysOnTopStates.delete(windowId);
+
         windows.delete(windowId);
         console.log('Window closed and cleaned up, remaining windows:', windows.size);
     });
@@ -163,7 +177,7 @@ function createWindow(windowState = null) {
         console.log('Window has web server state:', windowState.webServer);
         if (windowState.webServer.isRunning) {
             console.log('Restoring web server for window', windowId, 'on port', windowState.webServer.port);
-            
+
             // Wait for the window to finish loading before starting the web server
             window.webContents.once('did-finish-load', () => {
                 console.log('Window finished loading, starting web server');
@@ -192,8 +206,30 @@ function createWindow(windowState = null) {
     return window;
 }
 
+// Toggle always on top for the focused window
+function toggleAlwaysOnTop() {
+    const focusedWindow = BrowserWindow.getFocusedWindow();
+    if (focusedWindow && focusedWindow.windowId) {
+        const currentState = windowAlwaysOnTopStates.get(focusedWindow.windowId) || false;
+        const newState = !currentState;
+
+        focusedWindow.setAlwaysOnTop(newState);
+        windowAlwaysOnTopStates.set(focusedWindow.windowId, newState);
+
+        // Update the menu to reflect the new state
+        createMenu();
+
+        // Save window states
+        saveWindowStates();
+    }
+}
+
 // Create application menu
 function createMenu() {
+    const focusedWindow = BrowserWindow.getFocusedWindow();
+    const isAlwaysOnTop = focusedWindow && focusedWindow.windowId ?
+        (windowAlwaysOnTopStates.get(focusedWindow.windowId) || false) : false;
+
     const template = [
         {
             label: 'File',
@@ -242,7 +278,14 @@ function createMenu() {
             label: 'Window',
             submenu: [
                 { role: 'minimize' },
-                { role: 'close' }
+                { role: 'close' },
+                { type: 'separator' },
+                {
+                    label: 'Always on top',
+                    type: 'checkbox',
+                    checked: isAlwaysOnTop,
+                    click: toggleAlwaysOnTop
+                }
             ]
         }
     ];
@@ -276,7 +319,14 @@ function createMenu() {
             { role: 'minimize' },
             { role: 'zoom' },
             { type: 'separator' },
-            { role: 'front' }
+            { role: 'front' },
+            { type: 'separator' },
+            {
+                label: 'Always on top',
+                type: 'checkbox',
+                checked: isAlwaysOnTop,
+                click: toggleAlwaysOnTop
+            }
         ];
     }
 
@@ -286,7 +336,7 @@ function createMenu() {
 
 app.whenReady().then(() => {
     createMenu();
-    
+
     // Restore saved windows or create a default one
     const savedStates = loadWindowStates();
     console.log('App starting. Found', savedStates.length, 'saved window states');
@@ -320,19 +370,19 @@ function getWebServerForWindow(event) {
     if (!senderWindow || !senderWindow.windowId) {
         throw new Error('Could not identify sender window');
     }
-    
+
     const webServer = windowWebServers.get(senderWindow.windowId);
     if (!webServer) {
         throw new Error('No web server found for this window');
     }
-    
+
     return webServer;
 }
 
 // Helper function to find available port starting from a base port
 async function findAvailablePort(startPort, windowId) {
     const basePort = startPort || (8100 + windowId - 1); // Start from 8100, 8101, 8102, etc.
-    
+
     // For now, just return the calculated port based on window ID
     // In a production app, you'd want to check if the port is actually available
     return basePort;
@@ -343,18 +393,18 @@ ipcMain.handle('web-server-start', async (event, port) => {
     try {
         const webServer = getWebServerForWindow(event);
         const senderWindow = BrowserWindow.fromWebContents(event.sender);
-        
+
         // Auto-assign port based on window ID if not specified
         const targetPort = port || await findAvailablePort(8100, senderWindow.windowId);
-        
+
         webServer.start(targetPort);
-        
+
         // Wait for server to actually start before saving states
         setTimeout(() => {
             console.log('Web server started, saving window states');
             saveWindowStates();
         }, 100); // Small delay to ensure server is running
-        
+
         return { success: true, port: webServer.getPort() };
     } catch (error) {
         return { success: false, error: error.message };
@@ -365,11 +415,11 @@ ipcMain.handle('web-server-stop', async (event) => {
     try {
         const webServer = getWebServerForWindow(event);
         webServer.stop();
-        
+
         // Save window states when web server stops
         console.log('Web server stopped, saving window states');
         saveWindowStates();
-        
+
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -406,10 +456,10 @@ ipcMain.handle('web-server-update-state', async (event, state) => {
 // Clean up on app quit
 app.on('before-quit', (event) => {
     console.log('App is quitting. Current windows:', windows.size);
-    
+
     // Don't save states here - they're already saved when web servers start/stop
     // This prevents overwriting the correct web server states
-    
+
     // Stop all web servers
     console.log('Stopping web servers on quit');
     windowWebServers.forEach(webServer => {
