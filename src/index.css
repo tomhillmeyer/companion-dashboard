@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap');
 
 :root {
-  font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: var(--global-font-family, "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif);
   line-height: 1.5;
   font-weight: 400;
 

@@ -22,6 +22,7 @@ const windowId = getWindowId();
 const STORAGE_KEY = `window_${windowId}_boxes`;
 const CANVAS_STORAGE_KEY = `window_${windowId}_canvas_settings`;
 const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
+const FONT_STORAGE_KEY = `global_font_family`;
 
 interface CompanionConnection {
     id: string;
@@ -218,6 +219,17 @@ export default function App() {
         return 100;
     });
 
+    // Font family state - initialize from localStorage
+    const [fontFamily, setFontFamily] = useState<string>(() => {
+        return localStorage.getItem(FONT_STORAGE_KEY) || 'Work Sans';
+    });
+
+    // Apply font immediately on component mount
+    useEffect(() => {
+        const savedFont = localStorage.getItem(FONT_STORAGE_KEY) || 'Work Sans';
+        document.documentElement.style.setProperty('--box-font-family', `"${savedFont}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
+    }, []);
+
     const settingsMenuRef = useRef<{ toggle: () => void }>(null);
 
     // Save boxes to localStorage whenever boxes state changes
@@ -241,6 +253,13 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem('companion_connection_url', companionBaseUrl);
     }, [companionBaseUrl]);
+
+    // Save font family to localStorage whenever it changes and apply to boxes only
+    useEffect(() => {
+        localStorage.setItem(FONT_STORAGE_KEY, fontFamily);
+        // Apply font only to boxes by setting CSS custom property
+        document.documentElement.style.setProperty('--box-font-family', `"${fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
+    }, [fontFamily]);
 
     // Load connections from localStorage on component mount
     useEffect(() => {
@@ -643,6 +662,8 @@ export default function App() {
                 onCanvasBackgroundImageOpacityChange={setCanvasBackgroundImageOpacity}
                 refreshRateMs={refreshRateMs}
                 onRefreshRateMsChange={setRefreshRateMs}
+                fontFamily={fontFamily}
+                onFontFamilyChange={setFontFamily}
             />
             {boxes.length === 0 ? (
                 <div style={{

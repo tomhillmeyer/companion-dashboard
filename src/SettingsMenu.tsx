@@ -8,6 +8,7 @@ import { FaTrash } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
 import type { VariableColor } from './App';
 import ColorPicker from './ColorPicker';
+import FontPicker from './FontPicker';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -21,6 +22,7 @@ import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your
 const windowId = (window as any).electronAPI?.windowId || '1';
 const STORAGE_KEY = `window_${windowId}_companion_connection_url`;
 const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
+const FONT_STORAGE_KEY = `global_font_family`;
 
 interface CompanionConnection {
     id: string;
@@ -45,6 +47,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundImageOpacityChange?: (opacity: number) => void;
     refreshRateMs?: number;
     onRefreshRateMsChange?: (refreshRate: number) => void;
+    fontFamily?: string;
+    onFontFamilyChange?: (fontFamily: string) => void;
     onToggle?: () => void;
 }>(({
     onNewBox,
@@ -63,6 +67,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundImageOpacityChange,
     refreshRateMs,
     onRefreshRateMsChange,
+    fontFamily,
+    onFontFamilyChange,
     onToggle
 }, ref) => {
     const [inputUrl, setInputUrl] = useState('');
@@ -210,7 +216,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 companion_connection_url: connectionUrl || '',
                 companion_connections: connections ? JSON.parse(connections) : [],
                 canvas_settings: canvasSettingsObj,
-                background_image_data: backgroundImageData
+                background_image_data: backgroundImageData,
+                font_family: localStorage.getItem(FONT_STORAGE_KEY) || ''
             };
 
             console.log('Config export:', {
@@ -894,6 +901,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             if (pendingConfig.canvas_settings) {
                 localStorage.setItem(`window_${windowId}_canvas_settings`, JSON.stringify(pendingConfig.canvas_settings));
             }
+            
+            // Restore font family if it exists
+            if (pendingConfig.font_family) {
+                localStorage.setItem(FONT_STORAGE_KEY, pendingConfig.font_family);
+                onFontFamilyChange?.(pendingConfig.font_family);
+            }
 
             // Restore background image if it exists
             if (pendingConfig.background_image_data && pendingConfig.canvas_settings?.canvasBackgroundColorText) {
@@ -1030,6 +1043,18 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             <FaCirclePlus />
                         </button>
                     </div>
+                    <span className='section-label'>Font</span>
+                    <div className='menu-section font-section'>
+                        <FontPicker
+                            value={fontFamily || 'Work Sans'}
+                            onChange={(font) => {
+                                localStorage.setItem(FONT_STORAGE_KEY, font);
+                                onFontFamilyChange?.(font);
+                            }}
+                            className="settings-font-picker"
+                        />
+                    </div>
+                    
                     <span className='section-label'>Canvas</span>
                     <div className='menu-section canvas-section'>
                         <div className="canvas-color-container">

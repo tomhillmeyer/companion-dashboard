@@ -13,6 +13,7 @@
     overflow: hidden;
     line-height: 1;
     touch-action: none;
+    font-family: var(--box-font-family, "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif);
 }
 
 .box.with-border {

@@ -34,7 +34,7 @@
     overflow: auto;
     padding: 0px;
     border: none;
-
+    font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
 .menu-content {
@@ -644,6 +644,27 @@ a {
     font-size: 11px;
     display: block;
     word-break: break-all;
+}
+
+/* Font section styles */
+.font-section {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.settings-font-picker {
+    width: 100%;
+}
+
+.settings-font-picker .font-picker {
+    width: 100%;
+}
+
+.settings-font-picker .font-picker-button {
+    width: 100%;
+    text-align: left;
+    justify-content: space-between;
 }
 
 @media (max-width: 768px) {}
