@@ -106,6 +106,7 @@ function createWindow(windowState = null) {
             nodeIntegration: false,
             contextIsolation: true,
             enableRemoteModule: false,
+            backgroundThrottling: false,
             preload: path.join(__dirname, 'preload.js'),
             additionalArguments: [`--window-id=${windowId}`]
         }
