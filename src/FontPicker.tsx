@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import './FontPicker.css';
+// @ts-ignore
+import 'font-detective';
 
 interface FontPickerProps {
     value: string;
@@ -7,196 +9,128 @@ interface FontPickerProps {
     className?: string;
 }
 
-// Extended Google Fonts list (popular and commonly used)
-const GOOGLE_FONTS = [
-    'Work Sans',
-    'Inter',
-    'Roboto',
-    'Open Sans',
-    'Lato',
-    'Source Sans Pro',
-    'Oswald',
-    'Raleway',
-    'PT Sans',
-    'Lora',
-    'Nunito',
-    'Noto Sans',
-    'Playfair Display',
-    'Merriweather',
-    'Montserrat',
-    'Ubuntu',
-    'Poppins',
-    'Crimson Text',
-    'Libre Baskerville',
-    'Roboto Condensed',
-    'Roboto Slab',
-    'Fira Sans',
-    'IBM Plex Sans',
-    'IBM Plex Serif',
-    'IBM Plex Mono',
-    'Source Code Pro',
-    'JetBrains Mono',
-    'Inconsolata',
-    'Space Mono',
-    'DM Sans',
-    'DM Serif Display',
-    'Barlow',
-    'Karla',
-    'Rubik',
-    'Oxygen',
-    'Quicksand',
-    'Fjalla One',
-    'Anton',
-    'Bebas Neue',
-    'Lobster',
-    'Dancing Script',
-    'Pacifico',
-    'Righteous',
-    'Comfortaa',
-    'Cabin',
-    'Bitter',
-    'Arvo',
-    'Vollkorn',
-    'EB Garamond',
-    'Libre Franklin',
-    'Libre Caslon Text',
-    'Crimson Pro',
-    'Cormorant Garamond',
-    'Spectral',
-    'Alegreya',
-    'PT Serif',
-    'Slabo 27px',
-    'Slabo 13px',
-    'Zilla Slab',
-    'Space Grotesk',
-    'Manrope',
-    'Plus Jakarta Sans',
-    'Outfit',
-    'League Spartan',
-    'Epilogue',
-    'Commissioner',
-    'Public Sans',
-    'Red Hat Display',
-    'Red Hat Text',
-    'Sora',
-    'Lexend',
-    'Be Vietnam Pro',
-    'Chivo',
-    'Overpass',
-    'Source Serif Pro',
-    'Literata',
-    'Newsreader',
-    'Fraunces',
-    'JetBrains Mono',
-    'Fira Code',
-    'Roboto Mono',
-    'Courier Prime'
+// Google Fonts API interface
+interface GoogleFontItem {
+    family: string;
+    category: string;
+}
+
+// System fonts by category
+const SYSTEM_SERIF_FONTS = [
+    'Times New Roman',
+    'Georgia',
+    'Times',
+    'Palatino',
+    'Baskerville',
+    'Hoefler Text',
+    'Palatino Linotype',
+    'serif'
 ];
 
-// Comprehensive system fonts list
-const getSystemFonts = (): string[] => {
-    const commonSystemFonts = [
-        // Generic families
-        'system-ui',
-        'ui-sans-serif',
-        'ui-serif',
-        'ui-monospace',
-        'ui-rounded',
-        
-        // Windows fonts
-        'Arial',
-        'Arial Black',
-        'Calibri',
-        'Cambria',
-        'Candara',
-        'Comic Sans MS',
-        'Consolas',
-        'Constantia',
-        'Corbel',
-        'Courier New',
-        'Franklin Gothic Medium',
-        'Georgia',
-        'Impact',
-        'Lucida Console',
-        'Lucida Sans Unicode',
-        'Microsoft Sans Serif',
-        'Palatino Linotype',
-        'Segoe UI',
-        'Tahoma',
-        'Times New Roman',
-        'Trebuchet MS',
-        'Verdana',
-        
-        // macOS fonts
-        'Helvetica',
-        'Helvetica Neue',
-        'Times',
-        'Courier',
-        'Monaco',
-        'Menlo',
-        'SF Pro Display',
-        'SF Pro Text',
-        'SF Compact Display',
-        'SF Compact Text',
-        'SF Mono',
-        'New York',
-        'Avenir',
-        'Avenir Next',
-        'Palatino',
-        'Optima',
-        'Gill Sans',
-        'Futura',
-        'Baskerville',
-        'Hoefler Text',
-        'Apple Chancery',
-        'Zapfino',
-        
-        // Linux fonts
-        'Liberation Sans',
-        'Liberation Serif',
-        'Liberation Mono',
-        'DejaVu Sans',
-        'DejaVu Serif',
-        'DejaVu Sans Mono',
-        'Ubuntu',
-        'Ubuntu Condensed',
-        'Ubuntu Mono',
-        'Cantarell',
-        'Noto Sans',
-        'Noto Serif',
-        'Noto Mono',
-        
-        // Cross-platform
-        'serif',
-        'sans-serif',
-        'monospace',
-        'cursive',
-        'fantasy'
-    ];
+const SYSTEM_SANS_SERIF_FONTS = [
+    'Arial',
+    'Helvetica',
+    'Helvetica Neue',
+    'Verdana',
+    'Tahoma',
+    'Segoe UI',
+    'Calibri',
+    'Trebuchet MS',
+    'Lucida Sans Unicode',
+    'Liberation Sans',
+    'DejaVu Sans',
+    'Ubuntu',
+    'Cantarell',
+    'Noto Sans',
+    'system-ui',
+    'ui-sans-serif',
+    'sans-serif'
+];
 
-    // Try to detect available fonts using CSS font detection
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) return commonSystemFonts;
+const SYSTEM_MONOSPACE_FONTS = [
+    'Courier New',
+    'Monaco',
+    'Menlo',
+    'Consolas',
+    'Lucida Console',
+    'SF Mono',
+    'Courier',
+    'Liberation Mono',
+    'DejaVu Sans Mono',
+    'Ubuntu Mono',
+    'Noto Mono',
+    'ui-monospace',
+    'monospace'
+];
 
-    const testString = 'mmmmmmmmmmlli';
-    const testSize = '72px';
+const SYSTEM_CURSIVE_FONTS = [
+    'Apple Chancery',
+    'Zapfino',
+    'Comic Sans MS',
+    'cursive'
+];
+
+// Helper function to categorize system fonts
+const categorizeSystemFont = (fontName: string): 'serif' | 'sans-serif' | 'monospace' | 'cursive' | 'display' => {
+    const name = fontName.toLowerCase();
     
-    // Baseline font (known to exist)
-    context.font = testSize + ' monospace';
-    const baselineWidth = context.measureText(testString).width;
-
-    return commonSystemFonts.filter(font => {
-        context.font = testSize + ' ' + font + ', monospace';
-        return context.measureText(testString).width !== baselineWidth;
-    });
+    // Monospace patterns
+    if (name.includes('mono') || name.includes('courier') || name.includes('consolas') || 
+        name.includes('menlo') || name.includes('monaco') || name.includes('inconsolata') ||
+        name.includes('code') || name.includes('terminal') || name.includes('fixed')) {
+        return 'monospace';
+    }
+    
+    // Serif patterns
+    if (name.includes('serif') && !name.includes('sans') || 
+        name.includes('times') || name.includes('georgia') || name.includes('palatino') ||
+        name.includes('baskerville') || name.includes('garamond') || name.includes('cambria')) {
+        return 'serif';
+    }
+    
+    // Cursive patterns
+    if (name.includes('script') || name.includes('cursive') || name.includes('handwriting') ||
+        name.includes('brush') || name.includes('calligraphy') || name.includes('chancery') ||
+        name.includes('zapfino') || name.includes('comic')) {
+        return 'cursive';
+    }
+    
+    // Display patterns
+    if (name.includes('display') || name.includes('decorative') || name.includes('ornament') ||
+        name.includes('fantasy') || name.includes('impact') || name.includes('black') ||
+        name.includes('ultra') || name.includes('heavy')) {
+        return 'display';
+    }
+    
+    // Default to sans-serif
+    return 'sans-serif';
 };
 
-const SYSTEM_FONTS = getSystemFonts();
+// Fetch Google Fonts from API
+const fetchGoogleFonts = async (): Promise<GoogleFontItem[]> => {
+    try {
+        const response = await fetch('https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity&key=AIzaSyCaayBwQM10HMcVHs5KWhc97CvsWeD-Yt4', {
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        if (!response.ok) {
+            return []; // Silently fail, no Google Fonts available
+        }
+        const data = await response.json();
+        return data.items || [];
+    } catch (error) {
+        // Silently handle network errors, offline scenarios, or timeouts
+        // Google Fonts just won't be available
+        return [];
+    }
+};
 
 const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = '' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [detectedSystemFonts, setDetectedSystemFonts] = useState<string[]>([]);
+    const [systemFontsLoaded, setSystemFontsLoaded] = useState(false);
+    const [googleFonts, setGoogleFonts] = useState<GoogleFontItem[]>([]);
+    const [googleFontsLoaded, setGoogleFontsLoaded] = useState(false);
 
     // Load Google Font when selected
     const loadGoogleFont = (fontFamily: string) => {
@@ -218,7 +152,9 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
 
     const handleFontSelect = (fontFamily: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        if (GOOGLE_FONTS.includes(fontFamily)) {
+        // Check if it's a Google Font
+        const isGoogleFont = googleFonts.some(font => font.family === fontFamily);
+        if (isGoogleFont) {
             loadGoogleFont(fontFamily);
         }
         onChange(fontFamily);
@@ -226,18 +162,127 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
         setSearchTerm('');
     };
 
-    // Filter fonts based on search term and remove duplicates
-    const allFonts = [...new Set([...GOOGLE_FONTS, ...SYSTEM_FONTS])]; // Remove duplicates
-    const filteredFonts = allFonts.filter(font =>
-        font.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Get combined font lists including detected system fonts and Google Fonts
+    const getCombinedFonts = () => {
+        // Categorize Google Fonts
+        const googleFontCategories = {
+            serif: [] as string[],
+            sansSerif: [] as string[],
+            monospace: [] as string[],
+            cursive: [] as string[],
+            display: [] as string[]
+        };
+        
+        googleFonts.forEach(font => {
+            switch (font.category) {
+                case 'serif':
+                    googleFontCategories.serif.push(font.family);
+                    break;
+                case 'sans-serif':
+                    googleFontCategories.sansSerif.push(font.family);
+                    break;
+                case 'monospace':
+                    googleFontCategories.monospace.push(font.family);
+                    break;
+                case 'handwriting':
+                    googleFontCategories.cursive.push(font.family);
+                    break;
+                case 'display':
+                    googleFontCategories.display.push(font.family);
+                    break;
+                default:
+                    googleFontCategories.sansSerif.push(font.family);
+            }
+        });
+        
+        // Categorize detected system fonts
+        const detectedCategories = {
+            serif: [] as string[],
+            sansSerif: [] as string[],
+            monospace: [] as string[],
+            cursive: [] as string[],
+            display: [] as string[]
+        };
+        
+        detectedSystemFonts.forEach(font => {
+            const category = categorizeSystemFont(font);
+            switch (category) {
+                case 'serif':
+                    detectedCategories.serif.push(font);
+                    break;
+                case 'sans-serif':
+                    detectedCategories.sansSerif.push(font);
+                    break;
+                case 'monospace':
+                    detectedCategories.monospace.push(font);
+                    break;
+                case 'cursive':
+                    detectedCategories.cursive.push(font);
+                    break;
+                case 'display':
+                    detectedCategories.display.push(font);
+                    break;
+            }
+        });
+        
+        return {
+            serif: [...new Set([...googleFontCategories.serif, ...SYSTEM_SERIF_FONTS, ...detectedCategories.serif])],
+            sansSerif: [...new Set([...googleFontCategories.sansSerif, ...SYSTEM_SANS_SERIF_FONTS, ...detectedCategories.sansSerif])],
+            monospace: [...new Set([...googleFontCategories.monospace, ...SYSTEM_MONOSPACE_FONTS, ...detectedCategories.monospace])],
+            cursive: [...new Set([...googleFontCategories.cursive, ...SYSTEM_CURSIVE_FONTS, ...detectedCategories.cursive])],
+            display: [...new Set([...googleFontCategories.display, ...detectedCategories.display])]
+        };
+    };
+
+    const combinedFonts = getCombinedFonts();
+
+    // Filter fonts by category based on search term
+    const searchLower = searchTerm.toLowerCase();
+    const filterFonts = (fonts: string[]) => 
+        fonts.filter(font => font.toLowerCase().includes(searchLower));
+    
+    // Check if search term matches category names
+    const showAllSerif = searchLower.includes('serif') && !searchLower.includes('sans');
+    const showAllSansSerif = searchLower.includes('sans') || (searchLower.includes('serif') && searchLower.includes('sans'));
+    const showAllMonospace = searchLower.includes('mono') || searchLower.includes('code') || searchLower.includes('fixed');
+    const showAllCursive = searchLower.includes('cursive') || searchLower.includes('script') || searchLower.includes('handwriting');
+    const showAllDisplay = searchLower.includes('display') || searchLower.includes('decorative');
+    
+    // Filter fonts - show all in category if category name matches, otherwise filter by font name
+    const filteredSerif = showAllSerif ? combinedFonts.serif : filterFonts(combinedFonts.serif);
+    const filteredSansSerif = showAllSansSerif ? combinedFonts.sansSerif : filterFonts(combinedFonts.sansSerif);
+    const filteredMonospace = showAllMonospace ? combinedFonts.monospace : filterFonts(combinedFonts.monospace);
+    const filteredCursive = showAllCursive ? combinedFonts.cursive : filterFonts(combinedFonts.cursive);
+    const filteredDisplay = showAllDisplay ? combinedFonts.display : filterFonts(combinedFonts.display);
+
+    // Fetch Google Fonts on component mount
+    useEffect(() => {
+        if (!googleFontsLoaded) {
+            fetchGoogleFonts().then(fonts => {
+                setGoogleFonts(fonts);
+                setGoogleFontsLoaded(true);
+            });
+        }
+    }, [googleFontsLoaded]);
+
+    // Detect system fonts on component mount
+    useEffect(() => {
+        if (!systemFontsLoaded) {
+            // @ts-ignore
+            window.FontDetective.all((fonts: any[]) => {
+                const fontNames = fonts.map((font: any) => font.name);
+                setDetectedSystemFonts(fontNames);
+                setSystemFontsLoaded(true);
+            });
+        }
+    }, [systemFontsLoaded]);
 
     // Load current font on component mount
     useEffect(() => {
-        if (value && GOOGLE_FONTS.includes(value)) {
+        if (value && googleFonts.some(font => font.family === value)) {
             loadGoogleFont(value);
         }
-    }, [value]);
+    }, [value, googleFonts]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -279,17 +324,84 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                     />
                     
                     <div className="font-picker-list">
-                        {filteredFonts.map((font) => (
-                            <div
-                                key={font}
-                                className={`font-picker-item ${value === font ? 'selected' : ''}`}
-                                onClick={(e) => handleFontSelect(font, e)}
-                            >
-                                {font}
-                            </div>
-                        ))}
+                        {filteredSerif.length > 0 && (
+                            <>
+                                <div className="font-category-header">Serif</div>
+                                {filteredSerif.map((font) => (
+                                    <div
+                                        key={font}
+                                        className={`font-picker-item ${value === font ? 'selected' : ''}`}
+                                        onClick={(e) => handleFontSelect(font, e)}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </>
+                        )}
                         
-                        {filteredFonts.length === 0 && (
+                        {filteredSansSerif.length > 0 && (
+                            <>
+                                <div className="font-category-header">Sans Serif</div>
+                                {filteredSansSerif.map((font) => (
+                                    <div
+                                        key={font}
+                                        className={`font-picker-item ${value === font ? 'selected' : ''}`}
+                                        onClick={(e) => handleFontSelect(font, e)}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        
+                        {filteredMonospace.length > 0 && (
+                            <>
+                                <div className="font-category-header">Monospace</div>
+                                {filteredMonospace.map((font) => (
+                                    <div
+                                        key={font}
+                                        className={`font-picker-item ${value === font ? 'selected' : ''}`}
+                                        onClick={(e) => handleFontSelect(font, e)}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        
+                        {filteredCursive.length > 0 && (
+                            <>
+                                <div className="font-category-header">Cursive</div>
+                                {filteredCursive.map((font) => (
+                                    <div
+                                        key={font}
+                                        className={`font-picker-item ${value === font ? 'selected' : ''}`}
+                                        onClick={(e) => handleFontSelect(font, e)}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        
+                        {filteredDisplay.length > 0 && (
+                            <>
+                                <div className="font-category-header">Display</div>
+                                {filteredDisplay.map((font) => (
+                                    <div
+                                        key={font}
+                                        className={`font-picker-item ${value === font ? 'selected' : ''}`}
+                                        onClick={(e) => handleFontSelect(font, e)}
+                                    >
+                                        {font}
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                        
+                        {filteredSerif.length === 0 && filteredSansSerif.length === 0 && 
+                         filteredMonospace.length === 0 && filteredCursive.length === 0 && 
+                         filteredDisplay.length === 0 && (
                             <div className="font-picker-no-results">No fonts found</div>
                         )}
                     </div>
