@@ -8,6 +8,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap"
         rel="stylesheet">
     <style>
+        :root {
+            --box-font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -17,7 +21,7 @@
         body,
         html {
             height: 100%;
-            font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
+            font-family: var(--box-font-family);
             font-weight: 400;
             line-height: 1.5;
             font-synthesis: none;
@@ -93,6 +97,7 @@
             box-sizing: border-box;
             overflow: auto;
             flex-shrink: 0;
+            font-family: var(--box-font-family, "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif);
         }
 
         .content-container {
@@ -114,6 +119,7 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
+            font-family: var(--box-font-family, "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif);
         }
 
         .text-only-content {
@@ -284,10 +290,61 @@
                     if (message.data.htmlVariableValues) {
                         this.htmlVariableValues = message.data.htmlVariableValues;
                     }
+                    // Apply font family if provided and changed
+                    if (message.data.fontFamily && message.data.fontFamily !== this.currentFont) {
+                        this.applyFont(message.data.fontFamily);
+                    }
                     this.renderDashboard();
                 } else if (message.type === 'variables') {
                     this.variableValues = message.data;
                     this.renderDashboard();
+                }
+            }
+
+            // Helper function to apply font family
+            applyFont(fontFamily) {
+                console.log('Applying font:', fontFamily);
+                this.currentFont = fontFamily; // Track the current font
+
+                // Update CSS variable immediately (will use fallback until font loads)
+                document.documentElement.style.setProperty('--box-font-family', `"${fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
+
+                // Load Google Font dynamically if not already loaded
+                const fontName = fontFamily.replace(/\s+/g, '+');
+                const existingLink = document.querySelector(`link[href*="family=${fontName}"]`);
+
+                if (!existingLink && fontFamily !== 'Work Sans') {
+                    const link = document.createElement('link');
+                    // Use variable font axis for better compatibility
+                    link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@100;200;300;400;500;600;700;800;900&display=swap`;
+                    link.rel = 'stylesheet';
+
+                    // Wait for font to load, then re-render
+                    link.onload = () => {
+                        console.log('✅ Font loaded successfully:', fontFamily);
+                        // Use CSS Font Loading API to ensure font is actually available
+                        if (document.fonts) {
+                            document.fonts.load(`400 12px "${fontFamily}"`).then(() => {
+                                console.log('✅ Font ready:', fontFamily);
+                                this.renderDashboard();
+                            }).catch(err => {
+                                console.warn('Font load verification failed:', err);
+                                this.renderDashboard();
+                            });
+                        } else {
+                            // Fallback for browsers without Font Loading API
+                            setTimeout(() => this.renderDashboard(), 100);
+                        }
+                    };
+
+                    link.onerror = () => {
+                        console.error('❌ Failed to load font:', fontFamily);
+                    };
+
+                    document.head.appendChild(link);
+                    console.log('📥 Loading font from Google:', link.href);
+                } else {
+                    console.log('Font already loaded or is default:', fontFamily);
                 }
             }
 

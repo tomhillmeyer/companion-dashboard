@@ -17,6 +17,8 @@ import { Capacitor } from '@capacitor/core';
 import './SettingsMenu.css';
 // Import the image directly - this is the most reliable approach
 import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
+// Import version from package.json
+import packageJson from '../package.json';
 
 // Get window ID for isolated storage
 const windowId = (window as any).electronAPI?.windowId || '1';
@@ -74,6 +76,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
     const [connections, setConnections] = useState<CompanionConnection[]>([]);
+    const connectionsRef = useRef<CompanionConnection[]>([]); // Track current connections for comparison
     const [connectionInputs, setConnectionInputs] = useState<{ [key: string]: string }>({});
     const [connectionValidities, setConnectionValidities] = useState<{ [key: string]: boolean | null }>({});
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +105,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [webServerRunning, setWebServerRunning] = useState<boolean>(false);
     const [webServerStatus, setWebServerStatus] = useState<string>('Stopped');
     const [webServerEndpoints, setWebServerEndpoints] = useState<any[]>([]);
+
 
     // Web server functions
     const startWebServer = async () => {
@@ -143,6 +147,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         }
     };
 
+
     const checkWebServerStatus = async () => {
         try {
             if (isDev && !isDesktop) {
@@ -183,6 +188,58 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             return () => clearInterval(interval);
         }
     }, [showWebServer]);
+
+
+    // Sync internal state when props change (for external updates via WebSocket)
+    useEffect(() => {
+        // Update inputUrl to match connectionUrl prop
+        setInputUrl(connectionUrl);
+    }, [connectionUrl]);
+
+    // Update ref whenever connections state changes
+    useEffect(() => {
+        connectionsRef.current = connections;
+    }, [connections]);
+
+    // Sync connections from localStorage when they change externally
+    useEffect(() => {
+        const loadConnections = () => {
+            const savedConnections = localStorage.getItem(`window_${windowId}_companion_connections`);
+            if (savedConnections) {
+                try {
+                    const parsed = JSON.parse(savedConnections);
+                    // Only update if actually different to avoid unnecessary re-renders
+                    // Use ref to get the current value inside the interval callback
+                    if (JSON.stringify(parsed) !== JSON.stringify(connectionsRef.current)) {
+                        console.log('Connections changed, updating UI:', parsed);
+                        setConnections(parsed);
+                        // Update connection inputs for all connections
+                        const inputs: { [key: string]: string } = {};
+                        parsed.forEach((conn: CompanionConnection) => {
+                            inputs[conn.id] = conn.url;
+                        });
+                        setConnectionInputs(inputs);
+                    }
+                } catch (error) {
+                    console.error('Failed to parse saved connections:', error);
+                }
+            } else {
+                // If no saved connections, clear the local state
+                if (connectionsRef.current.length > 0) {
+                    console.log('Connections cleared, updating UI');
+                    setConnections([]);
+                    setConnectionInputs({});
+                }
+            }
+        };
+
+        // Load initially
+        loadConnections();
+
+        // Poll for changes every second to catch external updates
+        const interval = setInterval(loadConnections, 1000);
+        return () => clearInterval(interval);
+    }, []); // Only run once on mount
 
     const downloadConfig = async () => {
         try {
@@ -901,7 +958,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             if (pendingConfig.canvas_settings) {
                 localStorage.setItem(`window_${windowId}_canvas_settings`, JSON.stringify(pendingConfig.canvas_settings));
             }
-            
+
             // Restore font family if it exists
             if (pendingConfig.font_family) {
                 localStorage.setItem(FONT_STORAGE_KEY, pendingConfig.font_family);
@@ -1054,7 +1111,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             className="settings-font-picker"
                         />
                     </div>
-                    
+
                     <span className='section-label'>Canvas</span>
                     <div className='menu-section canvas-section'>
                         <div className="canvas-color-container">
@@ -1206,6 +1263,9 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                             <div className="endpoints-list">
                                                 {webServerEndpoints.map((endpoint, index) => (
                                                     <div key={index} className="endpoint-item">
+                                                        <span style={{ fontSize: '0.8em', opacity: 0.7, marginRight: '8px' }}>
+                                                            {endpoint.type === 'read-only' ? '[Read-Only]' : '[Full App]'}
+                                                        </span>
                                                         <code>{endpoint.url}</code>
                                                     </div>
                                                 ))}
@@ -1236,7 +1296,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v1.3.3<br />Created by Tom Hillmeyer</span>
+                    <span className='footer'>v{packageJson.version}<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>
 

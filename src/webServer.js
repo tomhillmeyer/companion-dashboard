@@ -8,13 +8,15 @@ import os from 'os';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class DashboardWebServer {
-    constructor() {
+    constructor(onStateChange) {
         this.app = express();
         this.server = null;
         this.wss = null;
         this.port = 8100;
         this.isRunning = false;
         this.clients = new Set();
+        this.fullAppClients = new Set(); // Separate tracking for full app clients
+        this.onStateChange = onStateChange; // Callback for bidirectional sync from full app
         this.currentState = {
             boxes: [],
             canvasSettings: {},
@@ -66,9 +68,18 @@ class DashboardWebServer {
         // Serve static assets (for built-in icons)
         this.app.use('/assets', express.static(path.join(__dirname, '../src/assets')));
         
-        // Serve the web dashboard
+        // Serve the read-only web dashboard at root
         this.app.get('/', (req, res) => {
             res.sendFile(path.join(__dirname, '../public/web-dashboard.html'));
+        });
+
+        // Serve the full interactive app at /full
+        const distPath = path.join(__dirname, '../dist');
+        this.app.use('/full', express.static(distPath));
+
+        // SPA fallback for /full routes - use middleware instead of wildcard
+        this.app.use('/full', (req, res) => {
+            res.sendFile(path.join(distPath, 'index.html'));
         });
         
         // Start HTTP server
@@ -80,24 +91,57 @@ class DashboardWebServer {
         // Setup WebSocket server
         this.wss = new WebSocketServer({ server: this.server });
         
-        this.wss.on('connection', (ws) => {
-            console.log('Client connected to dashboard web server');
-            this.clients.add(ws);
-            
+        this.wss.on('connection', (ws, req) => {
+            // Check if this is a full app client or read-only client based on URL
+            const isFullAppClient = req.url && req.url.includes('/full');
+
+            console.log(`Client connected to dashboard web server (${isFullAppClient ? 'full app' : 'read-only'})`);
+
+            if (isFullAppClient) {
+                this.fullAppClients.add(ws);
+            } else {
+                this.clients.add(ws);
+            }
+
             // Send current state to new client
             ws.send(JSON.stringify({
-                type: 'state',
+                type: isFullAppClient ? 'stateUpdate' : 'state',
                 data: this.currentState
             }));
-            
-            ws.on('close', () => {
-                console.log('Client disconnected from dashboard web server');
-                this.clients.delete(ws);
+
+            // Handle messages from full app clients (bidirectional sync)
+            ws.on('message', (message) => {
+                if (isFullAppClient) {
+                    try {
+                        const data = JSON.parse(message.toString());
+                        console.log('Received message from full app client:', data.type);
+
+                        // Forward state changes from browser to Electron
+                        if (data.type === 'stateChange' && this.onStateChange) {
+                            this.onStateChange(data.data);
+                        }
+                    } catch (error) {
+                        console.error('Error processing WebSocket message:', error);
+                    }
+                }
             });
-            
+
+            ws.on('close', () => {
+                console.log(`Client disconnected from dashboard web server (${isFullAppClient ? 'full app' : 'read-only'})`);
+                if (isFullAppClient) {
+                    this.fullAppClients.delete(ws);
+                } else {
+                    this.clients.delete(ws);
+                }
+            });
+
             ws.on('error', (error) => {
                 console.error('WebSocket error:', error);
-                this.clients.delete(ws);
+                if (isFullAppClient) {
+                    this.fullAppClients.delete(ws);
+                } else {
+                    this.clients.delete(ws);
+                }
             });
         });
         
@@ -114,12 +158,17 @@ class DashboardWebServer {
         if (!this.isRunning) {
             return;
         }
-        
-        // Close all WebSocket connections
+
+        // Close all WebSocket connections (both read-only and full app)
         this.clients.forEach(client => {
             client.close();
         });
         this.clients.clear();
+
+        this.fullAppClients.forEach(client => {
+            client.close();
+        });
+        this.fullAppClients.clear();
         
         // Close WebSocket server
         if (this.wss) {
@@ -137,16 +186,28 @@ class DashboardWebServer {
     
     updateState(newState) {
         this.currentState = { ...this.currentState, ...newState };
-        
-        // Broadcast to all connected clients
-        const message = JSON.stringify({
+
+        // Broadcast to read-only clients
+        const readOnlyMessage = JSON.stringify({
             type: 'state',
             data: this.currentState
         });
-        
+
         this.clients.forEach(client => {
             if (client.readyState === client.OPEN) {
-                client.send(message);
+                client.send(readOnlyMessage);
+            }
+        });
+
+        // Broadcast to full app clients (different message type)
+        const fullAppMessage = JSON.stringify({
+            type: 'stateUpdate',
+            data: this.currentState
+        });
+
+        this.fullAppClients.forEach(client => {
+            if (client.readyState === client.OPEN) {
+                client.send(fullAppMessage);
             }
         });
     }
@@ -193,13 +254,20 @@ class DashboardWebServer {
     getEndpoints() {
         const baseUrls = this.getNetworkInterfaces();
         const endpoints = [];
-        
+
         baseUrls.forEach(base => {
+            // Add read-only endpoint
             endpoints.push({
-                url: base.url
+                url: base.url,
+                type: 'read-only'
+            });
+            // Add full app endpoint
+            endpoints.push({
+                url: `${base.url}/full`,
+                type: 'full-app'
             });
         });
-        
+
         return endpoints;
     }
 }

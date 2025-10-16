@@ -51,7 +51,6 @@ function saveWindowStates() {
                 const bounds = window.getBounds();
                 const isMaximized = window.isMaximized();
                 const webServer = windowWebServers.get(window.windowId);
-
                 const state = {
                     ...bounds,
                     isMaximized,
@@ -112,12 +111,18 @@ function createWindow(windowState = null) {
         }
     });
 
-    // Store window ID for tracking and create dedicated web server
+    // Store window ID for tracking and create dedicated web servers
     window.windowId = windowId;
     windows.set(windowId, window);
 
-    // Create a dedicated web server for this window
-    const webServer = new DashboardWebServer();
+    // Create a dedicated web server for this window with state change callback
+    const webServer = new DashboardWebServer((stateData) => {
+        // When browser sends state changes via /full, update Electron's localStorage and broadcast
+        console.log('Received state change from /full browser client');
+
+        // Send the state data to the renderer process to update localStorage
+        window.webContents.send('sync-state-from-browser', stateData);
+    });
     windowWebServers.set(windowId, webServer);
 
     // Restore maximized state
@@ -448,6 +453,7 @@ ipcMain.handle('web-server-update-state', async (event, state) => {
     try {
         const webServer = getWebServerForWindow(event);
         webServer.updateState(state);
+
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -469,4 +475,5 @@ app.on('before-quit', (event) => {
             webServer.stop();
         }
     });
+
 });

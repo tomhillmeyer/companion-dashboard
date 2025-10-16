@@ -5,7 +5,7 @@
   "main": "src/main.js",
   "homepage": "./",
   "private": true,
-  "version": "1.3.3",
+  "version": "1.4.0",
   "scripts": {
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
@@ -69,6 +69,7 @@
       "src/assets/**/*",
       "src/main.js",
       "src/webServer.js",
+      "src/fullAppServer.js",
       "src/preload.js",
       "package.json"
     ],

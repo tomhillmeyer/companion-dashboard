@@ -151,6 +151,14 @@ export default function App() {
 
     const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [isConnected, setIsConnected] = useState<boolean>(true);
+    const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Track dragging state globally for WebSocket sync
+    useEffect(() => {
+        (window as any).isDraggingBox = isDragging;
+        console.log('Dragging state changed:', isDragging);
+    }, [isDragging]);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>(() => {
         return localStorage.getItem('companion_connection_url') || '';
     });
@@ -389,9 +397,11 @@ export default function App() {
                     boxes,
                     canvasSettings,
                     connections,
+                    companionBaseUrl,
                     variableValues: allVariableValues,
                     htmlVariableValues: allHtmlVariableValues,
-                    imageData
+                    imageData,
+                    fontFamily
                 };
 
                 // @ts-ignore - electronAPI is available via preload script
@@ -403,7 +413,226 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, refreshRateMs, connections, allVariableValues, allHtmlVariableValues]);
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily]);
+
+    // WebSocket sync for full app server (when running in browser)
+    useEffect(() => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+        console.log('Sync effect running. isElectron:', isElectron);
+
+        // If running in Electron, listen for state changes from browser clients
+        if (isElectron) {
+            console.log('Setting up Electron listener for browser state changes');
+            (window as any).electronAPI.onSyncStateFromBrowser((stateData: any) => {
+                console.log('✅ Syncing state from browser client to Electron', stateData);
+
+                // Update all state from incoming browser data
+                if (stateData.boxes) {
+                    setBoxes(stateData.boxes);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateData.boxes));
+                }
+
+                if (stateData.canvasSettings) {
+                    const cs = stateData.canvasSettings;
+                    if (cs.canvasBackgroundColor !== undefined) setCanvasBackgroundColor(cs.canvasBackgroundColor);
+                    if (cs.canvasBackgroundColorText !== undefined) setCanvasBackgroundColorText(cs.canvasBackgroundColorText);
+                    if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(cs.canvasBackgroundVariableColors);
+                    if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
+                    if (cs.refreshRateMs !== undefined) setRefreshRateMs(cs.refreshRateMs);
+                    localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(cs));
+                }
+
+                if (stateData.connections) {
+                    setConnections(stateData.connections);
+                    localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(stateData.connections));
+                }
+
+                if (stateData.companionBaseUrl !== undefined) {
+                    setCompanionBaseUrl(stateData.companionBaseUrl);
+                    localStorage.setItem('companion_connection_url', stateData.companionBaseUrl);
+                }
+
+                if (stateData.fontFamily !== undefined) {
+                    setFontFamily(stateData.fontFamily);
+                    localStorage.setItem(FONT_STORAGE_KEY, stateData.fontFamily);
+                    document.documentElement.style.setProperty('--box-font-family', `"${stateData.fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
+                }
+            });
+        }
+
+        // If running in browser (not Electron), connect to WebSocket
+        if (!isElectron) {
+            console.log('Running in browser, connecting to WebSocket...');
+
+            const connectWebSocket = () => {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                // Include the current path so server knows if this is /full or read-only
+                const path = window.location.pathname.startsWith('/full') ? '/full' : '/';
+                const wsUrl = `${protocol}//${window.location.host}${path}`;
+                console.log('WebSocket URL:', wsUrl);
+
+                const ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    console.log('✅ Connected to full app server for bidirectional sync');
+                    setIsConnected(true);
+
+                    // Clear reconnect interval if it exists
+                    if (reconnectIntervalRef.current) {
+                        clearInterval(reconnectIntervalRef.current);
+                        reconnectIntervalRef.current = null;
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        console.log('📨 Received WebSocket message:', message.type);
+
+                        if (message.type === 'stateUpdate' && message.data) {
+                            const data = message.data;
+
+                            // If user is actively dragging, ignore incoming updates completely
+                            if ((window as any).isDraggingBox) {
+                                console.log('⏸️ Dragging in progress, ignoring incoming update');
+                                return;
+                            }
+
+                            console.log('📥 Received state update from Electron', data);
+
+                            // Set flag to prevent sending this update back
+                            (window as any).isReceivingUpdate = true;
+
+                            // Update boxes
+                            if (data.boxes) {
+                                console.log('Updating boxes:', data.boxes.length);
+                                setBoxes(data.boxes);
+                                localStorage.setItem(STORAGE_KEY, JSON.stringify(data.boxes));
+                            }
+
+                            // Update canvas settings
+                            if (data.canvasSettings) {
+                                const cs = data.canvasSettings;
+                                console.log('Updating canvas settings');
+                                if (cs.canvasBackgroundColor !== undefined) setCanvasBackgroundColor(cs.canvasBackgroundColor);
+                                if (cs.canvasBackgroundColorText !== undefined) setCanvasBackgroundColorText(cs.canvasBackgroundColorText);
+                                if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(cs.canvasBackgroundVariableColors);
+                                if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
+                                if (cs.refreshRateMs !== undefined) setRefreshRateMs(cs.refreshRateMs);
+                                localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(cs));
+                            }
+
+                            // Update connections
+                            if (data.connections) {
+                                console.log('Updating connections');
+                                setConnections(data.connections);
+                                localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(data.connections));
+                            }
+
+                            // Update companion base URL
+                            if (data.companionBaseUrl !== undefined) {
+                                console.log('Updating companion base URL:', data.companionBaseUrl);
+                                setCompanionBaseUrl(data.companionBaseUrl);
+                                localStorage.setItem('companion_connection_url', data.companionBaseUrl);
+                            }
+
+                            // Update font family
+                            if (data.fontFamily !== undefined) {
+                                console.log('Updating font family:', data.fontFamily);
+                                setFontFamily(data.fontFamily);
+                                localStorage.setItem(FONT_STORAGE_KEY, data.fontFamily);
+                                document.documentElement.style.setProperty('--box-font-family', `"${data.fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Error processing WebSocket message:', error);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('❌ WebSocket error:', error);
+                    setIsConnected(false);
+                };
+
+                ws.onclose = () => {
+                    console.log('⚠️ Disconnected from full app server');
+                    setIsConnected(false);
+
+                    // Start reconnection attempts
+                    if (!reconnectIntervalRef.current) {
+                        reconnectIntervalRef.current = setInterval(() => {
+                            console.log('Attempting to reconnect...');
+                            connectWebSocket();
+                        }, 3000);
+                    }
+                };
+
+                // Store WebSocket instance for sending changes
+                (window as any).fullAppServerWS = ws;
+
+                return ws;
+            };
+
+            const ws = connectWebSocket();
+
+            return () => {
+                console.log('Cleaning up WebSocket connection');
+                if (reconnectIntervalRef.current) {
+                    clearInterval(reconnectIntervalRef.current);
+                    reconnectIntervalRef.current = null;
+                }
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            };
+        }
+    }, []);
+
+    // Send state changes from browser to Electron via WebSocket (only user-initiated changes)
+    useEffect(() => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+
+        // Don't send while dragging
+        if (isDragging) {
+            console.log('⏸️ Skipping send - drag in progress');
+            return;
+        }
+
+        // Don't send if we're currently receiving an update (prevents infinite loop)
+        if ((window as any).isReceivingUpdate) {
+            console.log('⏭️ Skipping send - currently receiving update');
+            (window as any).isReceivingUpdate = false; // Reset for next change
+            return;
+        }
+
+        if (!isElectron && (window as any).fullAppServerWS) {
+            const ws = (window as any).fullAppServerWS;
+
+            if (ws.readyState === WebSocket.OPEN) {
+                console.log('📤 Sending state change to Electron');
+                const stateData = {
+                    boxes,
+                    canvasSettings: {
+                        canvasBackgroundColor,
+                        canvasBackgroundColorText,
+                        canvasBackgroundVariableColors,
+                        canvasBackgroundImageOpacity,
+                        refreshRateMs
+                    },
+                    connections,
+                    companionBaseUrl,
+                    fontFamily
+                };
+
+                ws.send(JSON.stringify({
+                    type: 'stateChange',
+                    data: stateData
+                }));
+            } else {
+                console.log('⚠️ WebSocket not ready, state:', ws.readyState);
+            }
+        }
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, refreshRateMs, connections, companionBaseUrl, fontFamily]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -634,9 +863,13 @@ export default function App() {
 
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
-    
+
+    // Check if we're running in browser (for disconnection overlay)
+    const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+    const showDisconnectOverlay = !isElectron && !isConnected;
+
     return (
-        <div 
+        <div
             className={`canvas-container ${hasBackgroundImage ? 'has-background-image' : ''}`}
             style={{
                 minHeight: '100vh',
@@ -644,6 +877,63 @@ export default function App() {
                 ...canvasStyle
             }}>
             <TitleBar />
+
+            {/* Disconnection overlay - only shown when running in browser and disconnected */}
+            {showDisconnectOverlay && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10000,
+                    pointerEvents: 'all',
+                    cursor: 'not-allowed'
+                }}>
+                    <div style={{
+                        backgroundColor: '#1a1a1a',
+                        border: '2px solid #f44336',
+                        borderRadius: '8px',
+                        padding: '40px',
+                        maxWidth: '500px',
+                        textAlign: 'center',
+                        boxShadow: '0 4px 20px rgba(244, 67, 54, 0.3)'
+                    }}>
+                        <div style={{
+                            fontSize: '48px',
+                            marginBottom: '20px'
+                        }}>⚠️</div>
+                        <h2 style={{
+                            color: '#f44336',
+                            margin: '0 0 16px 0',
+                            fontSize: '24px',
+                            fontWeight: 'bold'
+                        }}>Connection Lost</h2>
+                        <p style={{
+                            color: '#cccccc',
+                            margin: '0 0 12px 0',
+                            fontSize: '16px',
+                            lineHeight: '1.5'
+                        }}>
+                            The connection to the server has been lost.
+                        </p>
+                        <p style={{
+                            color: '#999999',
+                            margin: 0,
+                            fontSize: '14px',
+                            fontStyle: 'italic'
+                        }}>
+                            Attempting to reconnect...
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <SettingsMenu
                 ref={settingsMenuRef}
                 onNewBox={createNewBox}
