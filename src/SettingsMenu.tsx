@@ -1261,14 +1261,32 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     {webServerRunning && webServerEndpoints.length > 0 && (
                                         <div className="web-server-endpoints">
                                             <div className="endpoints-list">
-                                                {webServerEndpoints.map((endpoint, index) => (
-                                                    <div key={index} className="endpoint-item">
-                                                        <span style={{ fontSize: '0.8em', opacity: 0.7, marginRight: '8px' }}>
-                                                            {endpoint.type === 'read-only' ? '[Read-Only]' : '[Full App]'}
-                                                        </span>
-                                                        <code>{endpoint.url}</code>
-                                                    </div>
-                                                ))}
+                                                {/* Read-Only URLs */}
+                                                {webServerEndpoints.filter(e => e.type === 'read-only').length > 0 && (
+                                                    <>
+                                                        <div style={{ fontSize: '0.85em', opacity: 0.5, marginBottom: '4px', marginTop: '8px' }}>
+                                                            Read-Only:
+                                                        </div>
+                                                        {webServerEndpoints.filter(e => e.type === 'read-only').map((endpoint, index) => (
+                                                            <div key={`ro-${index}`} className="endpoint-item">
+                                                                <code>{endpoint.url}</code>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                )}
+                                                {/* Full App URLs */}
+                                                {webServerEndpoints.filter(e => e.type === 'full-app').length > 0 && (
+                                                    <>
+                                                        <div style={{ fontSize: '0.85em', opacity: 0.5, marginBottom: '4px', marginTop: '12px' }}>
+                                                            Full App:
+                                                        </div>
+                                                        {webServerEndpoints.filter(e => e.type === 'full-app').map((endpoint, index) => (
+                                                            <div key={`fa-${index}`} className="endpoint-item">
+                                                                <code>{endpoint.url}</code>
+                                                            </div>
+                                                        ))}
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     )}
