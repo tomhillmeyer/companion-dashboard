@@ -466,8 +466,8 @@ export default function App() {
 
             const connectWebSocket = () => {
                 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                // Include the current path so server knows if this is /full or read-only
-                const path = window.location.pathname.startsWith('/full') ? '/full' : '/';
+                // Include the current path so server knows if this is /control or read-only
+                const path = window.location.pathname.startsWith('/control') ? '/control' : '/';
                 const wsUrl = `${protocol}//${window.location.host}${path}`;
                 console.log('WebSocket URL:', wsUrl);
 
@@ -864,9 +864,11 @@ export default function App() {
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
 
-    // Check if we're running in browser (for disconnection overlay)
+    // Check if we're running in browser via /control route (for disconnection overlay)
+    // Only show overlay if we're on the /control route AND disconnected
     const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
-    const showDisconnectOverlay = !isElectron && !isConnected;
+    const isControlRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/control');
+    const showDisconnectOverlay = !isElectron && isControlRoute && !isConnected;
 
     return (
         <div

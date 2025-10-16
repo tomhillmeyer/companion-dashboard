@@ -73,12 +73,12 @@ class DashboardWebServer {
             res.sendFile(path.join(__dirname, '../public/web-dashboard.html'));
         });
 
-        // Serve the full interactive app at /full
+        // Serve the full interactive app at /control
         const distPath = path.join(__dirname, '../dist');
-        this.app.use('/full', express.static(distPath));
+        this.app.use('/control', express.static(distPath));
 
-        // SPA fallback for /full routes - use middleware instead of wildcard
-        this.app.use('/full', (req, res) => {
+        // SPA fallback for /control routes - use middleware instead of wildcard
+        this.app.use('/control', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
         
@@ -93,7 +93,7 @@ class DashboardWebServer {
         
         this.wss.on('connection', (ws, req) => {
             // Check if this is a full app client or read-only client based on URL
-            const isFullAppClient = req.url && req.url.includes('/full');
+            const isFullAppClient = req.url && req.url.includes('/control');
 
             console.log(`Client connected to dashboard web server (${isFullAppClient ? 'full app' : 'read-only'})`);
 
@@ -263,7 +263,7 @@ class DashboardWebServer {
             });
             // Add full app endpoint
             endpoints.push({
-                url: `${base.url}/full`,
+                url: `${base.url}/control`,
                 type: 'full-app'
             });
         });
