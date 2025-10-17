@@ -1,6 +1,9 @@
 {
   "name": "companion-dashboard",
-  "author": "Tom Hillmeyer",
+  "author": {
+    "name": "Tom Hillmeyer",
+    "email": "tom@tomhillmeyer.com"
+  },
   "description": "Display variables from Bitfocus Companion",
   "main": "src/main.js",
   "homepage": "./",
@@ -17,6 +20,8 @@
     "dist": "electron-builder",
     "dist:mac:intel": "electron-builder --mac --x64",
     "dist:mac:arm": "electron-builder --mac --arm64",
+    "dist:linux:intel": "electron-builder --linux --x64",
+    "dist:linux:arm": "electron-builder --linux --arm64",
     "dist:win": "electron-builder --win --x64",
     "dist:all": "electron-builder -mwl"
   },
@@ -95,6 +100,12 @@
       ],
       "icon": "public/icon.ico",
       "artifactName": "${productName}-${version}-windows-${arch}.${ext}"
+    },
+    "linux": {
+      "target": "deb",
+      "category": "Utility",
+      "icon": "public/icon.png",
+      "artifactName": "${productName}-${version}-linux-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
