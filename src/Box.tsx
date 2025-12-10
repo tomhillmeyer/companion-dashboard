@@ -85,6 +85,7 @@ export default function Box({
     isDragging = false,
     onDragStart,
     onDragEnd,
+    boxesLocked = false,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -100,6 +101,7 @@ export default function Box({
     isDragging?: boolean;
     onDragStart?: () => void;
     onDragEnd?: () => void;
+    boxesLocked?: boolean;
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
@@ -465,12 +467,16 @@ export default function Box({
 
     return (
         <div>
-            <DoubleTapBox onDoubleTap={() => { setShowModal(true) }}>
+            <DoubleTapBox onDoubleTap={() => { if (!boxesLocked) setShowModal(true) }}>
                 <div className="box-container">
                     <div
                         ref={targetRef}
                         className={`box ${boxData.noBorder ? 'no-border' : 'with-border'} ${(loadedBackgroundImage || (resolveBoxBackgroundColor() && isImageUrl(resolveBoxBackgroundColor()))) ? 'has-background-image' : ''}`}
                         onClick={(e) => {
+                            if (boxesLocked) {
+                                // When locked, allow clicks to pass through to content
+                                return;
+                            }
                             e.stopPropagation();
                             if (e.altKey) {
                                 // Duplicate this box
@@ -491,6 +497,10 @@ export default function Box({
                             }
                         }}
                         onDoubleClick={(e) => {
+                            if (boxesLocked) {
+                                // When locked, allow double-clicks to pass through to content
+                                return;
+                            }
                             e.stopPropagation();
                             setShowModal(true);
                         }}
@@ -502,31 +512,45 @@ export default function Box({
                             WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             zIndex: boxData.zIndex,
+                            pointerEvents: boxesLocked ? 'none' : 'auto',
                         }}
                     >
-                        {/* Header */}
-                        <MarkdownContent
-                            content={displayHtmlLabels.header}
-                            className="header"
-                            style={headerStyle}
-                        />
+                        {/* Wrapper for interactive content - has pointer-events: auto when locked */}
+                        <div style={{
+                            pointerEvents: boxesLocked ? 'auto' : 'none',
+                            width: '100%',
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'stretch'
+                        }}>
+                            {/* Header */}
+                            <MarkdownContent
+                                key={displayHtmlLabels.header}
+                                content={displayHtmlLabels.header}
+                                className="header"
+                                style={headerStyle}
+                            />
 
-                        {/* Body with left and right labels */}
-                        <div className='content-container'>
-                            <MarkdownContent
-                                content={displayHtmlLabels.left}
-                                className="content"
-                                style={leftStyle}
-                            />
-                            <MarkdownContent
-                                content={displayHtmlLabels.right}
-                                className="content"
-                                style={rightStyle}
-                            />
+                            {/* Body with left and right labels */}
+                            <div className='content-container'>
+                                <MarkdownContent
+                                    key={displayHtmlLabels.left}
+                                    content={displayHtmlLabels.left}
+                                    className="content"
+                                    style={leftStyle}
+                                />
+                                <MarkdownContent
+                                    key={displayHtmlLabels.right}
+                                    content={displayHtmlLabels.right}
+                                    className="content"
+                                    style={rightStyle}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {isSelected && (
+                    {isSelected && !boxesLocked && (
                         <Moveable
                             target={targetRef}
                             draggable

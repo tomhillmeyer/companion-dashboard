@@ -23,6 +23,7 @@ const STORAGE_KEY = `window_${windowId}_boxes`;
 const CANVAS_STORAGE_KEY = `window_${windowId}_canvas_settings`;
 const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 const FONT_STORAGE_KEY = `global_font_family`;
+const LOCK_STORAGE_KEY = `window_${windowId}_boxes_locked`;
 
 interface CompanionConnection {
     id: string;
@@ -232,6 +233,12 @@ export default function App() {
         return localStorage.getItem(FONT_STORAGE_KEY) || 'Work Sans';
     });
 
+    // Boxes locked state - initialize from localStorage
+    const [boxesLocked, setBoxesLocked] = useState<boolean>(() => {
+        const saved = localStorage.getItem(LOCK_STORAGE_KEY);
+        return saved === 'true';
+    });
+
     // Apply font immediately on component mount
     useEffect(() => {
         const savedFont = localStorage.getItem(FONT_STORAGE_KEY) || 'Work Sans';
@@ -268,6 +275,11 @@ export default function App() {
         // Apply font only to boxes by setting CSS custom property
         document.documentElement.style.setProperty('--box-font-family', `"${fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
     }, [fontFamily]);
+
+    // Save boxes locked state to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem(LOCK_STORAGE_KEY, boxesLocked.toString());
+    }, [boxesLocked]);
 
     // Load connections from localStorage on component mount
     useEffect(() => {
@@ -956,6 +968,8 @@ export default function App() {
                 onRefreshRateMsChange={setRefreshRateMs}
                 fontFamily={fontFamily}
                 onFontFamilyChange={setFontFamily}
+                boxesLocked={boxesLocked}
+                onBoxesLockedChange={setBoxesLocked}
             />
             {boxes.length === 0 ? (
                 <div style={{
@@ -1016,6 +1030,7 @@ export default function App() {
                         isDragging={isDragging}
                         onDragStart={() => setIsDragging(true)}
                         onDragEnd={() => setIsDragging(false)}
+                        boxesLocked={boxesLocked}
                     />
                 ))
             )}

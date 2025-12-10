@@ -73,6 +73,24 @@
     transform: scale(1.1);
 }
 
+.lock-icon {
+    position: fixed;
+    font-size: 24px;
+    left: 70px;
+    bottom: 23px;
+    z-index: 3003;
+    opacity: .5;
+    transition: transform .2s ease-in-out, opacity .5s ease;
+    padding: 5px;
+    line-height: 1;
+    color: #61BAFA;
+}
+
+.lock-icon:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
 .menu-section {
     display: flex;
     flex-direction: row;

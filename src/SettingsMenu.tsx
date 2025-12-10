@@ -5,6 +5,8 @@ import { FaAngleLeft } from "react-icons/fa6";
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa6";
+import { FaLock } from "react-icons/fa6";
+import { FaLockOpen } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
 import type { VariableColor } from './App';
 import ColorPicker from './ColorPicker';
@@ -51,6 +53,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onRefreshRateMsChange?: (refreshRate: number) => void;
     fontFamily?: string;
     onFontFamilyChange?: (fontFamily: string) => void;
+    boxesLocked?: boolean;
+    onBoxesLockedChange?: (locked: boolean) => void;
     onToggle?: () => void;
 }>(({
     onNewBox,
@@ -71,6 +75,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onRefreshRateMsChange,
     fontFamily,
     onFontFamilyChange,
+    boxesLocked,
+    onBoxesLockedChange,
     onToggle
 }, ref) => {
     const [inputUrl, setInputUrl] = useState('');
@@ -1021,6 +1027,20 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 }} onClick={toggleClass}>
                 <FaAngleRight style={{ display: isActive ? 'none' : 'inline' }} />
                 <FaAngleLeft style={{ display: isActive ? 'inline' : 'none' }} />
+            </div>
+            <div
+                className="lock-icon"
+                style={{
+                    opacity: visible ? 1 : 0,
+                    transition: 'opacity 0.5s ease',
+                    cursor: 'pointer'
+                }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onBoxesLockedChange?.(!boxesLocked);
+                }}
+            >
+                {boxesLocked ? <FaLock /> : <FaLockOpen />}
             </div>
             <div className={isActive ? 'menu menu-open' : 'menu'}>
                 <div className='menu-content'>
