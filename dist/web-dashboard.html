@@ -539,6 +539,7 @@
                     leftContent.style.alignItems = 'center';
                     leftContent.style.justifyContent = boxData.rightVisible ? 'flex-start' : 'center';
                     leftContent.style.textAlign = boxData.rightVisible ? 'left' : 'center';
+                    leftContent.style.flexBasis = `${boxData.leftRightRatio || 50}%`;
 
                     const leftText = this.getVariableValue(boxData.leftLabelSource, true) || this.getVariableValue(boxData.leftLabelSource, false) || (this.isVariableName(boxData.leftLabelSource) ? '' : boxData.leftLabelSource) || '';
                     leftContent.innerHTML = this.processContent(leftText);
@@ -560,6 +561,7 @@
                     rightContent.style.alignItems = 'center';
                     rightContent.style.justifyContent = boxData.leftVisible ? 'flex-end' : 'center';
                     rightContent.style.textAlign = boxData.leftVisible ? 'right' : 'center';
+                    rightContent.style.flexBasis = `${100 - (boxData.leftRightRatio || 50)}%`;
 
                     const rightText = this.getVariableValue(boxData.rightLabelSource, true) || this.getVariableValue(boxData.rightLabelSource, false) || (this.isVariableName(boxData.rightLabelSource) ? '' : boxData.rightLabelSource) || '';
                     rightContent.innerHTML = this.processContent(rightText);
