@@ -1,10 +1,12 @@
 <img src="https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/assets/dashboard.png" width="200"></img>
 # Companion Dashboard
 
-This is an application for displaying variables from Bitfocus Companion.
+This is an application for displaying variables from Bitfocus Companion. A companion for Companion, if you will.
+
+It is a display of boxes you can resize and move. Each of those boxes has an option for a header field, left field, and right field. Any or all of those fields can be hidden, and all consist of text fields that can display Companion variable values, markdown, HTML, or plain text.
 
 ## Installation
-Download the latest releases [here](https://github.com/tomhillmeyer/companion-dashboard/releases) for Mac (ARM), Mac (Intel), and Windows (x64).
+Download the latest releases [here](https://github.com/tomhillmeyer/companion-dashboard/releases) for Mac (ARM), Mac (Intel), Linux (amd64), Linux (arm64) and Windows (x64).
 
 There is a TestFlight beta test for iPhone and iPad. To be added to the beta, contact me at [tom@tomhillmeyer.com](mailto:tom@tomhillmeyer.com).
 
@@ -40,31 +42,36 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 | **Yamaha Audio Consoles**
 Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors. |
 
-## How to use
+# How to use
+
+### The Settings Pane
+
+- The settings pane opens from the left side of the screen. Open it with the arrow / carrot in the bottom left of the viewport, or by swiping from the left on touch screen devices
+- The lock/unlock button next to the arrow / carrot will lock the boxes in place and they can't be resized or moved. When the boxes are locked, they can be interacted with (using `<iframe>` or `<button>`, etc.)
 
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/settings-menu.png)
 
-- The settings pane opens from the left side of the screen. Open it with the arrow / carrot in the bottom left of the viewport, or by swiping from the left on touch screen devices
-- Input the address:port of your Companion instance and click "Set" The outline around the address will turn green if it's connected to Companion.
-    - Use the green "+" button to add more Companion connections
-- The canvas settings let you set a background color for the dashboard.
-- Click "New Box" to add a new box to the canvas. "Clear All Boxes" clears all of the boxes off of the canvas.
-- The web server lets you start the output of your Dashboard to a network location.
-- "Save" and "Load" allow you to download box details, layout, and Companion connection into a file to be restored from later. Loading a configuration replaces whatever configuration is in place.
+
+### Resizing and moving boxes
+
+- Clicking a box once selects it and allows you to resize and move it on the canvas.
+- The lock in the bottom left will toggle the ability to click boxes to resize and move them.
 
 ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/resize-handles.png)
 
-- Clicking a box once selects it and allows you to resize and move it on the canvas.
 
-![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/box-settings-modal.png)
+### Box Settings
 
 - Double clicking a box launches the settings window for that box.
 
-## Variables
+![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/box-settings-modal.png)
+
+# Parameters and logic
+### Variables
 - Including a variable in the standard Companion notation of `$(connection:variable)` will automatically replace that variable with its value on your dashboard.
 - The variable by itself will use the default Companion connection. If you add `[X]` immediately before the variable, it'll use that connection. For example, `[1]$(connection:variable)` will pull that variable from the [1] connection rather than the default connection.
 
-## Color logic
+### Color logic
 All color pickers in Companion Dashboard have three options, in this order of priority:
 1. Variable color
 2. Default Variable or HEX color
@@ -107,6 +114,7 @@ All text fields support HTML tags and the following markdown syntax.
 - Select a box and hit "backspace" or "delete" to delete
 - Swipe left on touch screens to open the Settings menu
 - Use `&nbsp` in some circumstances where a white space isn't recognized
+- Under the "Window" menu bar setting is the ability to keep Dashboard always on top of your other applications
 
 ## Demos
 [Countdown Timer Demo](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer)
@@ -115,7 +123,7 @@ All text fields support HTML tags and the following markdown syntax.
 
 ## Philosophy
 
-This is a dashboard application that leverages the fact that Companion translates connections into a uniform variable format. The intention is to avoid re-creating features of Companion, such as logic/triggers and third-party connections. Some logic will be included for ease of use, such as variable colors, but for the most part if it can be accomplished in Companion then it does not need to be accomplished here, at least in this iteration of Dashboard.
+This is a dashboard application that leverages the fact that Companion translates connections into a uniform variable format. The intention is to avoid re-creating features of Companion, such as logic/triggers and third-party connections. Some logic will be included for ease of use (such as variable colors) but for the most part if it can be accomplished in Companion then it does not need to be accomplished here, at least in this iteration of Dashboard.
 
 ## Acknowledgements
 
