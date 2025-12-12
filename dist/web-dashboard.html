@@ -202,9 +202,6 @@
         <div class="status-indicator status-connecting" id="status-indicator">
             Connecting...
         </div>
-        <div class="watermark">
-            Companion Dashboard - Web View
-        </div>
     </div>
 
     <script>
@@ -279,6 +276,13 @@
             updateStatus(status) {
                 this.statusIndicator.className = `status-indicator status-${status}`;
                 this.statusIndicator.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+                // Only show indicator when disconnected or connecting
+                if (status === 'connected') {
+                    this.statusIndicator.style.display = 'none';
+                } else {
+                    this.statusIndicator.style.display = 'block';
+                }
             }
 
             handleMessage(message) {
@@ -371,8 +375,7 @@
             renderDashboard() {
                 // Clear existing boxes
                 this.container.innerHTML = `
-                    <div class="status-indicator status-connected" id="status-indicator">Connected</div>
-                    <div class="watermark">Companion Dashboard - Web View</div>
+                    <div class="status-indicator status-connected" id="status-indicator" style="display: none;">Connected</div>
                 `;
                 this.statusIndicator = document.getElementById('status-indicator');
 
