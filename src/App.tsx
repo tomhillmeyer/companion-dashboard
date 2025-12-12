@@ -76,6 +76,7 @@ export interface BoxData {
     rightLabelColorText: string;
     rightLabelVariableColors: VariableColor[];
     rightVisible: boolean;
+    leftRightRatio: number; // Percentage for left side (0-100), right will be 100 - this value
 }
 
 
@@ -841,6 +842,7 @@ export default function App() {
             rightLabelVariableColors: [],
             rightVisible: true,
             headerLabelVisible: true,
+            leftRightRatio: 50,
         };
         setBoxes((prev) => [...prev, newBox]);
     };

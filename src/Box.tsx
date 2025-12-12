@@ -446,10 +446,11 @@ export default function Box({
         justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
         textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
         alignItems: 'center' as const,
+        flexBasis: `${boxData.leftRightRatio}%`,
     }), [
         boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
         boxData.leftLabelSize, boxData.leftVisible,
-        boxData.rightVisible, variableValues
+        boxData.rightVisible, boxData.leftRightRatio, variableValues
     ]);
 
     const rightStyle = useMemo(() => ({
@@ -459,10 +460,11 @@ export default function Box({
         justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
         textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
         alignItems: 'center' as const,
+        flexBasis: `${100 - boxData.leftRightRatio}%`,
     }), [
         boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
         boxData.rightLabelSize, boxData.rightVisible,
-        boxData.leftVisible, variableValues
+        boxData.leftVisible, boxData.leftRightRatio, variableValues
     ]);
 
     return (

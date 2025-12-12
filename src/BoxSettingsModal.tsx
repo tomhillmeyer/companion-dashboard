@@ -535,6 +535,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             />
                         </div>
                     </div>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Width %</span>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={formData.leftRightRatio}
+                                onChange={(e) => handleNumberInput('leftRightRatio', e.target.value)}
+                                onBlur={(e) => {
+                                    const numValue = parseInt(e.target.value);
+                                    if (isNaN(numValue) || numValue < 0) {
+                                        updateField('leftRightRatio', 50);
+                                    } else if (numValue > 100) {
+                                        updateField('leftRightRatio', 100);
+                                    } else {
+                                        updateField('leftRightRatio', numValue);
+                                    }
+                                }}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div className='setting-container'>
@@ -600,6 +622,34 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                 value={formData.rightLabelSize}
                                 onChange={(e) => handleNumberInput('rightLabelSize', e.target.value)}
                                 onBlur={(e) => handleNumberBlur('rightLabelSize', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Width %</span>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={100 - formData.leftRightRatio}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || /^\d*$/.test(value)) {
+                                        const numValue = value === '' ? 0 : parseInt(value);
+                                        updateField('leftRightRatio', 100 - numValue);
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const numValue = parseInt(e.target.value);
+                                    if (isNaN(numValue) || numValue < 0) {
+                                        updateField('leftRightRatio', 50);
+                                    } else if (numValue > 100) {
+                                        updateField('leftRightRatio', 0);
+                                    } else {
+                                        updateField('leftRightRatio', 100 - numValue);
+                                    }
+                                }}
                             />
                         </div>
                     </div>
