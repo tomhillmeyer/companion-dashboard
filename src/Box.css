@@ -131,7 +131,8 @@
 }
 
 .content {
-    flex: 1 1 auto;
+    flex-grow: 0;
+    flex-shrink: 0;
     min-width: 0;
     align-items: center;
     overflow: auto;

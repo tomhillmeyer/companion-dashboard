@@ -439,29 +439,37 @@ export default function Box({
         boxData.headerLabelSize, boxData.headerLabelVisible, variableValues
     ]);
 
-    const leftStyle = useMemo(() => ({
-        color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
-        fontSize: `${boxData.leftLabelSize}px`,
-        display: boxData.leftVisible ? 'flex' : 'none',
-        justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
-        textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
-        alignItems: 'center' as const,
-        flexBasis: `${boxData.leftRightRatio}%`,
-    }), [
+    const leftStyle = useMemo(() => {
+        // Ensure leftRightRatio has a valid value, default to 50
+        const ratio = boxData.leftRightRatio ?? 50;
+        return {
+            color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
+            fontSize: `${boxData.leftLabelSize}px`,
+            display: boxData.leftVisible ? 'flex' : 'none',
+            justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
+            textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
+            alignItems: 'center' as const,
+            flexBasis: `${ratio}%`,
+        };
+    }, [
         boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
         boxData.leftLabelSize, boxData.leftVisible,
         boxData.rightVisible, boxData.leftRightRatio, variableValues
     ]);
 
-    const rightStyle = useMemo(() => ({
-        color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
-        fontSize: `${boxData.rightLabelSize}px`,
-        display: boxData.rightVisible ? 'flex' : 'none',
-        justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
-        textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
-        alignItems: 'center' as const,
-        flexBasis: `${100 - boxData.leftRightRatio}%`,
-    }), [
+    const rightStyle = useMemo(() => {
+        // Ensure leftRightRatio has a valid value, default to 50
+        const ratio = boxData.leftRightRatio ?? 50;
+        return {
+            color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
+            fontSize: `${boxData.rightLabelSize}px`,
+            display: boxData.rightVisible ? 'flex' : 'none',
+            justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
+            textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
+            alignItems: 'center' as const,
+            flexBasis: `${100 - ratio}%`,
+        };
+    }, [
         boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
         boxData.rightLabelSize, boxData.rightVisible,
         boxData.leftVisible, boxData.leftRightRatio, variableValues
@@ -491,7 +499,9 @@ export default function Box({
                                             boxData.frame.translate[0] + 20,
                                             boxData.frame.translate[1] + 20
                                         ] as [number, number]
-                                    }
+                                    },
+                                    // Ensure leftRightRatio has a valid value
+                                    leftRightRatio: boxData.leftRightRatio ?? 50
                                 };
                                 onDuplicate(duplicatedBox);
                             } else {

@@ -89,7 +89,12 @@ export default function App() {
         const savedBoxes = localStorage.getItem(STORAGE_KEY);
         if (savedBoxes) {
             try {
-                return JSON.parse(savedBoxes);
+                const parsed = JSON.parse(savedBoxes);
+                // Ensure all boxes have leftRightRatio field (migration for older boxes)
+                return parsed.map((box: BoxData) => ({
+                    ...box,
+                    leftRightRatio: box.leftRightRatio ?? 50
+                }));
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
                 return defaultBoxes;
@@ -145,7 +150,9 @@ export default function App() {
                     originalBoxData.frame.translate[0] + 20, // Offset by 20px
                     originalBoxData.frame.translate[1] + 20
                 ] as [number, number]
-            }
+            },
+            // Ensure leftRightRatio has a valid value
+            leftRightRatio: originalBoxData.leftRightRatio ?? 50
         };
         setBoxes((prev) => [...prev, duplicatedBox]);
     };
