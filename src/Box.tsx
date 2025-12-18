@@ -442,6 +442,20 @@ export default function Box({
     const leftStyle = useMemo(() => {
         // Ensure leftRightRatio has a valid value, default to 50
         const ratio = boxData.leftRightRatio ?? 50;
+
+        // Calculate effective width based on visibility
+        // If left is hidden, width is 0%
+        // If right is hidden, width is 100%
+        // Otherwise, use the ratio
+        let effectiveWidth: number;
+        if (!boxData.leftVisible) {
+            effectiveWidth = 0;
+        } else if (!boxData.rightVisible) {
+            effectiveWidth = 100;
+        } else {
+            effectiveWidth = ratio;
+        }
+
         return {
             color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
             fontSize: `${boxData.leftLabelSize}px`,
@@ -449,7 +463,7 @@ export default function Box({
             justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
             textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
             alignItems: 'center' as const,
-            flexBasis: `${ratio}%`,
+            flexBasis: `${effectiveWidth}%`,
         };
     }, [
         boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
@@ -460,6 +474,20 @@ export default function Box({
     const rightStyle = useMemo(() => {
         // Ensure leftRightRatio has a valid value, default to 50
         const ratio = boxData.leftRightRatio ?? 50;
+
+        // Calculate effective width based on visibility
+        // If right is hidden, width is 0%
+        // If left is hidden, width is 100%
+        // Otherwise, use 100 - ratio
+        let effectiveWidth: number;
+        if (!boxData.rightVisible) {
+            effectiveWidth = 0;
+        } else if (!boxData.leftVisible) {
+            effectiveWidth = 100;
+        } else {
+            effectiveWidth = 100 - ratio;
+        }
+
         return {
             color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
             fontSize: `${boxData.rightLabelSize}px`,
@@ -467,7 +495,7 @@ export default function Box({
             justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
             textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
             alignItems: 'center' as const,
-            flexBasis: `${100 - ratio}%`,
+            flexBasis: `${effectiveWidth}%`,
         };
     }, [
         boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,

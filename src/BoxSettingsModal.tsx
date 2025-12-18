@@ -542,7 +542,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                 type="text"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
-                                value={formData.leftRightRatio}
+                                value={!formData.leftVisible ? 0 : !formData.rightVisible ? 100 : formData.leftRightRatio}
                                 onChange={(e) => handleNumberInput('leftRightRatio', e.target.value)}
                                 onBlur={(e) => {
                                     const numValue = parseInt(e.target.value);
@@ -554,6 +554,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                         updateField('leftRightRatio', numValue);
                                     }
                                 }}
+                                disabled={!formData.leftVisible || !formData.rightVisible}
                             />
                         </div>
                     </div>
@@ -632,7 +633,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                 type="text"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
-                                value={100 - formData.leftRightRatio}
+                                value={!formData.rightVisible ? 0 : !formData.leftVisible ? 100 : 100 - formData.leftRightRatio}
                                 onChange={(e) => {
                                     const value = e.target.value;
                                     if (value === '' || /^\d*$/.test(value)) {
@@ -650,6 +651,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                         updateField('leftRightRatio', 100 - numValue);
                                     }
                                 }}
+                                disabled={!formData.leftVisible || !formData.rightVisible}
                             />
                         </div>
                     </div>
