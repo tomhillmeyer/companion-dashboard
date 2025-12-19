@@ -6,6 +6,7 @@ import ColorPicker from './ColorPicker';
 
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
+import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
 
 import backgroundIcon from './assets/background_icon.png';
 import headerIcon from './assets/header_icon.png';
@@ -444,6 +445,64 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             />
                         </div>
                     </div>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Alignment</span>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('headerLabelAlign', 'left')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.headerLabelAlign || 'center') === 'left' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignLeft />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('headerLabelAlign', 'center')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.headerLabelAlign || 'center') === 'center' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignCenter />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('headerLabelAlign', 'right')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.headerLabelAlign || 'center') === 'right' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignRight />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div className='setting-container'>
 
@@ -558,6 +617,64 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             />
                         </div>
                     </div>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Alignment</span>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('leftLabelAlign', 'left')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.leftLabelAlign || 'left') === 'left' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignLeft />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('leftLabelAlign', 'center')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.leftLabelAlign || 'left') === 'center' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignCenter />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('leftLabelAlign', 'right')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.leftLabelAlign || 'left') === 'right' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignRight />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className='setting-container'>
@@ -653,6 +770,64 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                 }}
                                 disabled={!formData.leftVisible || !formData.rightVisible}
                             />
+                        </div>
+                    </div>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Alignment</span>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('rightLabelAlign', 'left')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.rightLabelAlign || 'right') === 'left' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignLeft />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('rightLabelAlign', 'center')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.rightLabelAlign || 'right') === 'center' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignCenter />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('rightLabelAlign', 'right')}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: (formData.rightLabelAlign || 'right') === 'right' ? '#61BAFA' : '#333',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        color: 'white',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <FaAlignRight />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

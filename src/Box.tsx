@@ -425,18 +425,27 @@ export default function Box({
     }, [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource]);
 
     // Memoize styles to prevent unnecessary re-renders
-    const headerStyle = useMemo(() => ({
-        backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues),
-        color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues),
-        fontSize: `${boxData.headerLabelSize}px`,
-        textAlign: 'center' as const,
-        display: boxData.headerLabelVisible ? 'flex' : 'none',
-        alignItems: 'center' as const,
-        justifyContent: 'center' as const,
-    }), [
+    const headerStyle = useMemo(() => {
+        const align = boxData.headerLabelAlign || 'center';
+        const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
+            left: 'flex-start',
+            center: 'center',
+            right: 'flex-end'
+        };
+
+        return {
+            backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues),
+            color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues),
+            fontSize: `${boxData.headerLabelSize}px`,
+            textAlign: align as 'left' | 'center' | 'right',
+            display: boxData.headerLabelVisible ? 'flex' : 'none',
+            alignItems: 'center' as const,
+            justifyContent: justifyMap[align],
+        };
+    }, [
         boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
         boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, variableValues
+        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, variableValues
     ]);
 
     const leftStyle = useMemo(() => {
@@ -456,19 +465,26 @@ export default function Box({
             effectiveWidth = ratio;
         }
 
+        const align = boxData.leftLabelAlign || 'left';
+        const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
+            left: 'flex-start',
+            center: 'center',
+            right: 'flex-end'
+        };
+
         return {
             color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
             fontSize: `${boxData.leftLabelSize}px`,
             display: boxData.leftVisible ? 'flex' : 'none',
-            justifyContent: boxData.rightVisible ? 'flex-start' : 'center',
-            textAlign: boxData.rightVisible ? 'left' as const : 'center' as const,
+            justifyContent: justifyMap[align],
+            textAlign: align as 'left' | 'center' | 'right',
             alignItems: 'center' as const,
             flexBasis: `${effectiveWidth}%`,
         };
     }, [
         boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
         boxData.leftLabelSize, boxData.leftVisible,
-        boxData.rightVisible, boxData.leftRightRatio, variableValues
+        boxData.rightVisible, boxData.leftRightRatio, boxData.leftLabelAlign, variableValues
     ]);
 
     const rightStyle = useMemo(() => {
@@ -488,19 +504,26 @@ export default function Box({
             effectiveWidth = 100 - ratio;
         }
 
+        const align = boxData.rightLabelAlign || 'right';
+        const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
+            left: 'flex-start',
+            center: 'center',
+            right: 'flex-end'
+        };
+
         return {
             color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
             fontSize: `${boxData.rightLabelSize}px`,
             display: boxData.rightVisible ? 'flex' : 'none',
-            justifyContent: boxData.leftVisible ? 'flex-end' : 'center',
-            textAlign: boxData.leftVisible ? 'right' as const : 'center' as const,
+            justifyContent: justifyMap[align],
+            textAlign: align as 'left' | 'center' | 'right',
             alignItems: 'center' as const,
             flexBasis: `${effectiveWidth}%`,
         };
     }, [
         boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
         boxData.rightLabelSize, boxData.rightVisible,
-        boxData.leftVisible, boxData.leftRightRatio, variableValues
+        boxData.leftVisible, boxData.leftRightRatio, boxData.rightLabelAlign, variableValues
     ]);
 
     return (

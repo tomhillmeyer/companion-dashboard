@@ -62,6 +62,7 @@ export interface BoxData {
     headerLabelColorText: string;
     headerLabelVariableColors: VariableColor[];
     headerLabelVisible: boolean;
+    headerLabelAlign?: 'left' | 'center' | 'right';
     leftLabelSource: string;
     leftLabel: string;
     leftLabelSize: number;
@@ -69,6 +70,7 @@ export interface BoxData {
     leftLabelColorText: string;
     leftLabelVariableColors: VariableColor[];
     leftVisible: boolean;
+    leftLabelAlign?: 'left' | 'center' | 'right';
     rightLabelSource: string;
     rightLabel: string;
     rightLabelSize: number;
@@ -76,6 +78,7 @@ export interface BoxData {
     rightLabelColorText: string;
     rightLabelVariableColors: VariableColor[];
     rightVisible: boolean;
+    rightLabelAlign?: 'left' | 'center' | 'right';
     leftRightRatio: number; // Percentage for left side (0-100), right will be 100 - this value
 }
 
@@ -834,6 +837,8 @@ export default function App() {
             headerLabelColor: '#ffffff',
             headerLabelColorText: "",
             headerLabelVariableColors: [],
+            headerLabelVisible: true,
+            headerLabelAlign: 'center',
             leftLabelSource: 'Time',
             leftLabel: '',
             leftLabelSize: 14,
@@ -841,6 +846,7 @@ export default function App() {
             leftLabelColorText: "",
             leftLabelVariableColors: [],
             leftVisible: true,
+            leftLabelAlign: 'left',
             rightLabelSource: '$(internal:time_hms_12)',
             rightLabel: '',
             rightLabelSize: 20,
@@ -848,7 +854,7 @@ export default function App() {
             rightLabelColorText: "",
             rightLabelVariableColors: [],
             rightVisible: true,
-            headerLabelVisible: true,
+            rightLabelAlign: 'right',
             leftRightRatio: 50,
         };
         setBoxes((prev) => [...prev, newBox]);
