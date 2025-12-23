@@ -60,6 +60,7 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
             return { r: 0, g: 0, b: 0, a: 1 };
         }
     });
+    const [hexInputValue, setHexInputValue] = useState(() => rgbaToHex(color));
 
     const pickerRef = useRef<HTMLDivElement>(null);
     const buttonRef = useRef<HTMLButtonElement>(null);
@@ -74,10 +75,16 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
         if (!value || typeof value !== 'string') {
             return;
         }
+        let newColor;
         if (value.startsWith('#')) {
-            setColor(hexToRgba(value, color.a)); // Keep existing alpha
+            newColor = hexToRgba(value, color.a); // Keep existing alpha
         } else if (value.startsWith('rgba') || value.startsWith('rgb')) {
-            setColor(rgbaStringToRgba(value));
+            newColor = rgbaStringToRgba(value);
+        }
+
+        if (newColor) {
+            setColor(newColor);
+            setHexInputValue(rgbaToHex(newColor));
         }
     }, [value, color.a]);
 
@@ -102,6 +109,7 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
 
     const handleColorChange = (newColor: { r: number; g: number; b: number; a: number }) => {
         setColor(newColor);
+        setHexInputValue(rgbaToHex(newColor));
         onChange(rgbaToString(newColor));
     };
 
@@ -210,25 +218,36 @@ export default function ColorPicker({ value, onChange, className = '' }: ColorPi
                             <label>Hex:</label>
                             <input
                                 type="text"
-                                value={rgbaToHex(color)}
+                                value={hexInputValue}
                                 onChange={(e) => {
-                                    const hexValue = e.target.value;
-                                    if (/^#[0-9A-Fa-f]{6}$/.test(hexValue)) {
-                                        const newColor = hexToRgba(hexValue, color.a);
-                                        handleColorChange(newColor);
-                                    }
+                                    // Allow free typing - just update the input value
+                                    setHexInputValue(e.target.value);
                                 }}
                                 onBlur={(e) => {
-                                    // Try to fix incomplete hex values on blur
-                                    let hexValue = e.target.value.replace('#', '');
-                                    if (/^[0-9A-Fa-f]{3}$/.test(hexValue)) {
+                                    // Validate and apply on blur
+                                    let hexValue = e.target.value.trim();
+
+                                    // Remove # if present
+                                    hexValue = hexValue.replace(/^#/, '');
+
+                                    // Check if it's a valid hex
+                                    if (/^[0-9A-Fa-f]{6}$/.test(hexValue)) {
+                                        const newColor = hexToRgba('#' + hexValue, color.a);
+                                        handleColorChange(newColor);
+                                    } else if (/^[0-9A-Fa-f]{3}$/.test(hexValue)) {
                                         // Convert 3-char hex to 6-char hex
                                         hexValue = hexValue.split('').map(c => c + c).join('');
                                         const newColor = hexToRgba('#' + hexValue, color.a);
                                         handleColorChange(newColor);
-                                    } else if (/^[0-9A-Fa-f]{6}$/.test(hexValue)) {
-                                        const newColor = hexToRgba('#' + hexValue, color.a);
-                                        handleColorChange(newColor);
+                                    } else {
+                                        // Invalid - revert to current color
+                                        setHexInputValue(rgbaToHex(color));
+                                    }
+                                }}
+                                onKeyDown={(e) => {
+                                    // Apply on Enter key
+                                    if (e.key === 'Enter') {
+                                        e.currentTarget.blur();
                                     }
                                 }}
                                 className="hex-input"
