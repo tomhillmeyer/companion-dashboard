@@ -589,7 +589,7 @@ export default function Box({
                         }}>
                             {/* Header */}
                             <MarkdownContent
-                                key={displayHtmlLabels.header}
+                                key={`${boxData.id}-header`}
                                 content={displayHtmlLabels.header}
                                 className="header"
                                 style={headerStyle}
@@ -598,13 +598,13 @@ export default function Box({
                             {/* Body with left and right labels */}
                             <div className='content-container'>
                                 <MarkdownContent
-                                    key={displayHtmlLabels.left}
+                                    key={`${boxData.id}-left`}
                                     content={displayHtmlLabels.left}
                                     className="content"
                                     style={leftStyle}
                                 />
                                 <MarkdownContent
-                                    key={displayHtmlLabels.right}
+                                    key={`${boxData.id}-right`}
                                     content={displayHtmlLabels.right}
                                     className="content"
                                     style={rightStyle}

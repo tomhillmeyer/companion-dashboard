@@ -7,15 +7,18 @@ interface CompanionConnection {
 }
 
 // Parse variables from a source string like "$(internal:time_hms_12)" or "$(custom:1266_active)" or "[2]$(custom:test)"
-const parseVariables = (source: string): Array<{variable: string, connectionIndex?: number}> => {
-    const variableRegex = /(\[(\d+)\])?\$\(([^)]+)\)/g;
+// Also detects escaped variables like "\$(connection:variable)"
+const parseVariables = (source: string): Array<{variable: string, connectionIndex?: number, isEscaped: boolean, fullMatch: string}> => {
+    const variableRegex = /(\\)?(\[(\d+)\])?\$\(([^)]+)\)/g;
     const matches = [];
     let match;
 
     while ((match = variableRegex.exec(source)) !== null) {
-        const connectionIndex = match[2] ? parseInt(match[2]) : undefined;
-        const variable = match[3]; // Get the content inside $()
-        matches.push({ variable, connectionIndex });
+        const isEscaped = match[1] === '\\';
+        const connectionIndex = match[3] ? parseInt(match[3]) : undefined;
+        const variable = match[4]; // Get the content inside $()
+        const fullMatch = match[0]; // The complete matched string
+        matches.push({ variable, connectionIndex, isEscaped, fullMatch });
     }
 
     return matches;
@@ -27,15 +30,21 @@ const variableToApiPath = (variable: string): string => {
     return `/api/variable/${connectionLabel}/${variableName}/value`;
 };
 
+// Escape markdown characters in text
+const escapeMarkdown = (text: string): string => {
+    // Escape markdown special characters: * _ [ ] ( ) !
+    return text.replace(/([*_\[\]()!])/g, '\\$1');
+};
+
 // Simple markdown parser for basic formatting
 const parseMarkdown = (text: string): string => {
     // First, store escaped characters with unique placeholders
     const escapedChars: { [key: string]: string } = {};
     let placeholderIndex = 0;
 
-    let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (char) => {
+    let processedText = text.replace(/\\(\*|_|\[|\]|\(|\)|!)/g, (_match, char) => {
         const placeholder = `XESCAPEDX${placeholderIndex}XESCAPEDX`;
-        escapedChars[placeholder] = char;
+        escapedChars[placeholder] = char; // Store just the character, not the backslash
         placeholderIndex++;
         return placeholder;
     });
@@ -57,7 +66,7 @@ const parseMarkdown = (text: string): string => {
         // Line breaks
         .replace(/\n/g, '<br>');
 
-    // Finally, restore escaped characters
+    // Finally, restore escaped characters (without the backslash)
     Object.keys(escapedChars).forEach(placeholder => {
         processedText = processedText.replace(new RegExp(placeholder, 'g'), escapedChars[placeholder]);
     });
@@ -82,10 +91,8 @@ export const useVariableFetcher = (
                 // Always process variables immediately to show surrounding text
                 const variables = parseVariables(value);
                 let processed = value;
-                variables.forEach(({ variable, connectionIndex }) => {
-                    const pattern = connectionIndex !== undefined ? 
-                        `[${connectionIndex}]$(${variable})` : `$(${variable})`;
-                    processed = processed.replace(pattern, '');
+                variables.forEach(({ fullMatch }) => {
+                    processed = processed.replace(fullMatch, '');
                 });
                 initialValues[key] = processed;
             }
@@ -102,10 +109,8 @@ export const useVariableFetcher = (
                 // Always process variables immediately to show surrounding text
                 const variables = parseVariables(value);
                 let processed = value;
-                variables.forEach(({ variable, connectionIndex }) => {
-                    const pattern = connectionIndex !== undefined ? 
-                        `[${connectionIndex}]$(${variable})` : `$(${variable})`;
-                    processed = processed.replace(pattern, '');
+                variables.forEach(({ fullMatch }) => {
+                    processed = processed.replace(fullMatch, '');
                 });
                 initialHtmlValues[key] = parseMarkdown(processed);
             }
@@ -133,21 +138,16 @@ export const useVariableFetcher = (
                 let processedString = sourceValue;
 
                 // Replace each variable with its fetched value
-                for (const { variable, connectionIndex } of variables) {
-                    let originalPattern = `$(${variable})`;
-                    if (connectionIndex !== undefined) {
-                        originalPattern = `[${connectionIndex}]$(${variable})`;
-                    }
-
+                for (const { variable, connectionIndex, isEscaped, fullMatch } of variables) {
                     // If no base URL is configured, just replace variables with empty strings
                     if (!baseUrl) {
-                        processedString = processedString.replace(originalPattern, '');
+                        processedString = processedString.replace(fullMatch, '');
                         continue;
                     }
 
                     try {
                         let targetUrl = baseUrl;
-                        
+
                         // If connectionIndex is specified, use the corresponding connection
                         if (connectionIndex !== undefined) {
                             if (connectionIndex === 0) {
@@ -161,7 +161,7 @@ export const useVariableFetcher = (
                                     targetUrl = targetConnection.url;
                                 } else {
                                     console.warn(`Connection [${connectionIndex}] not found or has no URL`);
-                                    processedString = processedString.replace(originalPattern, '');
+                                    processedString = processedString.replace(fullMatch, '');
                                     continue;
                                 }
                             }
@@ -174,17 +174,19 @@ export const useVariableFetcher = (
                             const data = await response.text(); // API returns plain text
                             // If API returns the variable name itself or null, treat as empty
                             if (data === variable || data === 'null' || data === null || data === undefined) {
-                                processedString = processedString.replace(originalPattern, '');
+                                processedString = processedString.replace(fullMatch, '');
                             } else {
-                                processedString = processedString.replace(originalPattern, data);
+                                // If the variable is escaped, escape markdown in the value
+                                const replacementValue = isEscaped ? escapeMarkdown(data) : data;
+                                processedString = processedString.replace(fullMatch, replacementValue);
                             }
                         } else {
                             console.warn(`Failed to fetch ${variable} from ${targetUrl}:`, response.status);
-                            processedString = processedString.replace(originalPattern, '');
+                            processedString = processedString.replace(fullMatch, '');
                         }
                     } catch (error) {
                         console.error(`Error fetching ${variable}:`, error);
-                        processedString = processedString.replace(originalPattern, '');
+                        processedString = processedString.replace(fullMatch, '');
                     }
                 }
 

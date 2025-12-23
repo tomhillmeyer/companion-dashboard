@@ -93,10 +93,12 @@ export default function App() {
         if (savedBoxes) {
             try {
                 const parsed = JSON.parse(savedBoxes);
-                // Ensure all boxes have leftRightRatio field (migration for older boxes)
+                // Ensure all boxes have required fields (migration for older boxes)
                 return parsed.map((box: BoxData) => ({
                     ...box,
-                    leftRightRatio: box.leftRightRatio ?? 50
+                    leftRightRatio: box.leftRightRatio ?? 50,
+                    leftVisible: box.leftVisible ?? true,
+                    rightVisible: box.rightVisible ?? true
                 }));
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
