@@ -7,6 +7,7 @@ import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
 import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
+import { Capacitor } from '@capacitor/core';
 
 
 // Get window ID for isolated storage
@@ -390,13 +391,13 @@ export default function App() {
 
                 // Collect all image references from dashboard state
                 const imageRefs = new Set<string>();
-                
+
                 // Check canvas background
                 if (canvasBackgroundColorText && canvasBackgroundColorText.startsWith('./src/assets/')) {
                     const filename = canvasBackgroundColorText.replace('./src/assets/', '');
                     imageRefs.add(filename);
                 }
-                
+
                 // Check all boxes for background images
                 boxes.forEach(box => {
                     if (box.backgroundImage && box.backgroundImage.startsWith('./src/assets/')) {
@@ -443,7 +444,8 @@ export default function App() {
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
-        console.log('Sync effect running. isElectron:', isElectron);
+        const isCapacitor = Capacitor.isNativePlatform();
+        console.log('Sync effect running. isElectron:', isElectron, 'isCapacitor:', isCapacitor);
 
         // If running in Electron, listen for state changes from browser clients
         if (isElectron) {
@@ -485,8 +487,8 @@ export default function App() {
             });
         }
 
-        // If running in browser (not Electron), connect to WebSocket
-        if (!isElectron) {
+        // If running in browser (not Electron and not Capacitor), connect to WebSocket
+        if (!isElectron && !isCapacitor) {
             console.log('Running in browser, connecting to WebSocket...');
 
             const connectWebSocket = () => {
@@ -779,9 +781,9 @@ export default function App() {
             canvasBackgroundColorText,
             canvasBackgroundColor
         );
-        
+
         const opacity = canvasBackgroundImageOpacity / 100;
-        
+
         // Check if the resolved background color is actually an image URL
         if (isImageUrl(actualCanvasBackgroundColor)) {
             let imageUrl = actualCanvasBackgroundColor;
@@ -790,7 +792,7 @@ export default function App() {
             if (actualCanvasBackgroundColor && typeof actualCanvasBackgroundColor === 'string' && actualCanvasBackgroundColor.startsWith('./src/assets/background_') && loadedBackgroundImage) {
                 imageUrl = loadedBackgroundImage;
             }
-            
+
             return {
                 backgroundColor: canvasBackgroundColor, // Always use the solid color picker value as base
                 position: 'relative' as const,
@@ -798,7 +800,7 @@ export default function App() {
                 '--canvas-background-opacity': opacity
             };
         }
-        
+
         // If there's a manually uploaded background image, use it
         if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
             return {
@@ -808,7 +810,7 @@ export default function App() {
                 '--canvas-background-opacity': opacity
             };
         }
-        
+
         return {
             backgroundColor: baseColor
         };
@@ -1016,7 +1018,7 @@ export default function App() {
                     <div style={{
                         position: 'fixed',
                         bottom: '32px',
-                        left: '60px',
+                        left: '120px',
                         color: '#FFF',
                         fontSize: '14px',
                         fontWeight: '500',
