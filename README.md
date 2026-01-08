@@ -7,7 +7,7 @@ It is a display of boxes you can resize and move. Each of those boxes has an opt
 
 If you found this app helpful, consider buying me a coffee so I can keep making it better!
 
-<img src="https://www.owlstown.com/assets/icons/bmc-yellow-button-941f96a1.png" width="150">
+<a href="https://buymeacoffee.com/mmpqmow7hg"><img src="https://www.owlstown.com/assets/icons/bmc-yellow-button-941f96a1.png" width="150"></a>
 
 
 ## Installation
