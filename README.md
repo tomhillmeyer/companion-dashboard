@@ -35,17 +35,33 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 | You can display information from apps like Spotify, complete with album art.
 *See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).*|
 
+
 | ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-example.png) | 
 |:--:| 
 | An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names.
 *See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/pip-box-example).* |
 
-## Use cases
+| ![Spotify Example](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo-2.png) | 
+|:--:| 
+| You can use expression variables and background overlays to make a Spotify progress bar.
+*See how to do this [here](https://wearecreativeland.com/tools/dashboard/expression-variables-overlay).*|
+
+## Example deployments
 
 | ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-DM7-usecase.png) | 
 |:--:| 
 | **Yamaha Audio Consoles**
 Use control keys and MIDI to control Companion directly from the console, and use Dashboard to monitor variables and feedback colors. |
+
+| ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-ppt-usecase.jpg) | 
+|:--:| 
+| **PowerPoint**
+Use Dashboard to see more data than what PowerPoint itself shows you while in presentation mode ([OSCPoint](https://oscpoint.com/) being used here) |
+
+| ![App Screenshot](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/dashboard-playback-usecase.JPG) | 
+|:--:| 
+| **Media Playback and Video Switcher**
+Keep tabs on both device status and playback position on the same screen. |
 
 # How to use
 
