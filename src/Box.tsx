@@ -267,6 +267,7 @@ export default function Box({
         // Add variable colors
         const variableColorArrays = [
             boxData.backgroundVariableColors,
+            boxData.overlayVariableColors,
             boxData.borderVariableColors,
             boxData.headerVariableColors,
             boxData.headerLabelVariableColors,
@@ -284,6 +285,24 @@ export default function Box({
             }
         });
 
+        // Add variable opacity variables
+        if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
+            boxData.opacityVariableValues.forEach(varOpacity => {
+                if (varOpacity.variable) {
+                    allVariables[varOpacity.variable] = varOpacity.variable;
+                }
+            });
+        }
+
+        // Add variable overlay size variables
+        if (boxData.overlaySizeVariableValues && Array.isArray(boxData.overlaySizeVariableValues)) {
+            boxData.overlaySizeVariableValues.forEach(varSize => {
+                if (varSize.variable) {
+                    allVariables[varSize.variable] = varSize.variable;
+                }
+            });
+        }
+
         return allVariables;
     };
 
@@ -293,13 +312,72 @@ export default function Box({
         leftLabelSource: boxData.leftLabelSource,
         rightLabelSource: boxData.rightLabelSource,
         backgroundColorTextSource: boxData.backgroundColorText,
+        overlayColorTextSource: boxData.overlayColorText,
         borderColorTextSource: boxData.borderColorText,
         headerColorTextSource: boxData.headerColorText,
         headerLabelColorTextSource: boxData.headerLabelColorText,
         leftLabelColorTextSource: boxData.leftLabelColorText,
         rightLabelColorTextSource: boxData.rightLabelColorText,
+        opacitySource: boxData.opacitySource,
+        overlaySizeSource: boxData.overlaySizeSource,
         ...getAllVariableNames() // Add all variable color variables
     }, connections, refreshRateMs, isDragging);
+
+    // Compute opacity from variable or fallback to stored value
+    const computedOpacity = () => {
+        // 1. Check variable opacity values first - find first matching variable that evaluates to true
+        if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
+            for (const varOpacity of boxData.opacityVariableValues) {
+                if (varOpacity && varOpacity.variable && varOpacity.value) {
+                    const variableValue = variableValues[varOpacity.variable] || '';
+                    if (variableValue === varOpacity.value) {
+                        return varOpacity.opacity / 100;
+                    }
+                }
+            }
+        }
+
+        // 2. Check if opacitySource contains a variable pattern
+        const hasVariable = boxData.opacitySource && boxData.opacitySource.includes('$(') && boxData.opacitySource.includes(')');
+
+        if (hasVariable && variableValues.opacitySource) {
+            const parsed = parseInt(variableValues.opacitySource);
+            if (!isNaN(parsed)) {
+                return Math.max(0, Math.min(100, parsed)) / 100;
+            }
+        }
+
+        // 3. Use the stored opacity value
+        return boxData.opacity / 100;
+    };
+
+    // Compute overlay size from variable or fallback to stored value
+    const computeOverlaySize = () => {
+        // 1. Check variable overlay size values first - find first matching variable that evaluates to true
+        if (boxData.overlaySizeVariableValues && Array.isArray(boxData.overlaySizeVariableValues)) {
+            for (const varSize of boxData.overlaySizeVariableValues) {
+                if (varSize && varSize.variable && varSize.value) {
+                    const variableValue = variableValues[varSize.variable] || '';
+                    if (variableValue === varSize.value) {
+                        return varSize.size;
+                    }
+                }
+            }
+        }
+
+        // 2. Check if overlaySizeSource contains a variable pattern
+        const hasVariable = boxData.overlaySizeSource && boxData.overlaySizeSource.includes('$(') && boxData.overlaySizeSource.includes(')');
+
+        if (hasVariable && variableValues.overlaySizeSource) {
+            const parsed = parseInt(variableValues.overlaySizeSource);
+            if (!isNaN(parsed)) {
+                return Math.max(0, Math.min(100, parsed));
+            }
+        }
+
+        // 3. Use the stored overlay size value
+        return boxData.overlaySize;
+    };
 
     // Utility function to resolve color with priority: variable colors > colorText > fallback color
     const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any) => {
@@ -350,6 +428,35 @@ export default function Box({
         } catch (error) {
             console.error('Error in resolveBoxBackgroundColor:', error);
             return boxData.backgroundColor || '#262626';
+        }
+    };
+
+    // Resolve overlay color with same priority logic as background
+    const resolveOverlayColor = () => {
+        try {
+            // 1. Check variable colors first
+            if (boxData.overlayVariableColors && Array.isArray(boxData.overlayVariableColors)) {
+                for (const varColor of boxData.overlayVariableColors) {
+                    if (varColor && varColor.variable && varColor.value) {
+                        const variableValue = variableValues[varColor.variable] || '';
+                        if (variableValue === varColor.value) {
+                            return varColor.color || '';
+                        }
+                    }
+                }
+            }
+
+            // 2. Check if overlayColorText has a value and resolve it
+            if (boxData.overlayColorText && typeof boxData.overlayColorText === 'string' && boxData.overlayColorText.trim()) {
+                const resolvedValue = variableValues.overlayColorTextSource || boxData.overlayColorText;
+                return resolvedValue || '';
+            }
+
+            // 3. Fall back to the picker color
+            return boxData.overlayColor || '#00000000';
+        } catch (error) {
+            console.error('Error in resolveOverlayColor:', error);
+            return boxData.overlayColor || '#00000000';
         }
     };
 
@@ -575,9 +682,40 @@ export default function Box({
                             WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             zIndex: boxData.zIndex,
+                            opacity: computedOpacity(),
                             pointerEvents: boxesLocked ? 'none' : 'auto',
                         }}
                     >
+                        {/* Overlay layer on top of background */}
+                        <div style={{
+                            position: 'absolute',
+                            ...(boxData.overlayDirection === 'left' ? {
+                                top: 0,
+                                left: 0,
+                                bottom: 0,
+                                width: `${computeOverlaySize()}%`
+                            } : boxData.overlayDirection === 'right' ? {
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: `${computeOverlaySize()}%`
+                            } : boxData.overlayDirection === 'top' ? {
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: `${computeOverlaySize()}%`
+                            } : {
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: `${computeOverlaySize()}%`
+                            }),
+                            backgroundColor: resolveOverlayColor(),
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            transition: 'width 0.3s ease, height 0.3s ease'
+                        }}></div>
+
                         {/* Wrapper for interactive content - has pointer-events: auto when locked */}
                         <div style={{
                             pointerEvents: boxesLocked ? 'auto' : 'none',
@@ -585,7 +723,9 @@ export default function Box({
                             height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
-                            alignItems: 'stretch'
+                            alignItems: 'stretch',
+                            position: 'relative',
+                            zIndex: 2
                         }}>
                             {/* Header */}
                             <MarkdownContent

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import type { BoxData, VariableColor } from './App';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize } from './App';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -12,6 +12,7 @@ import backgroundIcon from './assets/background_icon.png';
 import headerIcon from './assets/header_icon.png';
 import leftIcon from './assets/left_icon.png';
 import rightIcon from './assets/right_icon.png';
+import fullIcon from './assets/full_icon.png';
 
 
 interface BoxSettingsModalProps {
@@ -22,12 +23,64 @@ interface BoxSettingsModalProps {
     onDuplicate: (boxData: BoxData) => void;
 }
 
-type SettingSection = 'background' | 'header' | 'left' | 'right';
+type SettingSection = 'full' | 'background' | 'header' | 'left' | 'right';
 
 export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate }: BoxSettingsModalProps) {
-    const [formData, setFormData] = useState(boxData);
-    const [activeSection, setActiveSection] = useState<SettingSection>('background');
+    // Helper: Convert internal position (top-left) to display position (based on anchor point)
+    const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
+        const [x, y] = internalPos;
+        switch (anchor) {
+            case 'top-left':
+                return [x, y];
+            case 'top-right':
+                return [x + width, y];
+            case 'bottom-left':
+                return [x, y + height];
+            case 'bottom-right':
+                return [x + width, y + height];
+            case 'center':
+                return [x + width / 2, y + height / 2];
+            default:
+                return [x, y];
+        }
+    };
+
+    // Helper: Convert display position to internal position (top-left)
+    const getInternalPosition = (displayPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
+        const [x, y] = displayPos;
+        switch (anchor) {
+            case 'top-left':
+                return [x, y];
+            case 'top-right':
+                return [x - width, y];
+            case 'bottom-left':
+                return [x, y - height];
+            case 'bottom-right':
+                return [x - width, y - height];
+            case 'center':
+                return [x - width / 2, y - height / 2];
+            default:
+                return [x, y];
+        }
+    };
+
+    const [formData, setFormData] = useState(() => ({
+        ...boxData,
+        // Initialize opacitySource with opacity value if it's empty
+        opacitySource: boxData.opacitySource || boxData.opacity.toString(),
+        // Initialize overlaySizeSource with overlaySize value if it's empty
+        overlaySizeSource: boxData.overlaySizeSource || boxData.overlaySize.toString()
+    }));
+    const [activeSection, setActiveSection] = useState<SettingSection>('full');
     const backgroundImageInputRef = useRef<HTMLInputElement>(null);
+
+    // Get display position for showing in inputs
+    const displayPosition = getDisplayPosition(
+        formData.frame.translate,
+        formData.frame.width,
+        formData.frame.height,
+        formData.anchorPoint
+    );
 
     const handleSave = () => {
         onSave(formData);
@@ -82,6 +135,54 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             vc.id === id ? { ...vc, [property]: value } : vc
         );
         updateField(field, updated);
+    };
+
+    const addVariableOpacity = () => {
+        const variableOpacities = formData.opacityVariableValues || [];
+        const newVariableOpacity: VariableOpacity = {
+            id: uuid(),
+            variable: '',
+            value: '',
+            opacity: 100
+        };
+        updateField('opacityVariableValues', [...variableOpacities, newVariableOpacity]);
+    };
+
+    const removeVariableOpacity = (id: string) => {
+        const variableOpacities = formData.opacityVariableValues || [];
+        updateField('opacityVariableValues', variableOpacities.filter(vo => vo.id !== id));
+    };
+
+    const updateVariableOpacity = (id: string, property: keyof VariableOpacity, value: string | number) => {
+        const variableOpacities = formData.opacityVariableValues || [];
+        const updated = variableOpacities.map(vo =>
+            vo.id === id ? { ...vo, [property]: value } : vo
+        );
+        updateField('opacityVariableValues', updated);
+    };
+
+    const addVariableOverlaySize = () => {
+        const variableOverlaySizes = formData.overlaySizeVariableValues || [];
+        const newVariableOverlaySize: VariableOverlaySize = {
+            id: uuid(),
+            variable: '',
+            value: '',
+            size: 100
+        };
+        updateField('overlaySizeVariableValues', [...variableOverlaySizes, newVariableOverlaySize]);
+    };
+
+    const removeVariableOverlaySize = (id: string) => {
+        const variableOverlaySizes = formData.overlaySizeVariableValues || [];
+        updateField('overlaySizeVariableValues', variableOverlaySizes.filter(vos => vos.id !== id));
+    };
+
+    const updateVariableOverlaySize = (id: string, property: keyof VariableOverlaySize, value: string | number) => {
+        const variableOverlaySizes = formData.overlaySizeVariableValues || [];
+        const updated = variableOverlaySizes.map(vos =>
+            vos.id === id ? { ...vos, [property]: value } : vos
+        );
+        updateField('overlaySizeVariableValues', updated);
     };
 
     const handleBackgroundImageBrowse = () => {
@@ -238,7 +339,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         const variableColors = (formData[field] as VariableColor[]) || [];
 
         return (
-            <div className="setting-row">
+            <div className="setting-row variable-color-row">
                 <div className="setting-label">
                     <span className="setting-header">{title}</span>
                     <div className="variable-color-section">
@@ -290,7 +391,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="setting-title">Background</div>
             <div className="setting-group">
                 <div className='setting-container'>
-                    <div className="setting-row">
+                    <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Background</span>
                             <div className="color-input-group">
@@ -372,7 +473,189 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <div className="setting-row default-color-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Default Overlay</span>
+                            <div className="color-input-group">
+                                <ColorPicker
+                                    value={formData.overlayColor}
+                                    onChange={(color) => updateField('overlayColor', color)}
+                                />
+                                <input
+                                    type="text"
+                                    value={formData.overlayColorText}
+                                    onChange={(e) => updateField('overlayColorText', e.target.value)}
+                                    placeholder="Variable or HEX"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {renderVariableColorSection('Variable Overlay Color', 'overlayVariableColors')}
+
+                    {/* Default Overlay Size */}
+                    <div className="setting-row default-opacity-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Default Size (%)</span>
+                            <input
+                                type="text"
+                                value={formData.overlaySizeSource}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    const parsed = parseInt(value);
+                                    if (!isNaN(parsed)) {
+                                        setFormData({
+                                            ...formData,
+                                            overlaySizeSource: value,
+                                            overlaySize: Math.max(0, Math.min(100, parsed))
+                                        });
+                                    } else {
+                                        setFormData({
+                                            ...formData,
+                                            overlaySizeSource: value
+                                        });
+                                    }
+                                }}
+                                placeholder="Number or Variable"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Variable Overlay Size Section */}
+                    <div className="setting-row variable-opacity-row">
+                        <div className="setting-label" style={{ width: '100%' }}>
+                            <div className="variable-header-container">
+                                <span className="setting-header">Variable Size (%)</span>
+                                <button
+                                    type="button"
+                                    onClick={addVariableOverlaySize}
+                                    className="add-variable-color-button"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div className="variable-color-section">
+                                {(formData.overlaySizeVariableValues || []).map((varSize) => (
+                                    <div key={varSize.id} className="variable-color-row">
+                                        <input
+                                            type="text"
+                                            className="variable-input"
+                                            value={varSize.variable}
+                                            onChange={(e) => updateVariableOverlaySize(varSize.id, 'variable', e.target.value)}
+                                            placeholder="Variable"
+                                        />
+                                        <input
+                                            type="text"
+                                            className="value-input"
+                                            value={varSize.value}
+                                            onChange={(e) => updateVariableOverlaySize(varSize.id, 'value', e.target.value)}
+                                            placeholder="Value"
+                                        />
+                                        <input
+                                            type="number"
+                                            className="opacity-value-input"
+                                            value={varSize.size}
+                                            onChange={(e) => updateVariableOverlaySize(varSize.id, 'size', parseInt(e.target.value) || 0)}
+                                            min="0"
+                                            max="100"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeVariableOverlaySize(varSize.id)}
+                                            className="remove-variable-color-button"
+                                        >
+                                            -
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Overlay Direction */}
                     <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Overlay Direction</span>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('overlayDirection', 'left')}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: formData.overlayDirection === 'left' ? '#61BAFA' : '#444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px'
+                                    }}
+                                >
+                                    From Left
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('overlayDirection', 'right')}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: formData.overlayDirection === 'right' ? '#61BAFA' : '#444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px'
+                                    }}
+                                >
+                                    From Right
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('overlayDirection', 'top')}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: formData.overlayDirection === 'top' ? '#61BAFA' : '#444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px'
+                                    }}
+                                >
+                                    From Top
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('overlayDirection', 'bottom')}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: formData.overlayDirection === 'bottom' ? '#61BAFA' : '#444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px'
+                                    }}
+                                >
+                                    From Bottom
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className='setting-container'>
+                    <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Border Color</span>
                             <div className="color-input-group">
@@ -506,7 +789,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
                 <div className='setting-container'>
 
-                    <div className="setting-row">
+                    <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
                             <div className="color-input-group">
@@ -528,7 +811,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
-                    <div className="setting-row">
+                    <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Background Color</span>
                             <div className="color-input-group">
@@ -678,7 +961,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
-                    <div className="setting-row">
+                    <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
                             <div className="color-input-group">
@@ -833,7 +1116,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
-                    <div className="setting-row">
+                    <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
                             <div className="color-input-group">
@@ -858,8 +1141,203 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         </div>
     );
 
+    const renderFullSettings = () => (
+        <div className="settings-section">
+            <div className="setting-title">Box Settings</div>
+            <div className="setting-group">
+                <div className='setting-container box-settings-container'>
+                    <div className='box-settings-row'>
+                        <div className="setting-label box-settings-item">
+                            <span className="setting-header">X-Position</span>
+                            <input
+                                type="number"
+                                value={displayPosition[0]}
+                                onChange={(e) => {
+                                    const newDisplayX = parseInt(e.target.value) || 0;
+                                    const newDisplayPos: [number, number] = [newDisplayX, displayPosition[1]];
+                                    const newInternalPos = getInternalPosition(
+                                        newDisplayPos,
+                                        formData.frame.width,
+                                        formData.frame.height,
+                                        formData.anchorPoint
+                                    );
+                                    updateField('frame', {
+                                        ...formData.frame,
+                                        translate: newInternalPos
+                                    });
+                                }}
+                            />
+                        </div>
+                        <div className="setting-label box-settings-item">
+                            <span className="setting-header">Y-Position</span>
+                            <input
+                                type="number"
+                                value={displayPosition[1]}
+                                onChange={(e) => {
+                                    const newDisplayY = parseInt(e.target.value) || 0;
+                                    const newDisplayPos: [number, number] = [displayPosition[0], newDisplayY];
+                                    const newInternalPos = getInternalPosition(
+                                        newDisplayPos,
+                                        formData.frame.width,
+                                        formData.frame.height,
+                                        formData.anchorPoint
+                                    );
+                                    updateField('frame', {
+                                        ...formData.frame,
+                                        translate: newInternalPos
+                                    });
+                                }}
+                            />
+                        </div>
+                        <div className="setting-label box-settings-item">
+                            <span className="setting-header">Anchor Point</span>
+                            <select
+                                value={formData.anchorPoint}
+                                onChange={(e) => updateField('anchorPoint', e.target.value as BoxData['anchorPoint'])}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px',
+                                    backgroundColor: '#1a1a1a',
+                                    color: 'white',
+                                    border: '1px solid #61BAFA',
+                                    borderRadius: '4px',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                <option value="top-left">Top Left</option>
+                                <option value="top-right">Top Right</option>
+                                <option value="bottom-left">Bottom Left</option>
+                                <option value="bottom-right">Bottom Right</option>
+                                <option value="center">Center</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className='box-settings-row'>
+                        <div className="setting-label box-settings-item">
+                            <span className="setting-header">Width</span>
+                            <input
+                                type="number"
+                                value={formData.frame.width}
+                                onChange={(e) => updateField('frame', {
+                                    ...formData.frame,
+                                    width: parseInt(e.target.value) || 100
+                                })}
+                                min="10"
+                            />
+                        </div>
+                        <div className="setting-label box-settings-item">
+                            <span className="setting-header">Height</span>
+                            <input
+                                type="number"
+                                value={formData.frame.height}
+                                onChange={(e) => updateField('frame', {
+                                    ...formData.frame,
+                                    height: parseInt(e.target.value) || 100
+                                })}
+                                min="10"
+                            />
+                        </div>
+                        <div className="setting-label box-settings-item">
+                            <span className="setting-header">Layer</span>
+                            <input
+                                type="number"
+                                value={formData.zIndex}
+                                onChange={(e) => updateField('zIndex', parseInt(e.target.value) || 1)}
+                                min="1"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className='setting-container'>
+                    <div className="setting-row default-opacity-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Default Opacity (%)</span>
+                            <input
+                                type="text"
+                                value={formData.opacitySource}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Update both fields in a single state update
+                                    const parsed = parseInt(value);
+                                    if (!isNaN(parsed)) {
+                                        setFormData({
+                                            ...formData,
+                                            opacitySource: value,
+                                            opacity: Math.max(0, Math.min(100, parsed))
+                                        });
+                                    } else {
+                                        setFormData({
+                                            ...formData,
+                                            opacitySource: value
+                                        });
+                                    }
+                                }}
+                                placeholder="Number or Variable"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="setting-row variable-opacity-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Variable Opacity</span>
+                            <div className="variable-color-section">
+                                {(formData.opacityVariableValues || []).map(vo => (
+                                    <div key={vo.id} className="variable-color-row">
+                                        <input
+                                            type="text"
+                                            value={vo.variable}
+                                            onChange={(e) => updateVariableOpacity(vo.id, 'variable', e.target.value)}
+                                            placeholder="Variable"
+                                            className="variable-input"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={vo.value}
+                                            onChange={(e) => updateVariableOpacity(vo.id, 'value', e.target.value)}
+                                            placeholder="Value"
+                                            className="value-input"
+                                        />
+                                        <input
+                                            type="number"
+                                            value={vo.opacity}
+                                            onChange={(e) => {
+                                                const parsed = parseInt(e.target.value);
+                                                updateVariableOpacity(vo.id, 'opacity', isNaN(parsed) ? 100 : Math.max(0, Math.min(100, parsed)));
+                                            }}
+                                            placeholder="Opacity %"
+                                            min="0"
+                                            max="100"
+                                            className="opacity-value-input"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="remove-variable-color-button"
+                                            onClick={() => removeVariableOpacity(vo.id)}
+                                        >
+                                            <FaCircleMinus />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                className="add-variable-color-button"
+                                onClick={addVariableOpacity}
+                            >
+                                <FaCirclePlus />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
     const renderActiveSection = () => {
         switch (activeSection) {
+            case 'full':
+                return renderFullSettings();
             case 'background':
                 return renderBackgroundSettings();
             case 'header':
@@ -883,78 +1361,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <button onClick={handleDuplicate} className="modal-duplicate-button">DUPLICATE</button>
                         <button onClick={handleDelete} className="modal-delete-button">DELETE</button>
                     </div>
-                    <div className='layer-input-row'>
-
-                        <div className="layer-input-container">
-                            <label htmlFor="x-input">X-Position</label>
-                            <input
-                                id="x-input"
-                                type="number"
-                                value={formData.frame.translate[0]}
-                                onChange={(e) => updateField('frame', {
-                                    ...formData.frame,
-                                    translate: [parseInt(e.target.value) || 0, formData.frame.translate[1]] as [number, number]
-                                })}
-                                className="layer-input"
-                            />
-                        </div>
-                        <div className="layer-input-container">
-                            <label htmlFor="y-input">Y-POSITION</label>
-                            <input
-                                id="y-input"
-                                type="number"
-                                value={formData.frame.translate[1]}
-                                onChange={(e) => updateField('frame', {
-                                    ...formData.frame,
-                                    translate: [formData.frame.translate[0], parseInt(e.target.value) || 0] as [number, number]
-                                })}
-                                className="layer-input"
-                            />
-                        </div>
-                        <div className="layer-input-container">
-                            <label htmlFor="width-input">Width</label>
-                            <input
-                                id="width-input"
-                                type="number"
-                                value={formData.frame.width}
-                                onChange={(e) => updateField('frame', {
-                                    ...formData.frame,
-                                    width: parseInt(e.target.value) || 100
-                                })}
-                                min="10"
-                                className="layer-input"
-                            />
-                        </div>
-                        <div className="layer-input-container">
-                            <label htmlFor="height-input">Height</label>
-                            <input
-                                id="height-input"
-                                type="number"
-                                value={formData.frame.height}
-                                onChange={(e) => updateField('frame', {
-                                    ...formData.frame,
-                                    height: parseInt(e.target.value) || 100
-                                })}
-                                min="10"
-                                className="layer-input"
-                            />
-                        </div>
-                        <div className="layer-input-container">
-                            <label htmlFor="layer-input">Layer</label>
-                            <input
-                                id="layer-input"
-                                type="number"
-                                value={formData.zIndex}
-                                onChange={(e) => updateField('zIndex', parseInt(e.target.value) || 1)}
-                                min="1"
-                                className="layer-input"
-                            />
-                        </div>
-                    </div>
                 </div>
 
                 <div className="modal-body">
+                    <select
+                        className="modal-nav-dropdown"
+                        value={activeSection}
+                        onChange={(e) => setActiveSection(e.target.value as SettingSection)}
+                    >
+                        <option value="full">Box Settings</option>
+                        <option value="background">Background</option>
+                        <option value="header">Header</option>
+                        <option value="left">Left</option>
+                        <option value="right">Right</option>
+                    </select>
+
                     <div className="modal-nav">
+                        <div
+                            className={`nav-item ${activeSection === 'full' ? 'active' : ''}`}
+                            onClick={() => setActiveSection('full')}
+                        >
+                            <img src={fullIcon} alt="Full" className="nav-icon" />
+                        </div>
                         <div
                             className={`nav-item ${activeSection === 'background' ? 'active' : ''}`}
                             onClick={() => setActiveSection('background')}

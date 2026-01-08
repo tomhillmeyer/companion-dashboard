@@ -39,13 +39,38 @@ export interface VariableColor {
     color: string;
 }
 
+export interface VariableOpacity {
+    id: string;
+    variable: string;
+    value: string;
+    opacity: number;
+}
+
+export interface VariableOverlaySize {
+    id: string;
+    variable: string;
+    value: string;
+    size: number;
+}
+
 export interface BoxData {
     id: string;
     frame: { translate: [number, number]; width: number; height: number };
+    anchorPoint: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
     zIndex: number;
+    opacity: number;
+    opacitySource: string;
+    opacityVariableValues: VariableOpacity[];
     backgroundColor: string;
     backgroundColorText: string;
     backgroundVariableColors: VariableColor[];
+    overlayColor: string;
+    overlayColorText: string;
+    overlayVariableColors: VariableColor[];
+    overlayDirection: 'left' | 'right' | 'top' | 'bottom';
+    overlaySize: number;
+    overlaySizeSource: string;
+    overlaySizeVariableValues: VariableOverlaySize[];
     backgroundImage?: string;
     backgroundImageSize?: 'cover' | 'contain';
     backgroundImageOpacity?: number;
@@ -97,9 +122,20 @@ export default function App() {
                 // Ensure all boxes have required fields (migration for older boxes)
                 return parsed.map((box: BoxData) => ({
                     ...box,
+                    anchorPoint: box.anchorPoint ?? 'top-left',
                     leftRightRatio: box.leftRightRatio ?? 50,
                     leftVisible: box.leftVisible ?? true,
-                    rightVisible: box.rightVisible ?? true
+                    rightVisible: box.rightVisible ?? true,
+                    opacity: box.opacity ?? 100,
+                    opacitySource: box.opacitySource ?? "",
+                    opacityVariableValues: box.opacityVariableValues ?? [],
+                    overlayColor: box.overlayColor ?? "#00000000",
+                    overlayColorText: box.overlayColorText ?? "",
+                    overlayVariableColors: box.overlayVariableColors ?? [],
+                    overlayDirection: box.overlayDirection ?? 'bottom',
+                    overlaySize: box.overlaySize ?? 100,
+                    overlaySizeSource: box.overlaySizeSource ?? "",
+                    overlaySizeVariableValues: box.overlaySizeVariableValues ?? []
                 }));
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
@@ -824,10 +860,21 @@ export default function App() {
                 width: 600,
                 height: 105,
             },
+            anchorPoint: 'top-left',
             zIndex: 1,
+            opacity: 100,
+            opacitySource: "",
+            opacityVariableValues: [],
             backgroundColor: "#262626",
             backgroundColorText: "",
             backgroundVariableColors: [],
+            overlayColor: "#00000000",
+            overlayColorText: "",
+            overlayVariableColors: [],
+            overlayDirection: 'left',
+            overlaySize: 100,
+            overlaySizeSource: "",
+            overlaySizeVariableValues: [],
             borderColor: "#61BAFA",
             borderColorText: "",
             borderVariableColors: [],
