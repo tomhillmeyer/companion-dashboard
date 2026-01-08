@@ -140,6 +140,9 @@ All text fields support HTML tags and the following markdown syntax.
 
 [Custom Variables & Triggers](https://wearecreativeland.com/tools/dashboard/custom-variables-triggers)
 
+[Using Expression Variables with 
+Background Overlays](https://wearecreativeland.com/tools/dashboard/expression-variables-overlay)
+
 ## Philosophy
 
 This is a dashboard application that leverages the fact that Companion translates connections into a uniform variable format. The intention is to avoid re-creating features of Companion, such as logic/triggers and third-party connections. Some logic will be included for ease of use (such as variable colors) but for the most part if it can be accomplished in Companion then it does not need to be accomplished here, at least in this iteration of Dashboard.
