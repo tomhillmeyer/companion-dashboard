@@ -106,6 +106,7 @@ export interface BoxData {
     rightVisible: boolean;
     rightLabelAlign?: 'left' | 'center' | 'right';
     leftRightRatio: number; // Percentage for left side (0-100), right will be 100 - this value
+    companionButtonLocation?: string; // Format: "page/row/column"
 }
 
 
@@ -907,6 +908,7 @@ export default function App() {
             rightVisible: true,
             rightLabelAlign: 'right',
             leftRightRatio: 50,
+            companionButtonLocation: '',
         };
         setBoxes((prev) => [...prev, newBox]);
     };

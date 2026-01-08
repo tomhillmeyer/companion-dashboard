@@ -431,6 +431,39 @@ export default function Box({
         }
     };
 
+    // Helper to send Companion button press
+    const sendCompanionButtonPress = async () => {
+        console.log('sendCompanionButtonPress called', {
+            companionButtonLocation: boxData.companionButtonLocation,
+            companionBaseUrl,
+            boxesLocked
+        });
+
+        if (!boxData.companionButtonLocation || !boxData.companionButtonLocation.trim()) {
+            console.log('No companion button location set');
+            return;
+        }
+
+        // Validate format: should be "page/row/column"
+        const parts = boxData.companionButtonLocation.split('/');
+        if (parts.length !== 3) {
+            console.warn('Invalid Companion button location format. Expected: page/row/column');
+            return;
+        }
+
+        const [page, row, column] = parts;
+        const url = `${companionBaseUrl}/api/location/${page}/${row}/${column}/press`;
+
+        console.log('Sending POST to:', url);
+
+        try {
+            const response = await fetch(url, { method: 'POST' });
+            console.log('Response:', response.status, response.statusText);
+        } catch (error) {
+            console.error('Failed to send Companion button press:', error);
+        }
+    };
+
     // Resolve overlay color with same priority logic as background
     const resolveOverlayColor = () => {
         try {
@@ -683,7 +716,7 @@ export default function Box({
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             zIndex: boxData.zIndex,
                             opacity: computedOpacity(),
-                            pointerEvents: boxesLocked ? 'none' : 'auto',
+                            pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
                         }}
                     >
                         {/* Overlay layer on top of background */}
@@ -751,6 +784,25 @@ export default function Box({
                                 />
                             </div>
                         </div>
+
+                        {/* Click interceptor for Companion button - only active when locked with valid button location */}
+                        {boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim() && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    zIndex: 3,
+                                    cursor: 'pointer'
+                                }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    sendCompanionButtonPress();
+                                }}
+                            />
+                        )}
                     </div>
 
                     {isSelected && !boxesLocked && (

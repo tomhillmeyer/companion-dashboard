@@ -391,6 +391,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="setting-title">Background</div>
             <div className="setting-group">
                 <div className='setting-container'>
+                    <h3 className="section-heading">Background</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Background</span>
@@ -473,6 +474,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <h3 className="section-heading">Overlay</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Overlay</span>
@@ -655,6 +657,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <h3 className="section-heading">Border</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Border Color</span>
@@ -715,6 +718,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
                 <div className='setting-container'>
+                    <h3 className="section-heading">Font Size</h3>
                     <div className="setting-row">
                         <div className="setting-label">
                             <span className="setting-header">Font Size</span>
@@ -788,7 +792,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
                 <div className='setting-container'>
-
+                    <h3 className="section-heading">Text Color</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
@@ -811,6 +815,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <h3 className="section-heading">Background Color</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Background Color</span>
@@ -864,6 +869,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
                 <div className='setting-container'>
+                    <h3 className="section-heading">Font Size</h3>
                     <div className="setting-row">
                         <div className="setting-label">
                             <span className="setting-header">Font Size</span>
@@ -961,6 +967,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <h3 className="section-heading">Text Color</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
@@ -1013,6 +1020,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
                 <div className='setting-container'>
+                    <h3 className="section-heading">Font Size</h3>
                     <div className="setting-row">
                         <div className="setting-label">
                             <span className="setting-header">Font Size</span>
@@ -1116,6 +1124,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <h3 className="section-heading">Text Color</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Text Color</span>
@@ -1146,6 +1155,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="setting-title">Box Settings</div>
             <div className="setting-group">
                 <div className='setting-container box-settings-container'>
+                    <h3 className="section-heading">Position & Size</h3>
                     <div className='box-settings-row'>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">X-Position</span>
@@ -1250,6 +1260,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
+                    <h3 className="section-heading">Opacity</h3>
                     <div className="setting-row default-opacity-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Opacity (%)</span>
@@ -1327,6 +1338,22 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             >
                                 <FaCirclePlus />
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className='setting-container'>
+                    <h3 className="section-heading">Click Action</h3>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Companion Button Location</span>
+                            <input
+                                type="text"
+                                value={formData.companionButtonLocation || ''}
+                                onChange={(e) => updateField('companionButtonLocation', e.target.value)}
+                                placeholder="page/row/column"
+                                className="full-width-input"
+                            />
                         </div>
                     </div>
                 </div>
