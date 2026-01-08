@@ -30,10 +30,11 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 | Use Companion Dashboard to create a custom speaker timer. 
 *Check out this demo [here](https://github.com/tomhillmeyer/companion-dashboard/tree/main/demos/dashboard-timer).* |
 
-| ![Spotify Example](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo.png) | 
+| ![Spotify Example](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo-2.png) | 
 |:--:| 
-| You can display information from apps like Spotify, complete with album art.
-*See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).*|
+| You can display information from apps like Spotify, complete with album art. You can even use expression variables and background overlays to make a Spotify progress bar.
+*See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/spotify-example).*
+*See how to set up a media progress bar [here](https://wearecreativeland.com/tools/dashboard/expression-variables-overlay).*|
 
 
 | ![PiP Box Demo](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/pip-box-example.png) | 
@@ -41,10 +42,7 @@ There is a TestFlight beta test for iPhone and iPad. To be added to the beta, co
 | An out-of-the-box example of how flexible this application can be. This creates a background for a two-box look with dynamic fields for presentation and speaker names.
 *See how this layout goes together [here](https://wearecreativeland.com/tools/dashboard/pip-box-example).* |
 
-| ![Spotify Example](https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/refs/heads/main/screenshots/spotify-demo-2.png) | 
-|:--:| 
-| You can use expression variables and background overlays to make a Spotify progress bar.
-*See how to do this [here](https://wearecreativeland.com/tools/dashboard/expression-variables-overlay).*|
+
 
 ## Example deployments
 
