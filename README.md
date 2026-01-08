@@ -13,7 +13,7 @@ If you found this app helpful, consider buying me a coffee so I can keep making 
 ## Installation
 Download the latest releases [here](https://github.com/tomhillmeyer/companion-dashboard/releases) for Mac (ARM), Mac (Intel), Linux (amd64), Linux (arm64) and Windows (x64).
 
-There is a TestFlight beta test for iPhone and iPad. To be added to the beta, contact me at [tom@tomhillmeyer.com](mailto:tom@tomhillmeyer.com).
+There is a TestFlight beta test for iPad. To be added to the beta, contact me at [tom@tomhillmeyer.com](mailto:tom@tomhillmeyer.com).
 
 ## Example Layouts
 
