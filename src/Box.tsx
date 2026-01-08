@@ -68,6 +68,11 @@ const MarkdownContent = React.memo(({
             dangerouslySetInnerHTML={{ __html: processedContent }}
         />
     );
+}, (prevProps, nextProps) => {
+    // Custom comparison to prevent unnecessary re-renders
+    return prevProps.content === nextProps.content &&
+           prevProps.className === nextProps.className &&
+           JSON.stringify(prevProps.style) === JSON.stringify(nextProps.style);
 });
 
 export default function Box({
