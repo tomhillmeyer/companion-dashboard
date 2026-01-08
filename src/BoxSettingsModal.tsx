@@ -475,107 +475,110 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
                 <div className='setting-container'>
                     <h3 className="section-heading">Overlay</h3>
-                    <div className="setting-row default-color-row">
-                        <div className="setting-label">
-                            <span className="setting-header">Default Overlay</span>
-                            <div className="color-input-group">
-                                <ColorPicker
-                                    value={formData.overlayColor}
-                                    onChange={(color) => updateField('overlayColor', color)}
-                                />
+
+                    {/* Color Row - wrap these together */}
+                    <div style={{ display: 'flex', gap: '20px', flexBasis: '100%', flexWrap: 'wrap' }}>
+                        <div className="setting-row default-color-row">
+                            <div className="setting-label">
+                                <span className="setting-header">Default Overlay</span>
+                                <div className="color-input-group">
+                                    <ColorPicker
+                                        value={formData.overlayColor}
+                                        onChange={(color) => updateField('overlayColor', color)}
+                                    />
+                                    <input
+                                        type="text"
+                                        value={formData.overlayColorText}
+                                        onChange={(e) => updateField('overlayColorText', e.target.value)}
+                                        placeholder="Variable or HEX"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {renderVariableColorSection('Variable Overlay Color', 'overlayVariableColors')}
+                    </div>
+
+                    {/* Size Row - wrap these together */}
+                    <div style={{ display: 'flex', gap: '20px', flexBasis: '100%', flexWrap: 'wrap' }}>
+                        <div className="setting-row default-opacity-row">
+                            <div className="setting-label">
+                                <span className="setting-header">Default Size (%)</span>
                                 <input
                                     type="text"
-                                    value={formData.overlayColorText}
-                                    onChange={(e) => updateField('overlayColorText', e.target.value)}
-                                    placeholder="Variable or HEX"
+                                    value={formData.overlaySizeSource}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        const parsed = parseInt(value);
+                                        if (!isNaN(parsed)) {
+                                            setFormData({
+                                                ...formData,
+                                                overlaySizeSource: value,
+                                                overlaySize: Math.max(0, Math.min(100, parsed))
+                                            });
+                                        } else {
+                                            setFormData({
+                                                ...formData,
+                                                overlaySizeSource: value
+                                            });
+                                        }
+                                    }}
+                                    placeholder="Number or Variable"
                                 />
                             </div>
                         </div>
-                    </div>
 
-                    {renderVariableColorSection('Variable Overlay Color', 'overlayVariableColors')}
-
-                    {/* Default Overlay Size */}
-                    <div className="setting-row default-opacity-row">
-                        <div className="setting-label">
-                            <span className="setting-header">Default Size (%)</span>
-                            <input
-                                type="text"
-                                value={formData.overlaySizeSource}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    const parsed = parseInt(value);
-                                    if (!isNaN(parsed)) {
-                                        setFormData({
-                                            ...formData,
-                                            overlaySizeSource: value,
-                                            overlaySize: Math.max(0, Math.min(100, parsed))
-                                        });
-                                    } else {
-                                        setFormData({
-                                            ...formData,
-                                            overlaySizeSource: value
-                                        });
-                                    }
-                                }}
-                                placeholder="Number or Variable"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Variable Overlay Size Section */}
-                    <div className="setting-row variable-opacity-row">
-                        <div className="setting-label" style={{ width: '100%' }}>
-                            <div className="variable-header-container">
+                        <div className="setting-row variable-opacity-row">
+                            <div className="setting-label">
                                 <span className="setting-header">Variable Size (%)</span>
+                                <div className="variable-color-section">
+                                    {(formData.overlaySizeVariableValues || []).map((varSize) => (
+                                        <div key={varSize.id} className="variable-color-row">
+                                            <input
+                                                type="text"
+                                                className="variable-input"
+                                                value={varSize.variable}
+                                                onChange={(e) => updateVariableOverlaySize(varSize.id, 'variable', e.target.value)}
+                                                placeholder="Variable"
+                                            />
+                                            <input
+                                                type="text"
+                                                className="value-input"
+                                                value={varSize.value}
+                                                onChange={(e) => updateVariableOverlaySize(varSize.id, 'value', e.target.value)}
+                                                placeholder="Value"
+                                            />
+                                            <input
+                                                type="number"
+                                                className="opacity-value-input"
+                                                value={varSize.size}
+                                                onChange={(e) => updateVariableOverlaySize(varSize.id, 'size', parseInt(e.target.value) || 0)}
+                                                min="0"
+                                                max="100"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeVariableOverlaySize(varSize.id)}
+                                                className="remove-variable-color-button"
+                                            >
+                                                <FaCircleMinus />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                                 <button
                                     type="button"
-                                    onClick={addVariableOverlaySize}
                                     className="add-variable-color-button"
+                                    onClick={addVariableOverlaySize}
                                 >
-                                    +
+                                    <FaCirclePlus />
                                 </button>
-                            </div>
-                            <div className="variable-color-section">
-                                {(formData.overlaySizeVariableValues || []).map((varSize) => (
-                                    <div key={varSize.id} className="variable-color-row">
-                                        <input
-                                            type="text"
-                                            className="variable-input"
-                                            value={varSize.variable}
-                                            onChange={(e) => updateVariableOverlaySize(varSize.id, 'variable', e.target.value)}
-                                            placeholder="Variable"
-                                        />
-                                        <input
-                                            type="text"
-                                            className="value-input"
-                                            value={varSize.value}
-                                            onChange={(e) => updateVariableOverlaySize(varSize.id, 'value', e.target.value)}
-                                            placeholder="Value"
-                                        />
-                                        <input
-                                            type="number"
-                                            className="opacity-value-input"
-                                            value={varSize.size}
-                                            onChange={(e) => updateVariableOverlaySize(varSize.id, 'size', parseInt(e.target.value) || 0)}
-                                            min="0"
-                                            max="100"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeVariableOverlaySize(varSize.id)}
-                                            className="remove-variable-color-button"
-                                        >
-                                            -
-                                        </button>
-                                    </div>
-                                ))}
                             </div>
                         </div>
                     </div>
 
-                    {/* Overlay Direction */}
-                    <div className="setting-row">
+                    {/* Direction Row - full width */}
+                    <div className="setting-row" style={{ flexBasis: '100%' }}>
                         <div className="setting-label">
                             <span className="setting-header">Overlay Direction</span>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
