@@ -5,10 +5,6 @@ This is an application for displaying variables from Bitfocus Companion. A compa
 
 It is a display of boxes you can resize and move. Each of those boxes has an option for a header field, left field, and right field. Any or all of those fields can be hidden, and all consist of text fields that can display Companion variable values, markdown, HTML, or plain text.
 
-If you found this app helpful, consider buying me a coffee so I can keep making it better!
-
-<a href="https://buymeacoffee.com/mmpqmow7hg"><img src="https://www.owlstown.com/assets/icons/bmc-yellow-button-941f96a1.png" width="150"></a>
-
 
 ## Installation
 Download the latest releases [here](https://github.com/tomhillmeyer/companion-dashboard/releases) for Mac (ARM), Mac (Intel), Linux (amd64), Linux (arm64) and Windows (x64).
@@ -151,3 +147,10 @@ This is a dashboard application that leverages the fact that Companion translate
 
 This project isn't directly affiliated with Bitfocus or Companion, but is obviously the backbone for this application. A huge thanks to the folks contributing to that project, especially [@krocheck](https://www.github.com/krocheck).
  - [Bitfocus Companion](https://bitfocus.io/companion)
+
+
+##
+
+If you found this app helpful, consider buying me a coffee so I can keep making it better!
+
+<a href="https://buymeacoffee.com/mmpqmow7hg"><img src="https://www.owlstown.com/assets/icons/bmc-yellow-button-941f96a1.png" width="150"></a>
