@@ -17,8 +17,10 @@
     border: 2px solid #61BAFA;
     width: 90%;
     max-width: 1600px;
+    min-width: 250px;
     height: 80vh;
-    max-height: 800px;
+    max-height: 1000px;
+    min-height: 200px;
     display: flex;
     flex-direction: column;
     box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
@@ -452,6 +454,7 @@
 }
 
 @media (max-width: 900px) {
+
     .setting-container .default-opacity-row,
     .setting-container .default-color-row {
         flex: 0 0 100%;
