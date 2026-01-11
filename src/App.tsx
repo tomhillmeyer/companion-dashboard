@@ -965,11 +965,11 @@ export default function App() {
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
 
-    // Check if we're running in browser via /control route (for disconnection overlay)
-    // Only show overlay if we're on the /control route AND disconnected
+    // Check if we're running in browser (for disconnection overlay)
+    // Show overlay when running in browser (both / and /control) and disconnected
     const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
-    const isControlRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/control');
-    const showDisconnectOverlay = !isElectron && isControlRoute && !isConnected;
+    const isCapacitorPlatform = Capacitor.isNativePlatform();
+    const showDisconnectOverlay = !isElectron && !isCapacitorPlatform && !isConnected;
 
     return (
         <div
@@ -981,7 +981,7 @@ export default function App() {
             }}>
             <TitleBar />
 
-            {/* Disconnection overlay - only shown when running in browser and disconnected */}
+            {/* Disconnection overlay - shown when running in browser and disconnected */}
             {showDisconnectOverlay && (
                 <div style={{
                     position: 'fixed',
@@ -989,47 +989,37 @@ export default function App() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+                    backdropFilter: 'blur(10px)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     zIndex: 10000,
-                    pointerEvents: 'all',
-                    cursor: 'not-allowed'
+                    pointerEvents: 'all'
                 }}>
                     <div style={{
-                        backgroundColor: '#1a1a1a',
-                        border: '2px solid #f44336',
-                        borderRadius: '8px',
-                        padding: '40px',
+                        backgroundColor: '#262626',
+                        border: '2px solid #61BAFA',
+                        borderRadius: '12px',
+                        padding: '40px 60px',
                         maxWidth: '500px',
                         textAlign: 'center',
-                        boxShadow: '0 4px 20px rgba(244, 67, 54, 0.3)'
+                        boxShadow: '0 8px 32px rgba(97, 186, 250, 0.2)',
+                        fontFamily: '"Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif'
                     }}>
-                        <div style={{
-                            fontSize: '48px',
-                            marginBottom: '20px'
-                        }}>⚠️</div>
                         <h2 style={{
-                            color: '#f44336',
-                            margin: '0 0 16px 0',
-                            fontSize: '24px',
-                            fontWeight: 'bold'
+                            color: '#61BAFA',
+                            margin: '0 0 20px 0',
+                            fontSize: '28px',
+                            fontWeight: '700',
+                            letterSpacing: '0.5px'
                         }}>Connection Lost</h2>
                         <p style={{
-                            color: '#cccccc',
-                            margin: '0 0 12px 0',
-                            fontSize: '16px',
-                            lineHeight: '1.5'
-                        }}>
-                            The connection to the server has been lost.
-                        </p>
-                        <p style={{
-                            color: '#999999',
+                            color: '#61BAFA',
                             margin: 0,
                             fontSize: '14px',
-                            fontStyle: 'italic'
+                            opacity: 0.8
                         }}>
                             Attempting to reconnect...
                         </p>
