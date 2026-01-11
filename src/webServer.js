@@ -25,14 +25,13 @@ class DashboardWebServer {
         };
     }
 
-    start(port = 8100, hostname = 'dashboard') {
+    start(port = 8100) {
         if (this.isRunning) {
             console.log('Web server already running');
             return;
         }
 
         this.port = port;
-        this.hostname = hostname;
         
         // Enable CORS
         this.app.use(cors());
@@ -257,19 +256,6 @@ class DashboardWebServer {
     getEndpoints() {
         const baseUrls = this.getNetworkInterfaces();
         const endpoints = [];
-
-        // Add .local mDNS endpoint if hostname is set
-        if (this.hostname) {
-            const localUrl = `http://${this.hostname}.local:${this.port}`;
-            endpoints.push({
-                url: localUrl,
-                type: 'read-only'
-            });
-            endpoints.push({
-                url: `${localUrl}/control`,
-                type: 'full-app'
-            });
-        }
 
         baseUrls.forEach(base => {
             // Add read-only endpoint

@@ -110,7 +110,6 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
     // Web server state
     const [webServerPort, setWebServerPort] = useState<number>(8100);
-    const [webServerHostname, setWebServerHostname] = useState<string>('dashboard');
     const [webServerRunning, setWebServerRunning] = useState<boolean>(false);
     const [webServerStatus, setWebServerStatus] = useState<string>('Stopped');
     const [webServerEndpoints, setWebServerEndpoints] = useState<any[]>([]);
@@ -124,12 +123,11 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 return;
             }
             // @ts-ignore - electronAPI is available via preload script
-            const result = await window.electronAPI?.webServer.start(webServerPort, webServerHostname);
+            const result = await window.electronAPI?.webServer.start(webServerPort);
             if (result?.success) {
                 setWebServerRunning(true);
                 setWebServerStatus(`Running on port ${result.port}`);
                 localStorage.setItem(`window_${windowId}_web_server_port`, webServerPort.toString());
-                localStorage.setItem(`window_${windowId}_web_server_hostname`, webServerHostname);
                 console.log(`Web server started on port ${result.port}`);
             } else {
                 setWebServerStatus(`Failed: ${result?.error || 'Unknown error'}`);
@@ -180,16 +178,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     };
 
 
-    // Load saved web server port and hostname on mount
+    // Load saved web server port on mount
     useEffect(() => {
         if (showWebServer) {
             const savedPort = localStorage.getItem(`window_${windowId}_web_server_port`);
             if (savedPort) {
                 setWebServerPort(parseInt(savedPort, 10));
-            }
-            const savedHostname = localStorage.getItem(`window_${windowId}_web_server_hostname`);
-            if (savedHostname) {
-                setWebServerHostname(savedHostname);
             }
             checkWebServerStatus();
         }
@@ -1258,19 +1252,6 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             <span className='section-label'>WEB SERVER</span>
                             <div className='menu-section'>
                                 <div className="web-server-controls">
-                                    <div className="web-server-port-container">
-                                        <label htmlFor="web-server-hostname">Hostname:</label>
-                                        <input
-                                            id="web-server-hostname"
-                                            type="text"
-                                            value={webServerHostname}
-                                            onChange={(e) => setWebServerHostname(e.target.value)}
-                                            disabled={webServerRunning}
-                                            placeholder="dashboard"
-                                            style={{ width: '120px', marginLeft: '10px' }}
-                                        />
-                                        <span style={{ marginLeft: '5px', opacity: 0.6 }}>.local</span>
-                                    </div>
                                     <div className="web-server-port-container">
                                         <label htmlFor="web-server-port">Port:</label>
                                         <input
