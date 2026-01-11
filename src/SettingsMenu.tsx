@@ -1284,40 +1284,52 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     <div className="web-server-status">
                                         Status: {webServerStatus}
                                     </div>
-                                    {webServerRunning && webServerEndpoints.length > 0 && (
-                                        <div className="web-server-endpoints">
-                                            <div className="endpoints-list">
-                                                {/* Read-Only URLs */}
-                                                {webServerEndpoints.filter(e => e.type === 'read-only').length > 0 && (
-                                                    <>
-                                                        <div style={{ fontSize: '0.85em', opacity: 0.5, marginBottom: '4px', marginTop: '8px' }}>
-                                                            Read-Only:
-                                                        </div>
-                                                        {webServerEndpoints.filter(e => e.type === 'read-only').map((endpoint, index) => (
-                                                            <div key={`ro-${index}`} className="endpoint-item">
-                                                                <code>{endpoint.url}</code>
-                                                            </div>
-                                                        ))}
-                                                    </>
-                                                )}
-                                                {/* Full App URLs */}
-                                                {webServerEndpoints.filter(e => e.type === 'full-app').length > 0 && (
-                                                    <>
-                                                        <div style={{ fontSize: '0.85em', opacity: 0.5, marginBottom: '4px', marginTop: '12px' }}>
-                                                            Full App:
-                                                        </div>
-                                                        {webServerEndpoints.filter(e => e.type === 'full-app').map((endpoint, index) => (
-                                                            <div key={`fa-${index}`} className="endpoint-item">
-                                                                <code>{endpoint.url}</code>
-                                                            </div>
-                                                        ))}
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
+                            {webServerRunning && webServerEndpoints.length > 0 && (
+                                <>
+                                    <div className='menu-section-column'>
+                                        {/* Display View URLs (Read-Only) */}
+                                        {webServerEndpoints.filter(e => e.type === 'read-only').length > 0 && (
+                                            <>
+                                                <div className="endpoint-section-label">
+                                                    Display View (Read-Only)
+                                                </div>
+                                                {webServerEndpoints.filter(e => e.type === 'read-only').map((endpoint, index) => (
+                                                    <a
+                                                        key={`ro-${index}`}
+                                                        href={endpoint.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="endpoint-link"
+                                                    >
+                                                        <code>{endpoint.url}</code>
+                                                    </a>
+                                                ))}
+                                            </>
+                                        )}
+                                        {/* Control View URLs (Full App) */}
+                                        {webServerEndpoints.filter(e => e.type === 'full-app').length > 0 && (
+                                            <>
+                                                <div className="endpoint-section-label">
+                                                    Control View (Full App)
+                                                </div>
+                                                {webServerEndpoints.filter(e => e.type === 'full-app').map((endpoint, index) => (
+                                                    <a
+                                                        key={`fa-${index}`}
+                                                        href={endpoint.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="endpoint-link"
+                                                    >
+                                                        <code>{endpoint.url}</code>
+                                                    </a>
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
 

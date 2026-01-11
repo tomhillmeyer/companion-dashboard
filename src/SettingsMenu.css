@@ -101,7 +101,7 @@
 .menu-section-column {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     width: 100%;
 }
 
@@ -640,28 +640,53 @@ a {
 }
 
 /* Web server endpoints styling */
-.web-server-endpoints {
-    margin-top: 10px;
+.endpoint-section-label {
+    font-size: 0.85em;
+    color: #61BAFA;
+    font-weight: 600;
+    margin-bottom: 8px;
+    margin-top: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.endpoints-list {
-    max-height: 200px;
-    overflow-y: auto;
+.endpoint-section-label:first-child {
+    margin-top: 8px;
 }
 
-.endpoint-item {
-    margin-bottom: 6px;
+.endpoint-link {
+    display: block;
+    margin-bottom: 8px;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    border: 1px solid #333;
+    padding: 2px;
+    overflow: hidden;
 }
 
-.endpoint-item code {
-    padding: 4px 6px;
+.endpoint-link:hover {
+    background-color: rgba(97, 186, 250, 0.1);
+    border-color: #61BAFA;
+    transform: translateX(2px);
+}
+
+.endpoint-link code {
+    padding: 6px 10px;
     background-color: #1a1a1a;
     border-radius: 3px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     color: #61BAFA;
-    font-size: 11px;
+    font-size: 10px;
     display: block;
     word-break: break-all;
+    cursor: pointer;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+.endpoint-link:hover code {
+    color: #ffffff;
 }
 
 /* Font section styles */
