@@ -473,6 +473,85 @@
                 return imagePath;
             }
 
+            computeOpacity(boxData) {
+                // 1. Check variable opacity values first - find first matching variable that evaluates to true
+                if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
+                    for (const varOpacity of boxData.opacityVariableValues) {
+                        if (varOpacity && varOpacity.variable && varOpacity.value) {
+                            const variableValue = this.getVariableValue(varOpacity.variable, false);
+                            if (variableValue === varOpacity.value) {
+                                return varOpacity.opacity / 100;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Check if opacitySource contains a variable pattern
+                const hasVariable = boxData.opacitySource && boxData.opacitySource.includes('$(') && boxData.opacitySource.includes(')');
+
+                if (hasVariable && boxData.opacitySource) {
+                    const variableValue = this.getVariableValue(boxData.opacitySource, false);
+                    const parsed = parseInt(variableValue);
+                    if (!isNaN(parsed)) {
+                        return Math.max(0, Math.min(100, parsed)) / 100;
+                    }
+                }
+
+                // 3. Use the stored opacity value
+                return (boxData.opacity !== undefined ? boxData.opacity : 100) / 100;
+            }
+
+            resolveOverlayColor(boxData) {
+                // 1. Check variable colors first
+                if (boxData.overlayVariableColors && Array.isArray(boxData.overlayVariableColors)) {
+                    for (const varColor of boxData.overlayVariableColors) {
+                        if (varColor && varColor.variable && varColor.value) {
+                            const variableValue = this.getVariableValue(varColor.variable, false);
+                            if (variableValue === varColor.value) {
+                                return varColor.color || '';
+                            }
+                        }
+                    }
+                }
+
+                // 2. Check if overlayColorText has a value and resolve it
+                if (boxData.overlayColorText && typeof boxData.overlayColorText === 'string' && boxData.overlayColorText.trim()) {
+                    const resolvedValue = this.getVariableValue(boxData.overlayColorText, false) || boxData.overlayColorText;
+                    return resolvedValue || '';
+                }
+
+                // 3. Fall back to the picker color
+                return boxData.overlayColor || '#00000000';
+            }
+
+            computeOverlaySize(boxData) {
+                // 1. Check variable overlay size values first - find first matching variable that evaluates to true
+                if (boxData.overlaySizeVariableValues && Array.isArray(boxData.overlaySizeVariableValues)) {
+                    for (const varSize of boxData.overlaySizeVariableValues) {
+                        if (varSize && varSize.variable && varSize.value) {
+                            const variableValue = this.getVariableValue(varSize.variable, false);
+                            if (variableValue === varSize.value) {
+                                return Math.max(0, Math.min(100, varSize.size));
+                            }
+                        }
+                    }
+                }
+
+                // 2. Check if overlaySizeSource contains a variable pattern
+                const hasVariable = boxData.overlaySizeSource && boxData.overlaySizeSource.includes('$(') && boxData.overlaySizeSource.includes(')');
+
+                if (hasVariable && boxData.overlaySizeSource) {
+                    const variableValue = this.getVariableValue(boxData.overlaySizeSource, false);
+                    const parsed = parseInt(variableValue);
+                    if (!isNaN(parsed)) {
+                        return Math.max(0, Math.min(100, parsed));
+                    }
+                }
+
+                // 3. Use the stored overlay size value
+                return Math.max(0, Math.min(100, boxData.overlaySize || 0));
+            }
+
             renderBox(boxData) {
                 const box = document.createElement('div');
                 box.className = `box ${boxData.noBorder ? 'no-border' : 'with-border'}`;
@@ -483,6 +562,9 @@
                 box.style.width = `${boxData.frame.width}px`;
                 box.style.height = `${boxData.frame.height}px`;
                 box.style.zIndex = boxData.zIndex || 1;
+
+                // Opacity
+                box.style.opacity = this.computeOpacity(boxData);
 
                 // Background
                 this.applyBoxBackground(box, boxData);
@@ -497,6 +579,43 @@
                         boxData.borderColor
                     );
                     box.style.border = `5px solid ${borderColor}`;
+                }
+
+                // Overlay layer
+                const overlaySize = this.computeOverlaySize(boxData);
+                if (overlaySize > 0) {
+                    const overlay = document.createElement('div');
+                    overlay.style.position = 'absolute';
+                    overlay.style.backgroundColor = this.resolveOverlayColor(boxData);
+                    overlay.style.pointerEvents = 'none';
+                    overlay.style.zIndex = '1';
+                    overlay.style.transition = 'width 0.3s ease, height 0.3s ease';
+
+                    // Apply directional positioning
+                    const direction = boxData.overlayDirection || 'bottom';
+                    if (direction === 'left') {
+                        overlay.style.top = '0';
+                        overlay.style.left = '0';
+                        overlay.style.bottom = '0';
+                        overlay.style.width = `${overlaySize}%`;
+                    } else if (direction === 'right') {
+                        overlay.style.top = '0';
+                        overlay.style.right = '0';
+                        overlay.style.bottom = '0';
+                        overlay.style.width = `${overlaySize}%`;
+                    } else if (direction === 'top') {
+                        overlay.style.top = '0';
+                        overlay.style.left = '0';
+                        overlay.style.right = '0';
+                        overlay.style.height = `${overlaySize}%`;
+                    } else { // bottom
+                        overlay.style.bottom = '0';
+                        overlay.style.left = '0';
+                        overlay.style.right = '0';
+                        overlay.style.height = `${overlaySize}%`;
+                    }
+
+                    box.appendChild(overlay);
                 }
 
                 // Header
@@ -514,6 +633,8 @@
                         boxData.headerLabelColor
                     );
                     header.style.fontSize = `${boxData.headerLabelSize}px`;
+                    header.style.position = 'relative';
+                    header.style.zIndex = '2';
 
                     const headerContent = this.getVariableValue(boxData.headerLabelSource, true) || this.getVariableValue(boxData.headerLabelSource, false) || (this.isVariableName(boxData.headerLabelSource) ? '' : boxData.headerLabelSource) || '';
                     header.innerHTML = this.processContent(headerContent);
@@ -524,6 +645,8 @@
                 // Content container
                 const contentContainer = document.createElement('div');
                 contentContainer.className = 'content-container';
+                contentContainer.style.position = 'relative';
+                contentContainer.style.zIndex = '2';
 
                 // Left content
                 if (boxData.leftVisible) {

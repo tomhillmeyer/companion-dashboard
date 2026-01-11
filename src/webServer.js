@@ -65,19 +65,25 @@ class DashboardWebServer {
             res.send(buffer);
         });
         
-        // Serve static assets (for built-in icons)
-        this.app.use('/assets', express.static(path.join(__dirname, '../src/assets')));
-        
-        // Serve the read-only web dashboard at root
+        const distPath = path.join(__dirname, '../dist');
+
+        // Serve static assets from dist (CSS, JS, images, etc.)
+        this.app.use('/assets', express.static(path.join(distPath, 'assets')));
+
+        // Serve other static files from dist root (like registerSW.js, dashboard.png)
+        this.app.use(express.static(distPath, {
+            index: false // Don't auto-serve index.html for static files
+        }));
+
+        // Serve the read-only locked view at root
         this.app.get('/', (req, res) => {
-            res.sendFile(path.join(__dirname, '../public/web-dashboard.html'));
+            res.sendFile(path.join(distPath, 'index.html'));
         });
 
         // Serve the full interactive app at /control
-        const distPath = path.join(__dirname, '../dist');
         this.app.use('/control', express.static(distPath));
 
-        // SPA fallback for /control routes - use middleware instead of wildcard
+        // SPA fallback for /control routes
         this.app.use('/control', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
@@ -103,9 +109,9 @@ class DashboardWebServer {
                 this.clients.add(ws);
             }
 
-            // Send current state to new client
+            // Send current state to new client (both use same React app now)
             ws.send(JSON.stringify({
-                type: isFullAppClient ? 'stateUpdate' : 'state',
+                type: 'stateUpdate',
                 data: this.currentState
             }));
 
@@ -187,27 +193,23 @@ class DashboardWebServer {
     updateState(newState) {
         this.currentState = { ...this.currentState, ...newState };
 
-        // Broadcast to read-only clients
-        const readOnlyMessage = JSON.stringify({
-            type: 'state',
-            data: this.currentState
-        });
-
-        this.clients.forEach(client => {
-            if (client.readyState === client.OPEN) {
-                client.send(readOnlyMessage);
-            }
-        });
-
-        // Broadcast to full app clients (different message type)
-        const fullAppMessage = JSON.stringify({
+        // Broadcast to all clients (both display and control now use same React app)
+        const message = JSON.stringify({
             type: 'stateUpdate',
             data: this.currentState
         });
 
+        // Broadcast to display view clients (/)
+        this.clients.forEach(client => {
+            if (client.readyState === client.OPEN) {
+                client.send(message);
+            }
+        });
+
+        // Broadcast to control view clients (/control)
         this.fullAppClients.forEach(client => {
             if (client.readyState === client.OPEN) {
-                client.send(fullAppMessage);
+                client.send(message);
             }
         });
     }

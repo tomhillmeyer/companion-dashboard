@@ -8,7 +8,7 @@
   "main": "src/main.js",
   "homepage": "./",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "scripts": {
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",

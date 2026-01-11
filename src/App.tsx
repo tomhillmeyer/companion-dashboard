@@ -284,8 +284,20 @@ export default function App() {
         return localStorage.getItem(FONT_STORAGE_KEY) || 'Work Sans';
     });
 
-    // Boxes locked state - initialize from localStorage
+    // Check if we're in display mode (root path, not /control)
+    const [isDisplayMode] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        const isRootPath = window.location.pathname === '/';
+        const isElectron = !!(window as any).electronAPI;
+        const isCapacitor = Capacitor.isNativePlatform();
+        return isRootPath && !isElectron && !isCapacitor;
+    });
+
+    // Boxes locked state - initialize from localStorage, but force true in display mode
     const [boxesLocked, setBoxesLocked] = useState<boolean>(() => {
+        if (isDisplayMode) {
+            return true; // Always locked in display mode
+        }
         const saved = localStorage.getItem(LOCK_STORAGE_KEY);
         return saved === 'true';
     });
@@ -327,10 +339,19 @@ export default function App() {
         document.documentElement.style.setProperty('--box-font-family', `"${fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
     }, [fontFamily]);
 
-    // Save boxes locked state to localStorage whenever it changes
+    // Save boxes locked state to localStorage whenever it changes (except in display mode)
     useEffect(() => {
-        localStorage.setItem(LOCK_STORAGE_KEY, boxesLocked.toString());
-    }, [boxesLocked]);
+        if (!isDisplayMode) {
+            localStorage.setItem(LOCK_STORAGE_KEY, boxesLocked.toString());
+        }
+    }, [boxesLocked, isDisplayMode]);
+
+    // Wrapper for setBoxesLocked that prevents changes in display mode
+    const handleBoxesLockedChange = (locked: boolean) => {
+        if (!isDisplayMode) {
+            setBoxesLocked(locked);
+        }
+    };
 
     // Load connections from localStorage on component mount
     useEffect(() => {
@@ -930,8 +951,8 @@ export default function App() {
                 event.preventDefault();
                 createNewBox();
             }
-            // Toggle settings menu with Cmd+, (Mac) or Ctrl+, (Windows/Linux)
-            else if (event.key === ',' && (event.metaKey || event.ctrlKey)) {
+            // Toggle settings menu with Cmd+, (Mac) or Ctrl+, (Windows/Linux) - disabled in display mode
+            else if (event.key === ',' && (event.metaKey || event.ctrlKey) && !isDisplayMode) {
                 event.preventDefault();
                 settingsMenuRef.current?.toggle();
             }
@@ -1037,7 +1058,8 @@ export default function App() {
                 fontFamily={fontFamily}
                 onFontFamilyChange={setFontFamily}
                 boxesLocked={boxesLocked}
-                onBoxesLockedChange={setBoxesLocked}
+                onBoxesLockedChange={handleBoxesLockedChange}
+                isDisplayMode={isDisplayMode}
             />
             {boxes.length === 0 ? (
                 <div style={{

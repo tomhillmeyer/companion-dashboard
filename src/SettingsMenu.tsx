@@ -56,6 +56,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     boxesLocked?: boolean;
     onBoxesLockedChange?: (locked: boolean) => void;
     onToggle?: () => void;
+    isDisplayMode?: boolean;
 }>(({
     onNewBox,
     connectionUrl,
@@ -77,7 +78,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onFontFamilyChange,
     boxesLocked,
     onBoxesLockedChange,
-    onToggle
+    onToggle,
+    isDisplayMode = false
 }, ref) => {
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
@@ -1019,29 +1021,33 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
     return (
         <div ref={menuRef}>
-            <div id="menu-icon"
-                className="menu-icon"
-                style={{
-                    opacity: visible ? 1 : 0,
-                    transition: 'opacity 0.5s ease',
-                }} onClick={toggleClass}>
-                <FaAngleRight style={{ display: isActive ? 'none' : 'inline' }} />
-                <FaAngleLeft style={{ display: isActive ? 'inline' : 'none' }} />
-            </div>
-            <div
-                className="lock-icon"
-                style={{
-                    opacity: visible ? 1 : 0,
-                    transition: 'opacity 0.5s ease',
-                    cursor: 'pointer'
-                }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onBoxesLockedChange?.(!boxesLocked);
-                }}
-            >
-                {boxesLocked ? <FaLock /> : <FaLockOpen />}
-            </div>
+            {!isDisplayMode && (
+                <div id="menu-icon"
+                    className="menu-icon"
+                    style={{
+                        opacity: visible ? 1 : 0,
+                        transition: 'opacity 0.5s ease',
+                    }} onClick={toggleClass}>
+                    <FaAngleRight style={{ display: isActive ? 'none' : 'inline' }} />
+                    <FaAngleLeft style={{ display: isActive ? 'inline' : 'none' }} />
+                </div>
+            )}
+            {!isDisplayMode && (
+                <div
+                    className="lock-icon"
+                    style={{
+                        opacity: visible ? 1 : 0,
+                        transition: 'opacity 0.5s ease',
+                        cursor: 'pointer'
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onBoxesLockedChange?.(!boxesLocked);
+                    }}
+                >
+                    {boxesLocked ? <FaLock /> : <FaLockOpen />}
+                </div>
+            )}
             <div className={isActive ? 'menu menu-open' : 'menu'}>
                 <div className='menu-content'>
                     <div className='logo-box'>
