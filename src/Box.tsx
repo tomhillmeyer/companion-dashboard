@@ -110,6 +110,7 @@ export default function Box({
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
     const [frame, setFrame] = useState(boxData.frame);
     const [showModal, setShowModal] = useState(false);
     const [loadedBackgroundImage, setLoadedBackgroundImage] = useState<string>('');
@@ -119,6 +120,58 @@ export default function Box({
     useEffect(() => {
         setFrame(boxData.frame);
     }, [boxData.frame]);
+
+    // Handle video stream setup and cleanup
+    useEffect(() => {
+        let currentStream: MediaStream | null = null;
+
+        const setupVideoStream = async () => {
+            // If no device ID is set, clean up and stop here
+            if (!boxData.backgroundVideoDeviceId) {
+                if (videoRef.current) {
+                    const oldStream = videoRef.current.srcObject as MediaStream;
+                    if (oldStream) {
+                        oldStream.getTracks().forEach(track => track.stop());
+                    }
+                    videoRef.current.srcObject = null;
+                }
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        deviceId: { exact: boxData.backgroundVideoDeviceId }
+                    },
+                    audio: false
+                });
+
+                currentStream = stream;
+
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (error) {
+                console.error('Error accessing video device:', error);
+            }
+        };
+
+        setupVideoStream();
+
+        // Cleanup function
+        return () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            if (videoRef.current) {
+                const oldStream = videoRef.current.srcObject as MediaStream;
+                if (oldStream) {
+                    oldStream.getTracks().forEach(track => track.stop());
+                }
+                videoRef.current.srcObject = null;
+            }
+        };
+    }, [boxData.backgroundVideoDeviceId]);
 
     const getGridLines = (gridSize: number) => {
         const viewportWidth = window.innerWidth;
@@ -725,6 +778,26 @@ export default function Box({
                             pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
                         }}
                     >
+                        {/* Video background layer */}
+                        {boxData.backgroundVideoDeviceId && (
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: boxData.backgroundVideoSize || 'cover',
+                                    pointerEvents: 'none',
+                                    zIndex: 0
+                                }}
+                            />
+                        )}
+
                         {/* Overlay layer on top of background */}
                         <div style={{
                             position: 'absolute',

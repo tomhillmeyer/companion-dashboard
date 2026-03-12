@@ -4,6 +4,7 @@ import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize } fro
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
+import { useVideoDevices } from './useVideoDevices';
 
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
@@ -74,6 +75,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     }));
     const [activeSection, setActiveSection] = useState<SettingSection>('full');
     const backgroundImageInputRef = useRef<HTMLInputElement>(null);
+    const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices();
 
     // Get display position for showing in inputs
     const displayPosition = getDisplayPosition(
@@ -392,7 +394,78 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="setting-title">Background & Border</div>
             <div className="setting-group">
                 <div className='setting-container'>
-                    <h3 className="section-heading">Background</h3>
+                    <h3 className="section-heading">Background Video</h3>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Video Input</span>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                                <select
+                                    value={formData.backgroundVideoDeviceId || ''}
+                                    onChange={(e) => updateField('backgroundVideoDeviceId', e.target.value || undefined)}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px',
+                                        backgroundColor: '#1a1a1a',
+                                        color: 'white',
+                                        border: '1px solid #61BAFA',
+                                        borderRadius: '4px',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    <option value="">No Video</option>
+                                    {videoDevices.map(device => (
+                                        <option key={device.deviceId} value={device.deviceId}>
+                                            {device.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={refreshVideoDevices}
+                                    style={{
+                                        padding: '8px 16px',
+                                        backgroundColor: '#444',
+                                        color: 'white',
+                                        border: '1px solid #61BAFA',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '14px',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {formData.backgroundVideoDeviceId && (
+                        <div className="image-size-controls" style={{ marginTop: '15px' }}>
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="backgroundVideoSize"
+                                    value="cover"
+                                    checked={formData.backgroundVideoSize !== 'contain'}
+                                    onChange={() => updateField('backgroundVideoSize', 'cover')}
+                                />
+                                Cover
+                            </label>
+                            <label>
+                                <input
+                                    type="radio"
+                                    name="backgroundVideoSize"
+                                    value="contain"
+                                    checked={formData.backgroundVideoSize === 'contain'}
+                                    onChange={() => updateField('backgroundVideoSize', 'contain')}
+                                />
+                                Contain
+                            </label>
+                        </div>
+                    )}
+                </div>
+
+                <div className='setting-container'>
+                    <h3 className="section-heading">Background Color</h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Background</span>

@@ -76,6 +76,8 @@ export interface BoxData {
     backgroundImage?: string;
     backgroundImageSize?: 'cover' | 'contain';
     backgroundImageOpacity?: number;
+    backgroundVideoDeviceId?: string;
+    backgroundVideoSize?: 'cover' | 'contain';
     borderColor: string;
     borderColorText: string;
     borderVariableColors: VariableColor[];
@@ -294,6 +296,30 @@ export default function App() {
         }
         return 1920;
     });
+    const [canvasBackgroundVideoDeviceId, setCanvasBackgroundVideoDeviceId] = useState<string>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundVideoDeviceId || '';
+            } catch (error) {
+                return '';
+            }
+        }
+        return '';
+    });
+    const [canvasBackgroundVideoSize, setCanvasBackgroundVideoSize] = useState<'cover' | 'contain'>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundVideoSize || 'cover';
+            } catch (error) {
+                return 'cover';
+            }
+        }
+        return 'cover';
+    });
     const [refreshRateMs, setRefreshRateMs] = useState<number>(() => {
         const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
         if (saved) {
@@ -350,6 +376,7 @@ export default function App() {
     }, []);
 
     const settingsMenuRef = useRef<{ toggle: () => void }>(null);
+    const canvasVideoRef = useRef<HTMLVideoElement>(null);
 
     // Save boxes to localStorage whenever boxes state changes
     useEffect(() => {
@@ -365,10 +392,12 @@ export default function App() {
             canvasBackgroundImageOpacity,
             canvasBackgroundImageSize,
             canvasBackgroundImageWidth,
+            canvasBackgroundVideoDeviceId,
+            canvasBackgroundVideoSize,
             refreshRateMs
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
-    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs]);
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, refreshRateMs]);
 
     // Save companion connection URL to localStorage whenever it changes
     useEffect(() => {
@@ -397,6 +426,58 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem(DESIGN_WIDTH_KEY, designWidth.toString());
     }, [designWidth]);
+
+    // Handle canvas video stream setup and cleanup
+    useEffect(() => {
+        let currentStream: MediaStream | null = null;
+
+        const setupVideoStream = async () => {
+            // If no device ID is set, clean up and stop here
+            if (!canvasBackgroundVideoDeviceId) {
+                if (canvasVideoRef.current) {
+                    const oldStream = canvasVideoRef.current.srcObject as MediaStream;
+                    if (oldStream) {
+                        oldStream.getTracks().forEach(track => track.stop());
+                    }
+                    canvasVideoRef.current.srcObject = null;
+                }
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        deviceId: { exact: canvasBackgroundVideoDeviceId }
+                    },
+                    audio: false
+                });
+
+                currentStream = stream;
+
+                if (canvasVideoRef.current) {
+                    canvasVideoRef.current.srcObject = stream;
+                }
+            } catch (error) {
+                console.error('Error accessing canvas video device:', error);
+            }
+        };
+
+        setupVideoStream();
+
+        // Cleanup function
+        return () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            if (canvasVideoRef.current) {
+                const oldStream = canvasVideoRef.current.srcObject as MediaStream;
+                if (oldStream) {
+                    oldStream.getTracks().forEach(track => track.stop());
+                }
+                canvasVideoRef.current.srcObject = null;
+            }
+        };
+    }, [canvasBackgroundVideoDeviceId]);
 
     // Update scale factor when window resizes or settings change
     useEffect(() => {
@@ -1173,6 +1254,26 @@ export default function App() {
             }}>
             <TitleBar />
 
+            {/* Canvas background video */}
+            {canvasBackgroundVideoDeviceId && (
+                <video
+                    ref={canvasVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: canvasBackgroundVideoSize || 'cover',
+                        pointerEvents: 'none',
+                        zIndex: 0
+                    }}
+                />
+            )}
+
             {/* Disconnection overlay - shown when running in browser and disconnected */}
             {showDisconnectOverlay && (
                 <div style={{
@@ -1239,6 +1340,10 @@ export default function App() {
                 onCanvasBackgroundImageSizeChange={setCanvasBackgroundImageSize}
                 canvasBackgroundImageWidth={canvasBackgroundImageWidth}
                 onCanvasBackgroundImageWidthChange={setCanvasBackgroundImageWidth}
+                canvasBackgroundVideoDeviceId={canvasBackgroundVideoDeviceId}
+                onCanvasBackgroundVideoDeviceIdChange={setCanvasBackgroundVideoDeviceId}
+                canvasBackgroundVideoSize={canvasBackgroundVideoSize}
+                onCanvasBackgroundVideoSizeChange={setCanvasBackgroundVideoSize}
                 refreshRateMs={refreshRateMs}
                 onRefreshRateMsChange={setRefreshRateMs}
                 fontFamily={fontFamily}
