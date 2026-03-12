@@ -186,6 +186,20 @@ export default function ROIModal({ deviceId, initialROI, onSave, onCancel }: ROI
                         newRoi.width = Math.max(5, Math.min(100 - resizeStart.roi.x, resizeStart.roi.width + deltaX));
                         newRoi.height = Math.max(5, Math.min(100 - resizeStart.roi.y, resizeStart.roi.height + deltaY));
                         break;
+                    case 'n':
+                        newRoi.y = Math.max(0, Math.min(resizeStart.roi.y + resizeStart.roi.height - 5, resizeStart.roi.y + deltaY));
+                        newRoi.height = resizeStart.roi.height - (newRoi.y - resizeStart.roi.y);
+                        break;
+                    case 's':
+                        newRoi.height = Math.max(5, Math.min(100 - resizeStart.roi.y, resizeStart.roi.height + deltaY));
+                        break;
+                    case 'e':
+                        newRoi.width = Math.max(5, Math.min(100 - resizeStart.roi.x, resizeStart.roi.width + deltaX));
+                        break;
+                    case 'w':
+                        newRoi.x = Math.max(0, Math.min(resizeStart.roi.x + resizeStart.roi.width - 5, resizeStart.roi.x + deltaX));
+                        newRoi.width = resizeStart.roi.width - (newRoi.x - resizeStart.roi.x);
+                        break;
                 }
 
                 setRoi(newRoi);
@@ -246,6 +260,7 @@ export default function ROIModal({ deviceId, initialROI, onSave, onCancel }: ROI
                             style={getRoiBoxStyle()}
                             onMouseDown={(e) => handleMouseDown(e, 'drag')}
                         >
+                            {/* Corner handles */}
                             <div
                                 className="roi-handle roi-handle-nw"
                                 onMouseDown={(e) => handleMouseDown(e, 'resize', 'nw')}
@@ -261,6 +276,23 @@ export default function ROIModal({ deviceId, initialROI, onSave, onCancel }: ROI
                             <div
                                 className="roi-handle roi-handle-se"
                                 onMouseDown={(e) => handleMouseDown(e, 'resize', 'se')}
+                            />
+                            {/* Edge handles */}
+                            <div
+                                className="roi-handle roi-handle-n"
+                                onMouseDown={(e) => handleMouseDown(e, 'resize', 'n')}
+                            />
+                            <div
+                                className="roi-handle roi-handle-s"
+                                onMouseDown={(e) => handleMouseDown(e, 'resize', 's')}
+                            />
+                            <div
+                                className="roi-handle roi-handle-e"
+                                onMouseDown={(e) => handleMouseDown(e, 'resize', 'e')}
+                            />
+                            <div
+                                className="roi-handle roi-handle-w"
+                                onMouseDown={(e) => handleMouseDown(e, 'resize', 'w')}
                             />
                         </div>
                     )}

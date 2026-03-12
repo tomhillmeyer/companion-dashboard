@@ -41,8 +41,8 @@
 
 .roi-video-container {
     position: relative;
-    width: 800px;
-    height: 450px;
+    width: 1400px;
+    height: 800px;
     background: #000;
     border-radius: 4px;
     overflow: hidden;
@@ -95,6 +95,34 @@
     bottom: -8px;
     right: -8px;
     cursor: se-resize;
+}
+
+.roi-handle-n {
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: n-resize;
+}
+
+.roi-handle-s {
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: s-resize;
+}
+
+.roi-handle-e {
+    top: 50%;
+    right: -8px;
+    transform: translateY(-50%);
+    cursor: e-resize;
+}
+
+.roi-handle-w {
+    top: 50%;
+    left: -8px;
+    transform: translateY(-50%);
+    cursor: w-resize;
 }
 
 .roi-modal-footer {
