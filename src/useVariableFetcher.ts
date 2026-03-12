@@ -79,7 +79,8 @@ export const useVariableFetcher = (
     sources: { [key: string]: string }, // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
     connections: CompanionConnection[] = [], // Additional connections
     refreshRateMs: number = 100, // Configurable refresh rate in milliseconds
-    isDragging: boolean = false // Pause updates during drag operations
+    isDragging: boolean = false, // Pause updates during drag operations
+    preFetchedRawValues?: { [key: string]: string } // Pre-fetched raw variable values (for web clients)
 ) => {
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
@@ -124,6 +125,9 @@ export const useVariableFetcher = (
 
     useEffect(() => {
         const fetchVariables = async () => {
+            // If pre-fetched values are provided, use local processing only (no fetch)
+            const usePreFetched = preFetchedRawValues && Object.keys(preFetchedRawValues).length > 0;
+
             const newValues: { [key: string]: string } = {};
             const newHtmlValues: { [key: string]: string } = {};
 
@@ -137,8 +141,24 @@ export const useVariableFetcher = (
                 const variables = parseVariables(sourceValue);
                 let processedString = sourceValue;
 
-                // Replace each variable with its fetched value
+                // Replace each variable with its fetched or pre-fetched value
                 for (const { variable, connectionIndex, isEscaped, fullMatch } of variables) {
+                    // If using pre-fetched values (web client mode)
+                    if (usePreFetched && preFetchedRawValues) {
+                        // Look up the variable in pre-fetched values
+                        const varKey = fullMatch; // Use the full match as key (e.g., "$(internal:time_hms_12)")
+                        const data = preFetchedRawValues[varKey] || preFetchedRawValues[variable];
+
+                        if (data && data !== variable) {
+                            const replacementValue = isEscaped ? escapeMarkdown(data) : data;
+                            processedString = processedString.replace(fullMatch, replacementValue);
+                        } else {
+                            processedString = processedString.replace(fullMatch, '');
+                        }
+                        continue;
+                    }
+
+                    // Otherwise, fetch from Companion (Electron mode)
                     // If no base URL is configured, just replace variables with empty strings
                     if (!baseUrl) {
                         processedString = processedString.replace(fullMatch, '');
@@ -218,7 +238,7 @@ export const useVariableFetcher = (
         }, intervalTime);
 
         return () => clearInterval(interval);
-    }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs, isDragging]); // Re-run when baseUrl, sources, connections, refresh rate, or drag state change
+    }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs, isDragging, preFetchedRawValues]); // Re-run when baseUrl, sources, connections, refresh rate, drag state, or pre-fetched values change
 
     return { values, htmlValues };
 };

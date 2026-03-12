@@ -14,7 +14,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         start: (port, hostname) => ipcRenderer.invoke('web-server-start', port, hostname),
         stop: () => ipcRenderer.invoke('web-server-stop'),
         getStatus: () => ipcRenderer.invoke('web-server-status'),
-        updateState: (state) => ipcRenderer.invoke('web-server-update-state', state)
+        updateState: (state) => ipcRenderer.invoke('web-server-update-state', state),
+        updateVariables: (variableValues, variableHtmlValues) => ipcRenderer.invoke('web-server-update-variables', variableValues, variableHtmlValues)
     },
     onSyncStateFromBrowser: (callback) => {
         ipcRenderer.on('sync-state-from-browser', (event, stateData) => callback(stateData));

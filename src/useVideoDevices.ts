@@ -10,6 +10,12 @@ export function useVideoDevices(): { devices: VideoDevice[]; refresh: () => Prom
 
     const getDevices = useCallback(async () => {
         try {
+            // Check if mediaDevices API is available (not available in non-secure contexts)
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setDevices([]);
+                return;
+            }
+
             // Request permission to access media devices
             await navigator.mediaDevices.getUserMedia({ video: true });
 
@@ -32,7 +38,11 @@ export function useVideoDevices(): { devices: VideoDevice[]; refresh: () => Prom
     useEffect(() => {
         getDevices();
 
-        // Listen for device changes
+        // Listen for device changes (only if mediaDevices API is available)
+        if (!navigator.mediaDevices) {
+            return;
+        }
+
         const handleDeviceChange = () => {
             getDevices();
         };
@@ -40,7 +50,9 @@ export function useVideoDevices(): { devices: VideoDevice[]; refresh: () => Prom
         navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
 
         return () => {
-            navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+            if (navigator.mediaDevices) {
+                navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+            }
         };
     }, [getDevices]);
 

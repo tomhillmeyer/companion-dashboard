@@ -484,6 +484,20 @@ ipcMain.handle('web-server-update-state', async (event, state) => {
     }
 });
 
+// Handler to update variable values from Electron app to web clients
+ipcMain.handle('web-server-update-variables', async (event, variableValues, variableHtmlValues) => {
+    try {
+        const webServer = getWebServerForWindow(event);
+        if (webServer && webServer.isServerRunning()) {
+            webServer.updateVariables(variableValues, variableHtmlValues);
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to update variables:', error);
+        return { success: false, error: error.message };
+    }
+});
+
 // Handler to open URLs in external browser
 ipcMain.handle('open-external', async (event, url) => {
     try {

@@ -218,9 +218,30 @@ export default function App() {
         console.log('Dragging state changed:', isDragging);
     }, [isDragging]);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>(() => {
+        // Web clients don't fetch directly - they get URL via WebSocket
+        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        if (isWebClient) {
+            return '';
+        }
         return localStorage.getItem('companion_connection_url') || '';
     });
-    const [connections, setConnections] = useState<CompanionConnection[]>([]);
+    const [connections, setConnections] = useState<CompanionConnection[]>(() => {
+        // Web clients don't fetch directly - they get connections via WebSocket
+        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        if (isWebClient) {
+            return [];
+        }
+        // Load from localStorage for Electron only
+        const saved = localStorage.getItem(CONNECTIONS_STORAGE_KEY);
+        if (saved) {
+            try {
+                return JSON.parse(saved);
+            } catch (error) {
+                return [];
+            }
+        }
+        return [];
+    });
 
     // Canvas background color state - initialize from localStorage
     const [canvasBackgroundColor, setCanvasBackgroundColor] = useState<string>(() => {
@@ -580,8 +601,45 @@ export default function App() {
         return allVariables;
     };
 
-    // Use variable fetcher for all variables (canvas + boxes)
-    const { values: allVariableValues, htmlValues: allHtmlVariableValues } = useVariableFetcher(companionBaseUrl, getAllVariableNames(), connections, refreshRateMs, isDragging);
+    // Detect if running in web client mode (not Electron)
+    const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+
+    // State for variables received via WebSocket (web clients only)
+    const [receivedVariableValues, setReceivedVariableValues] = useState<{ [key: string]: string }>({});
+    const [receivedVariableHtmlValues, setReceivedVariableHtmlValues] = useState<{ [key: string]: string }>({});
+
+    // Use variable fetcher for all variables (Electron only - web clients get variables via WebSocket)
+    const fetchedVariables = useVariableFetcher(
+        isWebClient ? '' : companionBaseUrl, // Web clients don't fetch directly
+        isWebClient ? {} : getAllVariableNames(), // Web clients don't fetch - pass empty sources
+        isWebClient ? [] : connections, // Web clients don't use connections
+        refreshRateMs,
+        isDragging
+    );
+
+    // Use either fetched (Electron) or received (web client) variables
+    const allVariableValues = isWebClient ? receivedVariableValues : fetchedVariables.values;
+    const allHtmlVariableValues = isWebClient ? receivedVariableHtmlValues : fetchedVariables.htmlValues;
+
+    // Broadcast variable updates to web clients (Electron only)
+    useEffect(() => {
+        const broadcastVariables = async () => {
+            const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+            if (!isElectron) {
+                return; // Only Electron app broadcasts variables
+            }
+
+            try {
+                // @ts-ignore - electronAPI is available via preload script
+                await window.electronAPI?.webServer.updateVariables(allVariableValues, allHtmlVariableValues);
+            } catch (error) {
+                // Silently fail if web server is not available or not running
+                console.debug('Variable broadcast failed:', error);
+            }
+        };
+
+        broadcastVariables();
+    }, [allVariableValues, allHtmlVariableValues]);
 
     // Update web server state when dashboard state changes
     useEffect(() => {
@@ -767,6 +825,14 @@ export default function App() {
                         const message = JSON.parse(event.data);
                         console.log('📨 Received WebSocket message:', message.type);
 
+                        if (message.type === 'variableUpdate' && message.data) {
+                            // Receive variable updates from Electron app
+                            const { variableValues, variableHtmlValues } = message.data;
+                            setReceivedVariableValues(variableValues);
+                            setReceivedVariableHtmlValues(variableHtmlValues);
+                            return;
+                        }
+
                         if (message.type === 'stateUpdate' && message.data) {
                             const data = message.data;
 
@@ -847,6 +913,16 @@ export default function App() {
                                 console.log('Updating design width:', data.designWidth);
                                 setDesignWidth(data.designWidth);
                                 localStorage.setItem(DESIGN_WIDTH_KEY, data.designWidth.toString());
+                            }
+
+                            // Update variable values (initial state)
+                            if (data.variableValues) {
+                                console.log('Updating variable values');
+                                setReceivedVariableValues(data.variableValues);
+                            }
+                            if (data.htmlVariableValues) {
+                                console.log('Updating HTML variable values');
+                                setReceivedVariableHtmlValues(data.htmlVariableValues);
                             }
 
                             // Clear the receiving flag after a short delay to ensure all state updates are processed
@@ -1423,6 +1499,7 @@ export default function App() {
                             onDragStart={() => setIsDragging(true)}
                             onDragEnd={() => setIsDragging(false)}
                             boxesLocked={boxesLocked}
+                            centralVariableValues={isWebClient ? receivedVariableValues : undefined}
                         />
                     ))
                 )}

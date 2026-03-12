@@ -24,7 +24,9 @@ class DashboardWebServer {
             boxes: [],
             canvasSettings: {},
             connections: [],
-            imageData: {}
+            imageData: {},
+            variableValues: {},  // Raw variable values
+            variableHtmlValues: {}  // HTML-processed variable values
         };
     }
 
@@ -244,6 +246,35 @@ class DashboardWebServer {
         const message = JSON.stringify({
             type: 'stateUpdate',
             data: this.currentState
+        });
+
+        // Broadcast to display view clients (/)
+        this.clients.forEach(client => {
+            if (client.readyState === client.OPEN) {
+                client.send(message);
+            }
+        });
+
+        // Broadcast to control view clients (/control)
+        this.fullAppClients.forEach(client => {
+            if (client.readyState === client.OPEN) {
+                client.send(message);
+            }
+        });
+    }
+
+    // Update variable values (called by Electron app's variable fetcher)
+    updateVariables(variableValues, variableHtmlValues) {
+        this.currentState.variableValues = variableValues;
+        this.currentState.variableHtmlValues = variableHtmlValues;
+
+        // Broadcast variable update to all clients
+        const message = JSON.stringify({
+            type: 'variableUpdate',
+            data: {
+                variableValues,
+                variableHtmlValues
+            }
         });
 
         // Broadcast to display view clients (/)

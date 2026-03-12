@@ -91,6 +91,7 @@ export default function Box({
     onDragStart,
     onDragEnd,
     boxesLocked = false,
+    centralVariableValues,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -105,6 +106,7 @@ export default function Box({
     refreshRateMs?: number;
     isDragging?: boolean;
     onDragStart?: () => void;
+    centralVariableValues?: { [key: string]: string };
     onDragEnd?: () => void;
     boxesLocked?: boolean;
 }) {
@@ -365,7 +367,9 @@ export default function Box({
     };
 
     // Use the enhanced variable fetcher
-    const { values: variableValues, htmlValues: variableHtmlValues } = useVariableFetcher(companionBaseUrl, {
+    // If centralVariableValues provided (web client mode), pass as preFetchedRawValues for local processing
+    // Otherwise (Electron mode), fetch directly from Companion
+    const fetchedVariables = useVariableFetcher(companionBaseUrl, {
         headerLabelSource: boxData.headerLabelSource,
         leftLabelSource: boxData.leftLabelSource,
         rightLabelSource: boxData.rightLabelSource,
@@ -379,7 +383,11 @@ export default function Box({
         opacitySource: boxData.opacitySource,
         overlaySizeSource: boxData.overlaySizeSource,
         ...getAllVariableNames() // Add all variable color variables
-    }, connections, refreshRateMs, isDragging);
+    }, connections, refreshRateMs, isDragging, centralVariableValues); // Pass raw values for web client mode
+
+    // Use the fetched variables (which now handles both Electron and web client modes internally)
+    const variableValues = fetchedVariables.values;
+    const variableHtmlValues = fetchedVariables.htmlValues;
 
     // Compute opacity from variable or fallback to stored value
     const computedOpacity = () => {
