@@ -8,6 +8,7 @@ import dashboardLogo from './assets/dashboard.png';
 import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
+import { VideoRelayManager } from './VideoRelayManager';
 
 
 // Get window ID for isolated storage
@@ -225,6 +226,8 @@ export default function App() {
     const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
     const hasReceivedInitialStateRef = useRef<boolean>(false);
+    const videoRelayManagerRef = useRef<VideoRelayManager | null>(null);
+    const [videoRelayManagerReady, setVideoRelayManagerReady] = useState(false);
 
     // Track dragging state globally for WebSocket sync
     useEffect(() => {
@@ -478,103 +481,62 @@ export default function App() {
 
     // Handle canvas video stream setup and cleanup
     useEffect(() => {
-        let currentStream: MediaStream | null = null;
+        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const canvasStreamId = 'canvas-background'; // Unique ID for canvas video stream
+
+        console.log('[Canvas Video Effect] Running - isWebClient:', isWebClient, 'deviceId:', canvasBackgroundVideoDeviceId, 'videoRelayManagerReady:', videoRelayManagerReady);
 
         const setupVideoStream = async () => {
             // If no device ID is set, clean up and stop here
             if (!canvasBackgroundVideoDeviceId) {
+                console.log('[Canvas Video Effect] No device ID set, skipping');
                 if (canvasVideoRef.current) {
-                    const oldStream = canvasVideoRef.current.srcObject as MediaStream;
-                    if (oldStream) {
-                        oldStream.getTracks().forEach(track => track.stop());
-                    }
                     canvasVideoRef.current.srcObject = null;
                 }
                 return;
             }
 
-            // Clean up any existing stream first
+            // Clean up any existing stream first (just clear the reference, don't stop tracks)
+            // VideoRelayManager is responsible for managing track lifecycle
             if (canvasVideoRef.current && canvasVideoRef.current.srcObject) {
-                const oldStream = canvasVideoRef.current.srcObject as MediaStream;
-                oldStream.getTracks().forEach(track => track.stop());
                 canvasVideoRef.current.srcObject = null;
             }
 
-            try {
-                let stream: MediaStream | null = null;
-
-                // Try progressively lower resolutions until one works
-                const resolutionsToTry = [
-                    { width: 1920, height: 1080 },
-                    { width: 1280, height: 720 },
-                    { width: 640, height: 480 }
-                ];
-
-                for (const resolution of resolutionsToTry) {
-                    try {
-                        console.log(`Trying canvas resolution: ${resolution.width}x${resolution.height}`);
-                        stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                deviceId: { exact: canvasBackgroundVideoDeviceId },
-                                width: { ideal: resolution.width },
-                                height: { ideal: resolution.height }
-                            },
-                            audio: false
-                        });
-
-                        // Check what we actually got
-                        const track = stream.getVideoTracks()[0];
-                        const settings = track.getSettings();
-
-                        console.log(`Got canvas resolution: ${settings.width}x${settings.height}`);
-
-                        // If we got at least 720p, we're happy
-                        if (settings.width && settings.width >= 1280) {
-                            console.log('Acceptable canvas resolution found, using this stream');
-                            break;
-                        } else if (resolution === resolutionsToTry[resolutionsToTry.length - 1]) {
-                            // Last resolution in list, use whatever we got
-                            console.log('Using fallback canvas resolution');
-                            break;
-                        } else {
-                            // Got low resolution, stop stream and try next
-                            console.log('Canvas resolution too low, trying next...');
-                            stream.getTracks().forEach(t => t.stop());
-                            stream = null;
-                        }
-                    } catch (e) {
-                        console.warn(`Failed to get canvas ${resolution.width}x${resolution.height}:`, e);
-                        if (stream) {
-                            stream.getTracks().forEach(t => t.stop());
-                            stream = null;
-                        }
+            // Web client: Request video stream via WebRTC
+            if (isWebClient) {
+                if (!videoRelayManagerRef.current) {
+                    // VideoRelayManager initializes when WebSocket connects
+                    return;
+                }
+                console.log(`[Web Client] Requesting canvas video stream for device: ${canvasBackgroundVideoDeviceId}`);
+                videoRelayManagerRef.current.requestVideoStream(canvasBackgroundVideoDeviceId, canvasStreamId, (stream) => {
+                    console.log(`[Web Client] Received canvas video stream for device: ${canvasBackgroundVideoDeviceId}`);
+                    if (canvasVideoRef.current) {
+                        canvasVideoRef.current.srcObject = stream;
                     }
-                }
+                });
+                return;
+            }
 
-                if (!stream) {
-                    throw new Error('Failed to get video stream');
-                }
+            // Electron host: Get stream from VideoRelayManager (which manages device capture)
+            if (videoRelayManagerRef.current) {
+                console.log(`[Electron Host] Requesting canvas stream for device: ${canvasBackgroundVideoDeviceId}`);
 
-                currentStream = stream;
+                // Increment reference count for this device
+                videoRelayManagerRef.current.incrementDeviceRef(canvasBackgroundVideoDeviceId);
 
-                if (canvasVideoRef.current) {
+                // Start broadcasting (will only capture once if not already broadcasting)
+                await videoRelayManagerRef.current.startBroadcasting(canvasBackgroundVideoDeviceId);
+
+                // Get the stream from VideoRelayManager
+                const stream = videoRelayManagerRef.current.getLocalStream(canvasBackgroundVideoDeviceId);
+
+                if (stream && canvasVideoRef.current) {
                     canvasVideoRef.current.srcObject = stream;
-
-                    // Log final resolution
-                    canvasVideoRef.current.onloadedmetadata = () => {
-                        const track = stream.getVideoTracks()[0];
-                        const settings = track.getSettings();
-                        console.log('Final canvas video settings:', {
-                            width: settings.width,
-                            height: settings.height,
-                            aspectRatio: settings.aspectRatio,
-                            frameRate: settings.frameRate,
-                            deviceId: settings.deviceId
-                        });
-                    };
+                    console.log(`[Electron Host] Set canvas video stream`);
+                } else {
+                    console.error(`[Electron Host] Failed to get stream for canvas device: ${canvasBackgroundVideoDeviceId}`);
                 }
-            } catch (error) {
-                console.error('Error accessing canvas video device:', error);
             }
         };
 
@@ -582,18 +544,23 @@ export default function App() {
 
         // Cleanup function
         return () => {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
+            // Clear video element
             if (canvasVideoRef.current) {
-                const oldStream = canvasVideoRef.current.srcObject as MediaStream;
-                if (oldStream) {
-                    oldStream.getTracks().forEach(track => track.stop());
-                }
                 canvasVideoRef.current.srcObject = null;
             }
+
+            // Cleanup WebRTC connections when device changes or component unmounts
+            if (videoRelayManagerRef.current && canvasBackgroundVideoDeviceId) {
+                if (isWebClient) {
+                    console.log(`[Web Client] Closing canvas peer connection for device: ${canvasBackgroundVideoDeviceId}`);
+                    videoRelayManagerRef.current.closePeerConnection(canvasBackgroundVideoDeviceId, canvasStreamId);
+                } else {
+                    console.log(`[Electron Host] Decrementing ref count for canvas device: ${canvasBackgroundVideoDeviceId}`);
+                    videoRelayManagerRef.current.decrementDeviceRef(canvasBackgroundVideoDeviceId);
+                }
+            }
         };
-    }, [canvasBackgroundVideoDeviceId, canvasBackgroundVideoROI]);
+    }, [canvasBackgroundVideoDeviceId, videoRelayManagerReady]);
 
     // Update scale factor when window resizes or settings change
     useEffect(() => {
@@ -752,6 +719,9 @@ export default function App() {
                     canvasBackgroundImageOpacity,
                     canvasBackgroundImageSize,
                     canvasBackgroundImageWidth,
+                    canvasBackgroundVideoDeviceId,
+                    canvasBackgroundVideoSize,
+                    canvasBackgroundVideoROI,
                     refreshRateMs
                 };
 
@@ -809,7 +779,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities]);
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -911,6 +881,13 @@ export default function App() {
                 ws.onopen = () => {
                     setIsConnected(true);
 
+                    // Initialize VideoRelayManager for web clients
+                    if (!videoRelayManagerRef.current) {
+                        videoRelayManagerRef.current = new VideoRelayManager(false); // false = web client
+                    }
+                    videoRelayManagerRef.current.setWebSocket(ws);
+                    setVideoRelayManagerReady(true); // Trigger re-render of Box components
+
                     // Clear reconnect interval if it exists
                     if (reconnectIntervalRef.current) {
                         clearInterval(reconnectIntervalRef.current);
@@ -961,6 +938,9 @@ export default function App() {
                                 if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
                                 if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                                 if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
+                                if (cs.canvasBackgroundVideoDeviceId !== undefined) setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
+                                if (cs.canvasBackgroundVideoSize !== undefined) setCanvasBackgroundVideoSize(cs.canvasBackgroundVideoSize);
+                                if (cs.canvasBackgroundVideoROI !== undefined) setCanvasBackgroundVideoROI(cs.canvasBackgroundVideoROI);
                                 if (cs.refreshRateMs !== undefined) setRefreshRateMs(cs.refreshRateMs);
                                 localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(cs));
                             }
@@ -1060,7 +1040,17 @@ export default function App() {
                     webSocketRef.current.close();
                 }
                 webSocketRef.current = null;
+                // Cleanup video relay manager
+                if (videoRelayManagerRef.current) {
+                    videoRelayManagerRef.current.cleanup();
+                    videoRelayManagerRef.current = null;
+                }
             };
+        } else if (isElectron) {
+            // Initialize VideoRelayManager for Electron host
+            videoRelayManagerRef.current = new VideoRelayManager(true); // true = Electron host
+            videoRelayManagerRef.current.setupElectronHostSignaling();
+            setVideoRelayManagerReady(true); // Trigger re-render of Box components
         }
     }, []);
 
@@ -1096,6 +1086,9 @@ export default function App() {
                         canvasBackgroundImageOpacity,
                         canvasBackgroundImageSize,
                         canvasBackgroundImageWidth,
+                        canvasBackgroundVideoDeviceId,
+                        canvasBackgroundVideoSize,
+                        canvasBackgroundVideoROI,
                         refreshRateMs
                     },
                     connections,
@@ -1111,7 +1104,7 @@ export default function App() {
                 }));
             }
         }
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, isDragging]);
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, isDragging]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -1669,6 +1662,8 @@ export default function App() {
                             onDragEnd={() => setIsDragging(false)}
                             boxesLocked={boxesLocked}
                             centralVariableValues={isWebClient ? receivedVariableValues : undefined}
+                            videoRelayManager={videoRelayManagerRef.current}
+                            videoRelayManagerReady={videoRelayManagerReady}
                         />
                     ))
                 )}

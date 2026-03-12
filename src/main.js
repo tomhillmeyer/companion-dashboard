@@ -122,7 +122,7 @@ function createWindow(windowState = null) {
 
         // Send the state data to the renderer process to update localStorage
         window.webContents.send('sync-state-from-browser', stateData);
-    });
+    }, window); // Pass window reference for WebRTC signaling
     windowWebServers.set(windowId, webServer);
 
     // Restore maximized state
@@ -494,6 +494,20 @@ ipcMain.handle('web-server-update-variables', async (event, variableValues, vari
         return { success: true };
     } catch (error) {
         console.error('Failed to update variables:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Handler to send WebRTC signaling from Electron host to web clients
+ipcMain.handle('web-server-send-webrtc-signal', async (event, data) => {
+    try {
+        const webServer = getWebServerForWindow(event);
+        if (webServer && webServer.isServerRunning()) {
+            webServer.sendWebRTCSignal(data);
+        }
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to send WebRTC signal:', error);
         return { success: false, error: error.message };
     }
 });

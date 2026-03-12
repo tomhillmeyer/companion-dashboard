@@ -9,7 +9,7 @@ import { Bonjour } from 'bonjour-service';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class DashboardWebServer {
-    constructor(onStateChange) {
+    constructor(onStateChange, electronWindow) {
         this.app = express();
         this.server = null;
         this.wss = null;
@@ -18,6 +18,7 @@ class DashboardWebServer {
         this.clients = new Set();
         this.fullAppClients = new Set(); // Separate tracking for full app clients
         this.onStateChange = onStateChange; // Callback for bidirectional sync from full app
+        this.electronWindow = electronWindow; // Reference to Electron window for WebRTC signaling
         this.bonjour = null;
         this.bonjourService = null;
         this.currentState = {
@@ -127,7 +128,9 @@ class DashboardWebServer {
             // Check if this is a full app client or read-only client based on URL
             const isFullAppClient = req.url && req.url.includes('/control');
 
-            console.log(`Client connected to dashboard web server (${isFullAppClient ? 'full app' : 'read-only'})`);
+            // Assign unique ID to this client for WebRTC signaling
+            ws.clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            console.log(`Client connected to dashboard web server (${isFullAppClient ? 'full app' : 'read-only'}) with ID:`, ws.clientId);
 
             if (isFullAppClient) {
                 this.fullAppClients.add(ws);
@@ -141,20 +144,29 @@ class DashboardWebServer {
                 data: this.currentState
             }));
 
-            // Handle messages from full app clients (bidirectional sync)
+            // Handle messages from clients
             ws.on('message', (message) => {
-                if (isFullAppClient) {
-                    try {
-                        const data = JSON.parse(message.toString());
-                        console.log('Received message from full app client:', data.type);
+                try {
+                    const data = JSON.parse(message.toString());
+                    console.log('Received message from client:', data.type);
 
-                        // Forward state changes from browser to Electron
-                        if (data.type === 'stateChange' && this.onStateChange) {
-                            this.onStateChange(data.data);
-                        }
-                    } catch (error) {
-                        console.error('Error processing WebSocket message:', error);
+                    // Handle state changes from full app clients
+                    if (isFullAppClient && data.type === 'stateChange' && this.onStateChange) {
+                        this.onStateChange(data.data);
                     }
+
+                    // Handle WebRTC signaling for video relay
+                    if (data.type === 'webrtc-offer' || data.type === 'webrtc-answer' || data.type === 'webrtc-ice-candidate' || data.type === 'request-video-stream') {
+                        // Forward WebRTC signaling to Electron host, including client ID
+                        if (this.electronWindow && !this.electronWindow.isDestroyed()) {
+                            console.log('Forwarding WebRTC message to Electron host:', data.type, 'from client:', ws.clientId);
+                            // Add client ID to the message so Electron knows which client to respond to
+                            const messageWithClientId = { ...data, clientId: ws.clientId };
+                            this.electronWindow.webContents.send('webrtc-signaling', messageWithClientId);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
                 }
             });
 
@@ -331,6 +343,39 @@ class DashboardWebServer {
         return addresses;
     }
     
+    // Send WebRTC signaling from Electron host to specific web client
+    sendWebRTCSignal(data) {
+        const { clientId, ...messageData } = data;
+        const message = JSON.stringify(messageData);
+
+        if (!clientId) {
+            console.error('WebRTC message missing clientId, cannot route to specific client');
+            return;
+        }
+
+        console.log('Sending WebRTC message to client:', clientId, 'type:', data.type);
+
+        // Find and send to the specific client
+        let found = false;
+        this.clients.forEach(client => {
+            if (client.clientId === clientId && client.readyState === client.OPEN) {
+                client.send(message);
+                found = true;
+            }
+        });
+
+        this.fullAppClients.forEach(client => {
+            if (client.clientId === clientId && client.readyState === client.OPEN) {
+                client.send(message);
+                found = true;
+            }
+        });
+
+        if (!found) {
+            console.warn('Client not found for WebRTC message:', clientId);
+        }
+    }
+
     getEndpoints() {
         const baseUrls = this.getNetworkInterfaces();
         const endpoints = [];

@@ -15,10 +15,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         stop: () => ipcRenderer.invoke('web-server-stop'),
         getStatus: () => ipcRenderer.invoke('web-server-status'),
         updateState: (state) => ipcRenderer.invoke('web-server-update-state', state),
-        updateVariables: (variableValues, variableHtmlValues) => ipcRenderer.invoke('web-server-update-variables', variableValues, variableHtmlValues)
+        updateVariables: (variableValues, variableHtmlValues) => ipcRenderer.invoke('web-server-update-variables', variableValues, variableHtmlValues),
+        sendWebRTCSignal: (data) => ipcRenderer.invoke('web-server-send-webrtc-signal', data)
     },
     onSyncStateFromBrowser: (callback) => {
         ipcRenderer.on('sync-state-from-browser', (event, stateData) => callback(stateData));
+    },
+    onWebRTCSignaling: (callback) => {
+        ipcRenderer.on('webrtc-signaling', (event, data) => callback(data));
     },
     openExternal: (url) => ipcRenderer.invoke('open-external', url)
 });

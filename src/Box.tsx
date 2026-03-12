@@ -9,6 +9,7 @@ import type { BoxData } from './App';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
+import type { VideoRelayManager } from './VideoRelayManager';
 
 interface CompanionConnection {
     id: string;
@@ -92,6 +93,7 @@ export default function Box({
     onDragEnd,
     boxesLocked = false,
     centralVariableValues,
+    videoRelayManager,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -109,6 +111,8 @@ export default function Box({
     centralVariableValues?: { [key: string]: string };
     onDragEnd?: () => void;
     boxesLocked?: boolean;
+    videoRelayManager?: VideoRelayManager | null;
+    videoRelayManagerReady?: boolean;
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
@@ -125,122 +129,84 @@ export default function Box({
 
     // Handle video stream setup and cleanup
     useEffect(() => {
-        let currentStream: MediaStream | null = null;
+        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const currentDeviceId = boxData.backgroundVideoDeviceId; // Capture current device ID for cleanup
 
         const setupVideoStream = async () => {
             // If no device ID is set, clean up and stop here
-            if (!boxData.backgroundVideoDeviceId) {
+            if (!currentDeviceId) {
                 if (videoRef.current) {
-                    const oldStream = videoRef.current.srcObject as MediaStream;
-                    if (oldStream) {
-                        oldStream.getTracks().forEach(track => track.stop());
-                    }
                     videoRef.current.srcObject = null;
                 }
                 return;
             }
 
-            // Clean up any existing stream first
+            // Clean up any existing stream first (just clear the reference, don't stop tracks)
+            // VideoRelayManager is responsible for managing track lifecycle
             if (videoRef.current && videoRef.current.srcObject) {
-                const oldStream = videoRef.current.srcObject as MediaStream;
-                oldStream.getTracks().forEach(track => track.stop());
                 videoRef.current.srcObject = null;
             }
 
-            try {
-                let stream: MediaStream | null = null;
-
-                // Try progressively lower resolutions until one works
-                const resolutionsToTry = [
-                    { width: 1920, height: 1080 },
-                    { width: 1280, height: 720 },
-                    { width: 640, height: 480 }
-                ];
-
-                for (const resolution of resolutionsToTry) {
-                    try {
-                        console.log(`Trying resolution: ${resolution.width}x${resolution.height}`);
-                        stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                deviceId: { exact: boxData.backgroundVideoDeviceId },
-                                width: { ideal: resolution.width },
-                                height: { ideal: resolution.height }
-                            },
-                            audio: false
-                        });
-
-                        // Check what we actually got
-                        const track = stream.getVideoTracks()[0];
-                        const settings = track.getSettings();
-
-                        console.log(`Got resolution: ${settings.width}x${settings.height}`);
-
-                        // If we got at least 720p, we're happy
-                        if (settings.width && settings.width >= 1280) {
-                            console.log('Acceptable resolution found, using this stream');
-                            break;
-                        } else if (resolution === resolutionsToTry[resolutionsToTry.length - 1]) {
-                            // Last resolution in list, use whatever we got
-                            console.log('Using fallback resolution');
-                            break;
-                        } else {
-                            // Got low resolution, stop stream and try next
-                            console.log('Resolution too low, trying next...');
-                            stream.getTracks().forEach(t => t.stop());
-                            stream = null;
-                        }
-                    } catch (e) {
-                        console.warn(`Failed to get ${resolution.width}x${resolution.height}:`, e);
-                        if (stream) {
-                            stream.getTracks().forEach(t => t.stop());
-                            stream = null;
-                        }
+            // Web client: Request video stream via WebRTC
+            if (isWebClient) {
+                if (!videoRelayManager) {
+                    // VideoRelayManager initializes when WebSocket connects, which may take a moment
+                    // The effect will re-run once it's ready
+                    return;
+                }
+                console.log(`[Web Client] Requesting video stream for device: ${currentDeviceId}, box: ${boxData.id}`);
+                videoRelayManager.requestVideoStream(currentDeviceId, boxData.id, (stream) => {
+                    console.log(`[Web Client] Received video stream for device: ${currentDeviceId}, box: ${boxData.id}`);
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
                     }
-                }
+                });
+                return;
+            }
 
-                if (!stream) {
-                    throw new Error('Failed to get video stream');
-                }
+            // Electron host: Get stream from VideoRelayManager (which manages device capture)
+            if (videoRelayManager) {
+                console.log(`[Electron Host] Requesting stream for device: ${currentDeviceId}, box: ${boxData.id}`);
 
-                currentStream = stream;
+                // Increment reference count for this device
+                videoRelayManager.incrementDeviceRef(currentDeviceId);
 
-                if (videoRef.current) {
+                // Start broadcasting (will only capture once if not already broadcasting)
+                await videoRelayManager.startBroadcasting(currentDeviceId);
+
+                // Get the stream from VideoRelayManager
+                const stream = videoRelayManager.getLocalStream(currentDeviceId);
+
+                if (stream && videoRef.current) {
                     videoRef.current.srcObject = stream;
-
-                    // Log final resolution
-                    videoRef.current.onloadedmetadata = () => {
-                        const track = stream.getVideoTracks()[0];
-                        const settings = track.getSettings();
-                        console.log('Final video settings:', {
-                            width: settings.width,
-                            height: settings.height,
-                            aspectRatio: settings.aspectRatio,
-                            frameRate: settings.frameRate,
-                            deviceId: settings.deviceId
-                        });
-                    };
+                    console.log(`[Electron Host] Set video stream for box: ${boxData.id}`);
+                } else {
+                    console.error(`[Electron Host] Failed to get stream for device: ${currentDeviceId}`);
                 }
-            } catch (error) {
-                console.error('Error accessing video device:', error);
             }
         };
 
         setupVideoStream();
 
-        // Cleanup function
+        // Cleanup function - uses captured currentDeviceId, not boxData.backgroundVideoDeviceId
         return () => {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
+            // Clear video element
             if (videoRef.current) {
-                const oldStream = videoRef.current.srcObject as MediaStream;
-                if (oldStream) {
-                    oldStream.getTracks().forEach(track => track.stop());
-                }
                 videoRef.current.srcObject = null;
             }
+
+            // Cleanup WebRTC connections when device changes or component unmounts
+            if (videoRelayManager && currentDeviceId) {
+                if (isWebClient) {
+                    console.log(`[Web Client] Closing peer connection for device: ${currentDeviceId}, box: ${boxData.id}`);
+                    videoRelayManager.closePeerConnection(currentDeviceId, boxData.id);
+                } else {
+                    console.log(`[Electron Host] Decrementing ref count for device: ${currentDeviceId}, box: ${boxData.id}`);
+                    videoRelayManager.decrementDeviceRef(currentDeviceId);
+                }
+            }
         };
-    }, [boxData.backgroundVideoDeviceId, boxData.backgroundVideoROI]);
+    }, [boxData.backgroundVideoDeviceId, videoRelayManager, boxData.id]); // Only re-run when device changes, not ROI (videoRelayManager is stable ref)
 
     const getGridLines = (gridSize: number) => {
         const viewportWidth = window.innerWidth;
@@ -861,6 +827,7 @@ export default function Box({
                                 // No ROI - simple case, use objectFit directly
                                 return (
                                     <video
+                                        key={`video-${boxData.id}-no-roi`}
                                         ref={videoRef}
                                         autoPlay
                                         playsInline

@@ -96,21 +96,22 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     };
 
     const updateField = (field: keyof BoxData, value: any) => {
-        setFormData({ ...formData, [field]: value });
+        console.log('updateField called:', { field, value, currentFormData: formData[field] });
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleNumberInput = (field: keyof BoxData, value: string) => {
         if (value === '' || /^\d*$/.test(value)) {
-            setFormData({ ...formData, [field]: value });
+            setFormData(prev => ({ ...prev, [field]: value }));
         }
     };
 
     const handleNumberBlur = (field: keyof BoxData, value: string) => {
         const numValue = parseInt(value);
         if (isNaN(numValue)) {
-            setFormData({ ...formData, [field]: 12 });
+            setFormData(prev => ({ ...prev, [field]: 12 }));
         } else {
-            setFormData({ ...formData, [field]: numValue });
+            setFormData(prev => ({ ...prev, [field]: numValue }));
         }
     };
 
@@ -406,6 +407,11 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     value={formData.backgroundVideoDeviceId || ''}
                                     onChange={(e) => {
                                         const newDeviceId = e.target.value || undefined;
+                                        console.log('Video device selected:', {
+                                            rawValue: e.target.value,
+                                            newDeviceId,
+                                            currentValue: formData.backgroundVideoDeviceId
+                                        });
                                         updateField('backgroundVideoDeviceId', newDeviceId);
                                         // Clear ROI when changing video device
                                         if (newDeviceId !== formData.backgroundVideoDeviceId) {
@@ -654,16 +660,16 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                         const value = e.target.value;
                                         const parsed = parseInt(value);
                                         if (!isNaN(parsed)) {
-                                            setFormData({
-                                                ...formData,
+                                            setFormData(prev => ({
+                                                ...prev,
                                                 overlaySizeSource: value,
                                                 overlaySize: Math.max(0, Math.min(100, parsed))
-                                            });
+                                            }));
                                         } else {
-                                            setFormData({
-                                                ...formData,
+                                            setFormData(prev => ({
+                                                ...prev,
                                                 overlaySizeSource: value
-                                            });
+                                            }));
                                         }
                                     }}
                                     placeholder="Number or Variable"
@@ -1429,16 +1435,16 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     // Update both fields in a single state update
                                     const parsed = parseInt(value);
                                     if (!isNaN(parsed)) {
-                                        setFormData({
-                                            ...formData,
+                                        setFormData(prev => ({
+                                            ...prev,
                                             opacitySource: value,
                                             opacity: Math.max(0, Math.min(100, parsed))
-                                        });
+                                        }));
                                     } else {
-                                        setFormData({
-                                            ...formData,
+                                        setFormData(prev => ({
+                                            ...prev,
                                             opacitySource: value
-                                        });
+                                        }));
                                     }
                                 }}
                                 placeholder="Number or Variable"
