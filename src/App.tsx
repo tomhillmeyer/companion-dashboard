@@ -156,11 +156,8 @@ export default function App() {
 
 
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any) => {
-        console.log('handleConfigRestore called with URL:', newConnectionUrl);
-        console.log('Current companionBaseUrl before update:', companionBaseUrl);
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
-        console.log('Called setCompanionBaseUrl with:', newConnectionUrl);
         setSelectedBoxId(null); // Clear any selection
 
         // Apply canvas settings if provided
@@ -211,11 +208,11 @@ export default function App() {
     const [isConnected, setIsConnected] = useState<boolean>(true);
     const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
+    const hasReceivedInitialStateRef = useRef<boolean>(false);
 
     // Track dragging state globally for WebSocket sync
     useEffect(() => {
         (window as any).isDraggingBox = isDragging;
-        console.log('Dragging state changed:', isDragging);
     }, [isDragging]);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>(() => {
         // Web clients don't fetch directly - they get URL via WebSocket
@@ -225,6 +222,8 @@ export default function App() {
         }
         return localStorage.getItem('companion_connection_url') || '';
     });
+    const [mainConnectionValid, setMainConnectionValid] = useState<boolean | null>(null);
+    const [additionalConnectionValidities, setAdditionalConnectionValidities] = useState<{ [key: string]: boolean | null }>({});
     const [connections, setConnections] = useState<CompanionConnection[]>(() => {
         // Web clients don't fetch directly - they get connections via WebSocket
         const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
@@ -644,6 +643,11 @@ export default function App() {
     // Update web server state when dashboard state changes
     useEffect(() => {
         const updateWebServer = async () => {
+            const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+            if (!isElectron) {
+                return; // Only Electron broadcasts to web server
+            }
+
             try {
                 const canvasSettings = {
                     canvasBackgroundColor,
@@ -695,7 +699,9 @@ export default function App() {
                     imageData,
                     fontFamily,
                     scaleEnabled,
-                    designWidth
+                    designWidth,
+                    mainConnectionValid,
+                    additionalConnectionValidities
                 };
 
                 // @ts-ignore - electronAPI is available via preload script
@@ -707,19 +713,20 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth]);
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
         const isCapacitor = Capacitor.isNativePlatform();
-        console.log('Sync effect running. isElectron:', isElectron, 'isCapacitor:', isCapacitor);
-
         // If running in Electron, listen for state changes from browser clients
         if (isElectron) {
-            console.log('Setting up Electron listener for browser state changes');
             (window as any).electronAPI.onSyncStateFromBrowser(async (stateData: any) => {
-                console.log('✅ Syncing state from browser client to Electron', stateData);
+
+                // Don't update while dragging - prevents flicker from echoed updates
+                if ((window as any).isDraggingBox) {
+                    return;
+                }
 
                 // Set flag to prevent sending this update back
                 // Use a timestamp to batch all state updates from this message
@@ -783,7 +790,6 @@ export default function App() {
                 setTimeout(() => {
                     if ((window as any).isReceivingUpdate === batchId) {
                         (window as any).isReceivingUpdate = false;
-                        console.log('✅ Batch update complete (from browser), re-enabling sync');
                     }
                 }, 100);
             });
@@ -791,12 +797,10 @@ export default function App() {
 
         // If running in browser (not Electron and not Capacitor), connect to WebSocket
         if (!isElectron && !isCapacitor) {
-            console.log('Running in browser, connecting to WebSocket...');
 
             const connectWebSocket = () => {
                 // Close existing WebSocket if it exists
                 if (webSocketRef.current && webSocketRef.current.readyState !== WebSocket.CLOSED) {
-                    console.log('Closing existing WebSocket before reconnecting');
                     webSocketRef.current.close();
                 }
 
@@ -804,13 +808,11 @@ export default function App() {
                 // Include the current path so server knows if this is /control or read-only
                 const path = window.location.pathname.startsWith('/control') ? '/control' : '/';
                 const wsUrl = `${protocol}//${window.location.host}${path}`;
-                console.log('WebSocket URL:', wsUrl);
 
                 const ws = new WebSocket(wsUrl);
                 webSocketRef.current = ws;
 
                 ws.onopen = () => {
-                    console.log('✅ Connected to full app server for bidirectional sync');
                     setIsConnected(true);
 
                     // Clear reconnect interval if it exists
@@ -823,7 +825,6 @@ export default function App() {
                 ws.onmessage = async (event) => {
                     try {
                         const message = JSON.parse(event.data);
-                        console.log('📨 Received WebSocket message:', message.type);
 
                         if (message.type === 'variableUpdate' && message.data) {
                             // Receive variable updates from Electron app
@@ -838,11 +839,11 @@ export default function App() {
 
                             // If user is actively dragging, ignore incoming updates completely
                             if ((window as any).isDraggingBox) {
-                                console.log('⏸️ Dragging in progress, ignoring incoming update');
                                 return;
                             }
 
-                            console.log('📥 Received state update from Electron', data);
+                            // Mark that we've received initial state
+                            hasReceivedInitialStateRef.current = true;
 
                             // Set flag to prevent sending this update back
                             // Use a timestamp to batch all state updates from this message
@@ -851,7 +852,6 @@ export default function App() {
 
                             // Update boxes
                             if (data.boxes) {
-                                console.log('Updating boxes:', data.boxes.length);
                                 setBoxes(data.boxes);
                                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data.boxes));
                             }
@@ -859,7 +859,6 @@ export default function App() {
                             // Update canvas settings
                             if (data.canvasSettings) {
                                 const cs = data.canvasSettings;
-                                console.log('Updating canvas settings');
                                 if (cs.canvasBackgroundColor !== undefined) setCanvasBackgroundColor(cs.canvasBackgroundColor);
                                 if (cs.canvasBackgroundColorText !== undefined) setCanvasBackgroundColorText(cs.canvasBackgroundColorText);
                                 if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(cs.canvasBackgroundVariableColors);
@@ -870,31 +869,24 @@ export default function App() {
                                 localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(cs));
                             }
 
-                            // Update connections
+                            // Update connections (web clients don't save to localStorage - they're just remote views)
                             if (data.connections) {
-                                console.log('Updating connections');
                                 setConnections(data.connections);
-                                localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(data.connections));
                             }
 
-                            // Update companion base URL
+                            // Update companion base URL (web clients don't save to localStorage - they're just remote views)
                             if (data.companionBaseUrl !== undefined) {
-                                console.log('Updating companion base URL:', data.companionBaseUrl);
                                 setCompanionBaseUrl(data.companionBaseUrl);
-                                localStorage.setItem('companion_connection_url', data.companionBaseUrl);
                             }
 
-                            // Update font family
+                            // Update font family (web clients don't save to localStorage - they're just remote views)
                             if (data.fontFamily !== undefined) {
-                                console.log('Updating font family:', data.fontFamily);
                                 setFontFamily(data.fontFamily);
-                                localStorage.setItem(FONT_STORAGE_KEY, data.fontFamily);
                                 document.documentElement.style.setProperty('--box-font-family', `"${data.fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
                             }
 
                             // Store image data in IndexedDB
                             if (data.imageData) {
-                                console.log('Storing image data in IndexedDB');
                                 for (const [filename, imageData] of Object.entries(data.imageData)) {
                                     if (typeof imageData === 'string') {
                                         await storeImageInDB(filename, imageData);
@@ -904,32 +896,35 @@ export default function App() {
 
                             // Update scaling settings
                             if (data.scaleEnabled !== undefined) {
-                                console.log('Updating scale enabled:', data.scaleEnabled);
                                 setScaleEnabled(data.scaleEnabled);
                                 localStorage.setItem(SCALE_ENABLED_KEY, data.scaleEnabled.toString());
                             }
 
                             if (data.designWidth !== undefined) {
-                                console.log('Updating design width:', data.designWidth);
                                 setDesignWidth(data.designWidth);
                                 localStorage.setItem(DESIGN_WIDTH_KEY, data.designWidth.toString());
                             }
 
                             // Update variable values (initial state)
                             if (data.variableValues) {
-                                console.log('Updating variable values');
                                 setReceivedVariableValues(data.variableValues);
                             }
                             if (data.htmlVariableValues) {
-                                console.log('Updating HTML variable values');
                                 setReceivedVariableHtmlValues(data.htmlVariableValues);
+                            }
+
+                            // Update connection validities
+                            if (data.mainConnectionValid !== undefined) {
+                                setMainConnectionValid(data.mainConnectionValid);
+                            }
+                            if (data.additionalConnectionValidities) {
+                                setAdditionalConnectionValidities(data.additionalConnectionValidities);
                             }
 
                             // Clear the receiving flag after a short delay to ensure all state updates are processed
                             setTimeout(() => {
                                 if ((window as any).isReceivingUpdate === batchId) {
                                     (window as any).isReceivingUpdate = false;
-                                    console.log('✅ Batch update complete, re-enabling sync');
                                 }
                             }, 100);
                         }
@@ -944,13 +939,11 @@ export default function App() {
                 };
 
                 ws.onclose = () => {
-                    console.log('⚠️ Disconnected from full app server');
                     setIsConnected(false);
 
                     // Start reconnection attempts
                     if (!reconnectIntervalRef.current) {
                         reconnectIntervalRef.current = setInterval(() => {
-                            console.log('Attempting to reconnect...');
                             connectWebSocket();
                         }, 3000);
                     }
@@ -963,7 +956,6 @@ export default function App() {
             connectWebSocket();
 
             return () => {
-                console.log('Cleaning up WebSocket connection');
                 if (reconnectIntervalRef.current) {
                     clearInterval(reconnectIntervalRef.current);
                     reconnectIntervalRef.current = null;
@@ -976,19 +968,22 @@ export default function App() {
         }
     }, []);
 
-    // Send state changes from browser to Electron via WebSocket (only user-initiated changes)
+    // Send state changes from browser to Electron via WebSocket
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
         // Don't send while dragging
         if (isDragging) {
-            console.log('⏸️ Skipping send - drag in progress');
             return;
         }
 
-        // Don't send if we're currently receiving an update (prevents infinite loop)
-        if ((window as any).isReceivingUpdate) {
-            console.log('⏭️ Skipping send - currently receiving update (batch in progress)');
+        // Don't send until we've received initial state from Electron (prevents sending stale values on connect)
+        if (!isElectron && !hasReceivedInitialStateRef.current) {
+            return;
+        }
+
+        // Don't echo back updates we just received from Electron
+        if (!isElectron && (window as any).isReceivingUpdate) {
             return;
         }
 
@@ -996,7 +991,6 @@ export default function App() {
             const ws = (window as any).fullAppServerWS;
 
             if (ws.readyState === WebSocket.OPEN) {
-                console.log('📤 Sending state change to Electron');
                 const stateData = {
                     boxes,
                     canvasSettings: {
@@ -1019,11 +1013,9 @@ export default function App() {
                     type: 'stateChange',
                     data: stateData
                 }));
-            } else {
-                console.log('⚠️ WebSocket not ready, state:', ws.readyState);
             }
         }
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth]);
+    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, isDragging]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -1402,6 +1394,10 @@ export default function App() {
                 connectionUrl={companionBaseUrl}
                 onConnectionUrlChange={setCompanionBaseUrl}
                 onConnectionsChange={setConnections}
+                mainConnectionValid={mainConnectionValid}
+                onMainConnectionValidChange={setMainConnectionValid}
+                additionalConnectionValidities={additionalConnectionValidities}
+                onAdditionalConnectionValiditiesChange={setAdditionalConnectionValidities}
                 onConfigRestore={handleConfigRestore}
                 onDeleteAllBoxes={deleteAllBoxes}
                 canvasBackgroundColor={canvasBackgroundColor}

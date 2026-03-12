@@ -40,6 +40,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     connectionUrl: string;
     onConnectionUrlChange: (url: string) => void;
     onConnectionsChange: (connections: CompanionConnection[]) => void;
+    mainConnectionValid?: boolean | null;
+    onMainConnectionValidChange?: (valid: boolean | null) => void;
+    additionalConnectionValidities?: { [key: string]: boolean | null };
+    onAdditionalConnectionValiditiesChange?: (validities: { [key: string]: boolean | null }) => void;
     onConfigRestore: (boxes: any[], connectionUrl: string, canvasSettings?: any) => void;
     onDeleteAllBoxes: () => void;
     canvasBackgroundColor?: string;
@@ -75,6 +79,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     connectionUrl,
     onConnectionUrlChange,
     onConnectionsChange,
+    mainConnectionValid,
+    onMainConnectionValidChange,
+    additionalConnectionValidities,
+    onAdditionalConnectionValiditiesChange,
     onConfigRestore,
     onDeleteAllBoxes,
     canvasBackgroundColor,
@@ -106,12 +114,37 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     designWidth = 1920,
     onDesignWidthChange
 }, ref) => {
+    const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
+    // Use prop values for web clients, local state for Electron
+    const effectiveIsValidUrl = isElectron ? isValidUrl : (mainConnectionValid ?? null);
+
+    // Helper to update validity and notify parent
+    const updateIsValidUrl = (valid: boolean | null) => {
+        setIsValidUrl(valid);
+        if (isElectron && onMainConnectionValidChange) {
+            onMainConnectionValidChange(valid);
+        }
+    };
+
     const [connections, setConnections] = useState<CompanionConnection[]>([]);
     const connectionsRef = useRef<CompanionConnection[]>([]); // Track current connections for comparison
     const [connectionInputs, setConnectionInputs] = useState<{ [key: string]: string }>({});
     const [connectionValidities, setConnectionValidities] = useState<{ [key: string]: boolean | null }>({});
+    // Use prop values for web clients, local state for Electron
+    const effectiveConnectionValidities = isElectron ? connectionValidities : (additionalConnectionValidities ?? {});
+
+    // Helper to update connection validities and notify parent
+    const updateConnectionValidities = (validities: { [key: string]: boolean | null }) => {
+        setConnectionValidities(validities);
+        if (isElectron && onAdditionalConnectionValiditiesChange) {
+            onAdditionalConnectionValiditiesChange(validities);
+        }
+    };
+    const [mainConnectionStopped, setMainConnectionStopped] = useState<boolean>(false);
+    const [connectionsStopped, setConnectionsStopped] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isActive, setIsActive] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -412,8 +445,17 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         event.target.value = '';
     };
 
-    // Load cached URL and connections on component mount
+    // Load cached URL and connections on component mount (Electron only - web clients use props)
     useEffect(() => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+
+        // Web clients are just remote views - they should only use the connectionUrl prop from Electron
+        if (!isElectron) {
+            setInputUrl(connectionUrl);
+            return;
+        }
+
+        // Electron: Load from localStorage
         const cachedUrl = localStorage.getItem(STORAGE_KEY);
         if (cachedUrl) {
             setInputUrl(cachedUrl);
@@ -442,12 +484,30 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 console.error('Failed to parse cached connections:', error);
             }
         }
-    }, [connectionUrl, onConnectionUrlChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run on mount
 
     useEffect(() => {
+        // Reset when connectionUrl changes
+        setMainConnectionStopped(false);
+        updateIsValidUrl(null);
+    }, [connectionUrl]);
+
+    useEffect(() => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+
+        // Web clients don't check connections - they're just remote controls
+        if (!isElectron) {
+            return;
+        }
+
         const checkConnection = async () => {
+            if (mainConnectionStopped) {
+                return;
+            }
+
             if (!connectionUrl) {
-                setIsValidUrl(null);
+                updateIsValidUrl(null);
                 return;
             }
 
@@ -457,12 +517,14 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 const data = await response.text();
                 const timestamp = parseInt(data);
                 if (!isNaN(timestamp)) {
-                    setIsValidUrl(true);
+                    updateIsValidUrl(true);
                 } else {
                     throw new Error('Invalid response');
                 }
             } catch (err) {
-                setIsValidUrl(false);
+                updateIsValidUrl(false);
+                setMainConnectionStopped(true);
+                console.warn('Main connection failed, stopped checking');
             }
         };
 
@@ -470,12 +532,29 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         const interval = setInterval(checkConnection, 5000); // Repeat every 5s
 
         return () => clearInterval(interval); // Cleanup
-    }, [connectionUrl]);
+    }, [connectionUrl, mainConnectionStopped]);
 
-    // Check connections validity
+    // Check connections validity (Electron only)
     useEffect(() => {
+        // Reset when connections change
+        setConnectionsStopped(false);
+    }, [connections]);
+
+    useEffect(() => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+
+        // Web clients don't check connections - they're just remote controls
+        if (!isElectron) {
+            return;
+        }
+
         const checkConnections = async () => {
+            if (connectionsStopped) {
+                return;
+            }
+
             const validities: { [key: string]: boolean | null } = {};
+            let hasAnyError = false;
 
             for (const connection of connections) {
                 if (!connection.url) {
@@ -495,10 +574,16 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                     }
                 } catch (err) {
                     validities[connection.id] = false;
+                    hasAnyError = true;
                 }
             }
 
-            setConnectionValidities(validities);
+            updateConnectionValidities(validities);
+
+            if (hasAnyError) {
+                setConnectionsStopped(true);
+                console.warn('Additional connection(s) failed, stopped checking');
+            }
         };
 
         if (connections.length > 0) {
@@ -506,7 +591,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             const interval = setInterval(checkConnections, 5000);
             return () => clearInterval(interval);
         }
-    }, [connections]);
+    }, [connections, connectionsStopped]);
 
     // Touch gesture handlers
     useEffect(() => {
@@ -609,14 +694,15 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     }, []);
 
     const handleUrlSubmit = () => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
         const trimmedUrl = inputUrl.trim();
 
         // If field is empty, disconnect
         if (!trimmedUrl) {
             setInputUrl('');
-            localStorage.setItem(STORAGE_KEY, '');
+            if (isElectron) localStorage.setItem(STORAGE_KEY, '');
             onConnectionUrlChange('');
-            setIsValidUrl(null);
+            updateIsValidUrl(null);
             return;
         }
 
@@ -629,25 +715,21 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             const url = new URL(urlToParse);
             const baseUrl = `${url.protocol}//${url.host}`;
             setInputUrl(baseUrl);
-            localStorage.setItem(STORAGE_KEY, baseUrl);
+            if (isElectron) localStorage.setItem(STORAGE_KEY, baseUrl);
             onConnectionUrlChange(baseUrl);
         } catch (error) {
             console.error('Invalid URL:', error);
-            setIsValidUrl(false); // Show red border if input is invalid
+            updateIsValidUrl(false); // Show red border if input is invalid
         }
     };
 
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newUrl = e.target.value;
         setInputUrl(newUrl);
-
-        // Save to localStorage on every change (optional - you might prefer only saving on submit)
-        if (newUrl.trim()) {
-            localStorage.setItem(STORAGE_KEY, newUrl);
-        }
     };
 
     const addConnection = () => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
         const newConnection: CompanionConnection = {
             id: uuid(),
             url: '',
@@ -658,12 +740,13 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         setConnections(updatedConnections);
         setConnectionInputs(prev => ({ ...prev, [newConnection.id]: '' }));
 
-        // Save to localStorage
-        localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        // Save to localStorage (Electron only)
+        if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
         onConnectionsChange(updatedConnections);
     };
 
     const deleteConnection = (connectionId: string, event?: React.MouseEvent) => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
         event?.stopPropagation();
         const updatedConnections = connections.filter(conn => conn.id !== connectionId);
         setConnections(updatedConnections);
@@ -680,24 +763,17 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             return newValidities;
         });
 
-        // Save to localStorage
-        localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        // Save to localStorage (Electron only)
+        if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
         onConnectionsChange(updatedConnections);
     };
 
     const handleConnectionUrlChange = (connectionId: string, newUrl: string) => {
         setConnectionInputs(prev => ({ ...prev, [connectionId]: newUrl }));
-
-        // Save to localStorage immediately
-        const updatedConnections = connections.map(conn =>
-            conn.id === connectionId ? { ...conn, url: newUrl } : conn
-        );
-        setConnections(updatedConnections);
-        localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
-        onConnectionsChange(updatedConnections);
     };
 
     const handleConnectionUrlSubmit = (connectionId: string) => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
         const inputUrl = connectionInputs[connectionId] || '';
         const trimmedUrl = inputUrl.trim();
 
@@ -710,7 +786,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             setConnectionInputs(prev => ({ ...prev, [connectionId]: '' }));
             setConnectionValidities(prev => ({ ...prev, [connectionId]: null }));
 
-            localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+            if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
             onConnectionsChange(updatedConnections);
             return;
         }
@@ -730,7 +806,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             setConnections(updatedConnections);
             setConnectionInputs(prev => ({ ...prev, [connectionId]: baseUrl }));
 
-            localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+            if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
             onConnectionsChange(updatedConnections);
         } catch (error) {
             console.error('Invalid URL:', error);
@@ -1170,8 +1246,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                         style={{
                                             border: '1px solid',
                                             borderColor:
-                                                isValidUrl === null ? 'gray' :
-                                                    isValidUrl === true ? 'green' :
+                                                effectiveIsValidUrl === null ? 'gray' :
+                                                    effectiveIsValidUrl === true ? 'green' :
                                                         'red'
                                         }}
                                     />
@@ -1191,8 +1267,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                             style={{
                                                 border: '1px solid',
                                                 borderColor:
-                                                    connectionValidities[connection.id] === null ? 'gray' :
-                                                        connectionValidities[connection.id] === true ? 'green' :
+                                                    effectiveConnectionValidities[connection.id] === null ? 'gray' :
+                                                        effectiveConnectionValidities[connection.id] === true ? 'green' :
                                                             'red'
                                             }}
                                         />

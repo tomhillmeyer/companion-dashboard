@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 
 interface CompanionConnection {
     id: string;
@@ -82,6 +82,10 @@ export const useVariableFetcher = (
     isDragging: boolean = false, // Pause updates during drag operations
     preFetchedRawValues?: { [key: string]: string } // Pre-fetched raw variable values (for web clients)
 ) => {
+    // Track consecutive fetch failures to stop retrying - use ref for immediate effect
+    const isStoppedRef = useRef<boolean>(false);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
         const initialValues: { [key: string]: string } = {};
@@ -124,12 +128,23 @@ export const useVariableFetcher = (
     const connectionsRef = useMemo(() => connections, [JSON.stringify(connections)]);
 
     useEffect(() => {
+        // Reset failure tracking when baseUrl changes
+        isStoppedRef.current = false;
+    }, [baseUrl]);
+
+    useEffect(() => {
         const fetchVariables = async () => {
+            // If stopped due to failures, don't try again
+            if (isStoppedRef.current) {
+                return;
+            }
+
             // If pre-fetched values are provided, use local processing only (no fetch)
             const usePreFetched = preFetchedRawValues && Object.keys(preFetchedRawValues).length > 0;
 
             const newValues: { [key: string]: string } = {};
             const newHtmlValues: { [key: string]: string } = {};
+            let hasAnyFetchError = false;
 
             for (const [sourceKey, sourceValue] of Object.entries(sourcesRef)) {
                 if (!sourceValue) {
@@ -203,15 +218,28 @@ export const useVariableFetcher = (
                         } else {
                             console.warn(`Failed to fetch ${variable} from ${targetUrl}:`, response.status);
                             processedString = processedString.replace(fullMatch, '');
+                            hasAnyFetchError = true;
                         }
                     } catch (error) {
                         console.error(`Error fetching ${variable}:`, error);
                         processedString = processedString.replace(fullMatch, '');
+                        hasAnyFetchError = true;
                     }
                 }
 
                 newValues[sourceKey] = processedString;
                 newHtmlValues[sourceKey] = parseMarkdown(processedString);
+            }
+
+            // Stop retrying on first fetch error
+            if (hasAnyFetchError && !usePreFetched) {
+                console.warn('Connection failed, stopping further retries');
+                isStoppedRef.current = true;
+                // Immediately clear the interval to stop further attempts
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
             }
 
             // Only update if values have actually changed
@@ -230,14 +258,19 @@ export const useVariableFetcher = (
 
         // Set up interval - use configurable refresh rate when connection is available
         const intervalTime = baseUrl ? refreshRateMs : 5000; // Use refreshRateMs with connection, 5 seconds without
-        const interval = setInterval(() => {
+        intervalRef.current = setInterval(() => {
             // Skip updates during drag operations to prevent iOS touch interference
             if (!isDragging) {
                 fetchVariables();
             }
         }, intervalTime);
 
-        return () => clearInterval(interval);
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        };
     }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs, isDragging, preFetchedRawValues]); // Re-run when baseUrl, sources, connections, refresh rate, drag state, or pre-fetched values change
 
     return { values, htmlValues };
