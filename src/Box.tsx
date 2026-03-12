@@ -140,18 +140,85 @@ export default function Box({
                 return;
             }
 
+            // Clean up any existing stream first
+            if (videoRef.current && videoRef.current.srcObject) {
+                const oldStream = videoRef.current.srcObject as MediaStream;
+                oldStream.getTracks().forEach(track => track.stop());
+                videoRef.current.srcObject = null;
+            }
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: boxData.backgroundVideoDeviceId }
-                    },
-                    audio: false
-                });
+                let stream: MediaStream | null = null;
+
+                // Try progressively lower resolutions until one works
+                const resolutionsToTry = [
+                    { width: 1920, height: 1080 },
+                    { width: 1280, height: 720 },
+                    { width: 640, height: 480 }
+                ];
+
+                for (const resolution of resolutionsToTry) {
+                    try {
+                        console.log(`Trying resolution: ${resolution.width}x${resolution.height}`);
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                deviceId: { exact: boxData.backgroundVideoDeviceId },
+                                width: { ideal: resolution.width },
+                                height: { ideal: resolution.height }
+                            },
+                            audio: false
+                        });
+
+                        // Check what we actually got
+                        const track = stream.getVideoTracks()[0];
+                        const settings = track.getSettings();
+
+                        console.log(`Got resolution: ${settings.width}x${settings.height}`);
+
+                        // If we got at least 720p, we're happy
+                        if (settings.width && settings.width >= 1280) {
+                            console.log('Acceptable resolution found, using this stream');
+                            break;
+                        } else if (resolution === resolutionsToTry[resolutionsToTry.length - 1]) {
+                            // Last resolution in list, use whatever we got
+                            console.log('Using fallback resolution');
+                            break;
+                        } else {
+                            // Got low resolution, stop stream and try next
+                            console.log('Resolution too low, trying next...');
+                            stream.getTracks().forEach(t => t.stop());
+                            stream = null;
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to get ${resolution.width}x${resolution.height}:`, e);
+                        if (stream) {
+                            stream.getTracks().forEach(t => t.stop());
+                            stream = null;
+                        }
+                    }
+                }
+
+                if (!stream) {
+                    throw new Error('Failed to get video stream');
+                }
 
                 currentStream = stream;
 
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
+
+                    // Log final resolution
+                    videoRef.current.onloadedmetadata = () => {
+                        const track = stream.getVideoTracks()[0];
+                        const settings = track.getSettings();
+                        console.log('Final video settings:', {
+                            width: settings.width,
+                            height: settings.height,
+                            aspectRatio: settings.aspectRatio,
+                            frameRate: settings.frameRate,
+                            deviceId: settings.deviceId
+                        });
+                    };
                 }
             } catch (error) {
                 console.error('Error accessing video device:', error);
@@ -173,7 +240,7 @@ export default function Box({
                 videoRef.current.srcObject = null;
             }
         };
-    }, [boxData.backgroundVideoDeviceId]);
+    }, [boxData.backgroundVideoDeviceId, boxData.backgroundVideoROI]);
 
     const getGridLines = (gridSize: number) => {
         const viewportWidth = window.innerWidth;
@@ -787,24 +854,99 @@ export default function Box({
                         }}
                     >
                         {/* Video background layer */}
-                        {boxData.backgroundVideoDeviceId && (
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                style={{
+                        {boxData.backgroundVideoDeviceId && (() => {
+                            const roi = boxData.backgroundVideoROI;
+
+                            if (!roi) {
+                                // No ROI - simple case, use objectFit directly
+                                return (
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: boxData.backgroundVideoSize || 'cover',
+                                            pointerEvents: 'none',
+                                            zIndex: 0
+                                        }}
+                                    />
+                                );
+                            }
+
+                            // With ROI:
+                            // Step 1: Create a "cropped video" container with ROI aspect ratio
+                            // Step 2: Position/scale the actual video to show only the ROI region
+                            // Step 3: Apply cover/contain to the cropped container
+
+                            // Get video dimensions to calculate actual ROI aspect ratio
+                            const videoWidth = videoRef.current?.videoWidth || 1920;
+                            const videoHeight = videoRef.current?.videoHeight || 1080;
+
+                            // Calculate actual pixel dimensions of ROI
+                            const roiPixelWidth = videoWidth * (roi.width / 100);
+                            const roiPixelHeight = videoHeight * (roi.height / 100);
+
+                            // Calculate actual aspect ratio of the ROI region
+                            const roiAspectRatio = roiPixelWidth / roiPixelHeight;
+
+                            return (
+                                <div style={{
                                     position: 'absolute',
                                     top: 0,
                                     left: 0,
                                     width: '100%',
                                     height: '100%',
-                                    objectFit: boxData.backgroundVideoSize || 'cover',
                                     pointerEvents: 'none',
                                     zIndex: 0
-                                }}
-                            />
-                        )}
+                                }}>
+                                    {/* Container with ROI aspect ratio that applies cover/contain */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        aspectRatio: `${roiAspectRatio}`,
+                                        ...(boxData.backgroundVideoSize === 'contain' ? {
+                                            // Contain: fit inside box - let aspect ratio determine actual size
+                                            maxWidth: '100%',
+                                            maxHeight: '100%',
+                                            width: 'auto',
+                                            height: '100%'
+                                        } : {
+                                            // Cover: fill entire box
+                                            minWidth: '100%',
+                                            minHeight: '100%'
+                                        }),
+                                        overflow: 'hidden'
+                                    }}>
+                                        {/* The actual video, scaled to fit ROI dimensions */}
+                                        <video
+                                            ref={videoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            style={{
+                                                position: 'absolute',
+                                                // Scale video so ROI region fills container
+                                                width: `${100 / roi.width * 100}%`,
+                                                height: `${100 / roi.height * 100}%`,
+                                                // Position video so ROI region is at top-left of container
+                                                left: `${-roi.x / roi.width * 100}%`,
+                                                top: `${-roi.y / roi.height * 100}%`,
+                                                objectFit: 'fill',
+                                                pointerEvents: 'none'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Overlay layer on top of background */}
                         <div style={{

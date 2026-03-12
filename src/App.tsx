@@ -78,6 +78,7 @@ export interface BoxData {
     backgroundImageOpacity?: number;
     backgroundVideoDeviceId?: string;
     backgroundVideoSize?: 'cover' | 'contain';
+    backgroundVideoROI?: { x: number; y: number; width: number; height: number };
     borderColor: string;
     borderColorText: string;
     borderVariableColors: VariableColor[];
@@ -173,6 +174,21 @@ export default function App() {
             }
             if (canvasSettings.canvasBackgroundImageOpacity !== undefined) {
                 setCanvasBackgroundImageOpacity(canvasSettings.canvasBackgroundImageOpacity);
+            }
+            if (canvasSettings.canvasBackgroundImageSize !== undefined) {
+                setCanvasBackgroundImageSize(canvasSettings.canvasBackgroundImageSize);
+            }
+            if (canvasSettings.canvasBackgroundImageWidth !== undefined) {
+                setCanvasBackgroundImageWidth(canvasSettings.canvasBackgroundImageWidth);
+            }
+            if (canvasSettings.canvasBackgroundVideoDeviceId !== undefined) {
+                setCanvasBackgroundVideoDeviceId(canvasSettings.canvasBackgroundVideoDeviceId);
+            }
+            if (canvasSettings.canvasBackgroundVideoSize !== undefined) {
+                setCanvasBackgroundVideoSize(canvasSettings.canvasBackgroundVideoSize);
+            }
+            if (canvasSettings.canvasBackgroundVideoROI !== undefined) {
+                setCanvasBackgroundVideoROI(canvasSettings.canvasBackgroundVideoROI);
             }
             if (canvasSettings.refreshRateMs !== undefined) {
                 setRefreshRateMs(canvasSettings.refreshRateMs);
@@ -340,6 +356,18 @@ export default function App() {
         }
         return 'cover';
     });
+    const [canvasBackgroundVideoROI, setCanvasBackgroundVideoROI] = useState<{ x: number; y: number; width: number; height: number } | undefined>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundVideoROI;
+            } catch (error) {
+                return undefined;
+            }
+        }
+        return undefined;
+    });
     const [refreshRateMs, setRefreshRateMs] = useState<number>(() => {
         const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
         if (saved) {
@@ -414,10 +442,11 @@ export default function App() {
             canvasBackgroundImageWidth,
             canvasBackgroundVideoDeviceId,
             canvasBackgroundVideoSize,
+            canvasBackgroundVideoROI,
             refreshRateMs
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
-    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, refreshRateMs]);
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs]);
 
     // Save companion connection URL to localStorage whenever it changes
     useEffect(() => {
@@ -464,18 +493,85 @@ export default function App() {
                 return;
             }
 
+            // Clean up any existing stream first
+            if (canvasVideoRef.current && canvasVideoRef.current.srcObject) {
+                const oldStream = canvasVideoRef.current.srcObject as MediaStream;
+                oldStream.getTracks().forEach(track => track.stop());
+                canvasVideoRef.current.srcObject = null;
+            }
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        deviceId: { exact: canvasBackgroundVideoDeviceId }
-                    },
-                    audio: false
-                });
+                let stream: MediaStream | null = null;
+
+                // Try progressively lower resolutions until one works
+                const resolutionsToTry = [
+                    { width: 1920, height: 1080 },
+                    { width: 1280, height: 720 },
+                    { width: 640, height: 480 }
+                ];
+
+                for (const resolution of resolutionsToTry) {
+                    try {
+                        console.log(`Trying canvas resolution: ${resolution.width}x${resolution.height}`);
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                deviceId: { exact: canvasBackgroundVideoDeviceId },
+                                width: { ideal: resolution.width },
+                                height: { ideal: resolution.height }
+                            },
+                            audio: false
+                        });
+
+                        // Check what we actually got
+                        const track = stream.getVideoTracks()[0];
+                        const settings = track.getSettings();
+
+                        console.log(`Got canvas resolution: ${settings.width}x${settings.height}`);
+
+                        // If we got at least 720p, we're happy
+                        if (settings.width && settings.width >= 1280) {
+                            console.log('Acceptable canvas resolution found, using this stream');
+                            break;
+                        } else if (resolution === resolutionsToTry[resolutionsToTry.length - 1]) {
+                            // Last resolution in list, use whatever we got
+                            console.log('Using fallback canvas resolution');
+                            break;
+                        } else {
+                            // Got low resolution, stop stream and try next
+                            console.log('Canvas resolution too low, trying next...');
+                            stream.getTracks().forEach(t => t.stop());
+                            stream = null;
+                        }
+                    } catch (e) {
+                        console.warn(`Failed to get canvas ${resolution.width}x${resolution.height}:`, e);
+                        if (stream) {
+                            stream.getTracks().forEach(t => t.stop());
+                            stream = null;
+                        }
+                    }
+                }
+
+                if (!stream) {
+                    throw new Error('Failed to get video stream');
+                }
 
                 currentStream = stream;
 
                 if (canvasVideoRef.current) {
                     canvasVideoRef.current.srcObject = stream;
+
+                    // Log final resolution
+                    canvasVideoRef.current.onloadedmetadata = () => {
+                        const track = stream.getVideoTracks()[0];
+                        const settings = track.getSettings();
+                        console.log('Final canvas video settings:', {
+                            width: settings.width,
+                            height: settings.height,
+                            aspectRatio: settings.aspectRatio,
+                            frameRate: settings.frameRate,
+                            deviceId: settings.deviceId
+                        });
+                    };
                 }
             } catch (error) {
                 console.error('Error accessing canvas video device:', error);
@@ -497,7 +593,7 @@ export default function App() {
                 canvasVideoRef.current.srcObject = null;
             }
         };
-    }, [canvasBackgroundVideoDeviceId]);
+    }, [canvasBackgroundVideoDeviceId, canvasBackgroundVideoROI]);
 
     // Update scale factor when window resizes or settings change
     useEffect(() => {
@@ -1323,24 +1419,99 @@ export default function App() {
             <TitleBar />
 
             {/* Canvas background video */}
-            {canvasBackgroundVideoDeviceId && (
-                <video
-                    ref={canvasVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{
+            {canvasBackgroundVideoDeviceId && (() => {
+                const roi = canvasBackgroundVideoROI;
+
+                if (!roi) {
+                    // No ROI - simple case, use objectFit directly
+                    return (
+                        <video
+                            ref={canvasVideoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            style={{
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                width: '100vw',
+                                height: '100vh',
+                                objectFit: canvasBackgroundVideoSize || 'cover',
+                                pointerEvents: 'none',
+                                zIndex: 0
+                            }}
+                        />
+                    );
+                }
+
+                // With ROI:
+                // Step 1: Create a "cropped video" container with ROI aspect ratio
+                // Step 2: Position/scale the actual video to show only the ROI region
+                // Step 3: Apply cover/contain to the cropped container
+
+                // Get video dimensions to calculate actual ROI aspect ratio
+                const videoWidth = canvasVideoRef.current?.videoWidth || 1920;
+                const videoHeight = canvasVideoRef.current?.videoHeight || 1080;
+
+                // Calculate actual pixel dimensions of ROI
+                const roiPixelWidth = videoWidth * (roi.width / 100);
+                const roiPixelHeight = videoHeight * (roi.height / 100);
+
+                // Calculate actual aspect ratio of the ROI region
+                const roiAspectRatio = roiPixelWidth / roiPixelHeight;
+
+                return (
+                    <div style={{
                         position: 'fixed',
                         top: 0,
                         left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: canvasBackgroundVideoSize || 'cover',
+                        width: '100vw',
+                        height: '100vh',
                         pointerEvents: 'none',
                         zIndex: 0
-                    }}
-                />
-            )}
+                    }}>
+                        {/* Container with ROI aspect ratio that applies cover/contain */}
+                        <div style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            aspectRatio: `${roiAspectRatio}`,
+                            ...(canvasBackgroundVideoSize === 'contain' ? {
+                                // Contain: fit inside box - let aspect ratio determine actual size
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                width: 'auto',
+                                height: '100%'
+                            } : {
+                                // Cover: fill entire box
+                                minWidth: '100%',
+                                minHeight: '100%'
+                            }),
+                            overflow: 'hidden'
+                        }}>
+                            {/* The actual video, scaled to fit ROI dimensions */}
+                            <video
+                                ref={canvasVideoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                style={{
+                                    position: 'absolute',
+                                    // Scale video so ROI region fills container
+                                    width: `${100 / roi.width * 100}%`,
+                                    height: `${100 / roi.height * 100}%`,
+                                    // Position video so ROI region is at top-left of container
+                                    left: `${-roi.x / roi.width * 100}%`,
+                                    top: `${-roi.y / roi.height * 100}%`,
+                                    objectFit: 'fill',
+                                    pointerEvents: 'none'
+                                }}
+                            />
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Disconnection overlay - shown when running in browser and disconnected */}
             {showDisconnectOverlay && (
@@ -1416,6 +1587,8 @@ export default function App() {
                 onCanvasBackgroundVideoDeviceIdChange={setCanvasBackgroundVideoDeviceId}
                 canvasBackgroundVideoSize={canvasBackgroundVideoSize}
                 onCanvasBackgroundVideoSizeChange={setCanvasBackgroundVideoSize}
+                canvasBackgroundVideoROI={canvasBackgroundVideoROI}
+                onCanvasBackgroundVideoROIChange={setCanvasBackgroundVideoROI}
                 refreshRateMs={refreshRateMs}
                 onRefreshRateMsChange={setRefreshRateMs}
                 fontFamily={fontFamily}

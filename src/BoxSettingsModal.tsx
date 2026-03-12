@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
 import { useVideoDevices } from './useVideoDevices';
+import ROIModal, { type ROI } from './ROIModal';
 
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
@@ -76,6 +77,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const [activeSection, setActiveSection] = useState<SettingSection>('full');
     const backgroundImageInputRef = useRef<HTMLInputElement>(null);
     const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices();
+    const [showROIModal, setShowROIModal] = useState(false);
 
     // Get display position for showing in inputs
     const displayPosition = getDisplayPosition(
@@ -439,28 +441,66 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         </div>
                     </div>
                     {formData.backgroundVideoDeviceId && (
-                        <div className="image-size-controls" style={{ marginTop: '15px' }}>
-                            <label>
-                                <input
-                                    type="radio"
-                                    name="backgroundVideoSize"
-                                    value="cover"
-                                    checked={formData.backgroundVideoSize !== 'contain'}
-                                    onChange={() => updateField('backgroundVideoSize', 'cover')}
-                                />
-                                Cover
-                            </label>
-                            <label>
-                                <input
-                                    type="radio"
-                                    name="backgroundVideoSize"
-                                    value="contain"
-                                    checked={formData.backgroundVideoSize === 'contain'}
-                                    onChange={() => updateField('backgroundVideoSize', 'contain')}
-                                />
-                                Contain
-                            </label>
-                        </div>
+                        <>
+                            <div className="image-size-controls" style={{ marginTop: '15px' }}>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="backgroundVideoSize"
+                                        value="cover"
+                                        checked={formData.backgroundVideoSize !== 'contain'}
+                                        onChange={() => updateField('backgroundVideoSize', 'cover')}
+                                    />
+                                    Cover
+                                </label>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="backgroundVideoSize"
+                                        value="contain"
+                                        checked={formData.backgroundVideoSize === 'contain'}
+                                        onChange={() => updateField('backgroundVideoSize', 'contain')}
+                                    />
+                                    Contain
+                                </label>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowROIModal(true)}
+                                style={{
+                                    marginTop: '10px',
+                                    padding: '8px 16px',
+                                    backgroundColor: '#444',
+                                    color: 'white',
+                                    border: '1px solid #61BAFA',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    width: '100%'
+                                }}
+                            >
+                                Set Region of Interest
+                            </button>
+                            {formData.backgroundVideoROI && (
+                                <button
+                                    type="button"
+                                    onClick={() => updateField('backgroundVideoROI', undefined)}
+                                    style={{
+                                        marginTop: '5px',
+                                        padding: '8px 16px',
+                                        backgroundColor: '#333',
+                                        color: 'white',
+                                        border: '1px solid #666',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        width: '100%'
+                                    }}
+                                >
+                                    Clear Region of Interest
+                                </button>
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -1529,6 +1569,19 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
             </div>
+
+            {/* ROI Modal */}
+            {showROIModal && formData.backgroundVideoDeviceId && (
+                <ROIModal
+                    deviceId={formData.backgroundVideoDeviceId}
+                    initialROI={formData.backgroundVideoROI}
+                    onSave={(roi: ROI) => {
+                        updateField('backgroundVideoROI', roi);
+                        setShowROIModal(false);
+                    }}
+                    onCancel={() => setShowROIModal(false)}
+                />
+            )}
         </div>,
         document.body
     );

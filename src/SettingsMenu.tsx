@@ -12,6 +12,7 @@ import type { VariableColor } from './App';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
+import ROIModal, { type ROI } from './ROIModal';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -62,6 +63,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundVideoDeviceIdChange?: (deviceId: string) => void;
     canvasBackgroundVideoSize?: 'cover' | 'contain';
     onCanvasBackgroundVideoSizeChange?: (size: 'cover' | 'contain') => void;
+    canvasBackgroundVideoROI?: { x: number; y: number; width: number; height: number };
+    onCanvasBackgroundVideoROIChange?: (roi: { x: number; y: number; width: number; height: number } | undefined) => void;
     refreshRateMs?: number;
     onRefreshRateMsChange?: (refreshRate: number) => void;
     fontFamily?: string;
@@ -101,6 +104,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundVideoDeviceIdChange,
     canvasBackgroundVideoSize,
     onCanvasBackgroundVideoSizeChange,
+    canvasBackgroundVideoROI,
+    onCanvasBackgroundVideoROIChange,
     refreshRateMs,
     onRefreshRateMsChange,
     fontFamily,
@@ -163,6 +168,9 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     // Config load dialog state
     const [showConfigDialog, setShowConfigDialog] = useState(false);
     const [pendingConfig, setPendingConfig] = useState<any>(null);
+
+    // ROI modal state
+    const [showCanvasROIModal, setShowCanvasROIModal] = useState(false);
 
     // Platform detection - web server available on desktop (Electron) and dev mode
     const isDesktop = typeof window !== 'undefined' && (window as any).electronAPI;
@@ -1516,17 +1524,55 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                 </button>
                             </div>
                             {canvasBackgroundVideoDeviceId && (
-                                <div className="canvas-image-size-controls" style={{ marginTop: '10px' }}>
-                                    <label htmlFor="canvas-video-size">Background Video Size</label>
-                                    <select
-                                        id="canvas-video-size"
-                                        value={canvasBackgroundVideoSize || 'cover'}
-                                        onChange={(e) => onCanvasBackgroundVideoSizeChange?.(e.target.value as 'cover' | 'contain')}
+                                <>
+                                    <div className="canvas-image-size-controls" style={{ marginTop: '10px' }}>
+                                        <label htmlFor="canvas-video-size">Background Video Size</label>
+                                        <select
+                                            id="canvas-video-size"
+                                            value={canvasBackgroundVideoSize || 'cover'}
+                                            onChange={(e) => onCanvasBackgroundVideoSizeChange?.(e.target.value as 'cover' | 'contain')}
+                                        >
+                                            <option value="cover">Cover</option>
+                                            <option value="contain">Contain</option>
+                                        </select>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCanvasROIModal(true)}
+                                        style={{
+                                            marginTop: '10px',
+                                            padding: '8px 16px',
+                                            backgroundColor: '#444',
+                                            color: 'white',
+                                            border: '1px solid #61BAFA',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            width: '100%'
+                                        }}
                                     >
-                                        <option value="cover">Cover</option>
-                                        <option value="contain">Contain</option>
-                                    </select>
-                                </div>
+                                        Set Region of Interest
+                                    </button>
+                                    {canvasBackgroundVideoROI && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onCanvasBackgroundVideoROIChange?.(undefined)}
+                                            style={{
+                                                marginTop: '5px',
+                                                padding: '8px 16px',
+                                                backgroundColor: '#333',
+                                                color: 'white',
+                                                border: '1px solid #666',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '12px',
+                                                width: '100%'
+                                            }}
+                                        >
+                                            Clear Region of Interest
+                                        </button>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
@@ -1720,6 +1766,19 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         </button>
                     </div>
                 </div>
+            )}
+
+            {/* Canvas ROI Modal */}
+            {showCanvasROIModal && canvasBackgroundVideoDeviceId && (
+                <ROIModal
+                    deviceId={canvasBackgroundVideoDeviceId}
+                    initialROI={canvasBackgroundVideoROI}
+                    onSave={(roi: ROI) => {
+                        onCanvasBackgroundVideoROIChange?.(roi);
+                        setShowCanvasROIModal(false);
+                    }}
+                    onCancel={() => setShowCanvasROIModal(false)}
+                />
             )}
         </div>
     );
