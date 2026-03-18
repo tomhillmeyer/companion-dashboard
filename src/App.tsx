@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
+import FindReplaceModal from './FindReplaceModal.tsx';
 import './App.css';
 import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
@@ -139,6 +140,7 @@ export default function App() {
 
     const [selectedBoxIds, setSelectedBoxIds] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState<boolean>(false);
+    const [findReplaceModalOpen, setFindReplaceModalOpen] = useState<boolean>(false);
     const [isConnected, setIsConnected] = useState<boolean>(true);
     const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
@@ -1305,11 +1307,135 @@ export default function App() {
     };
 
 
+    // Handle find and replace
+    const handleFindReplace = (findText: string, replaceText: string, targetBoxIds: string[]) => {
+        setBoxes(prev => prev.map(box => {
+            if (!targetBoxIds.includes(box.id)) return box;
+
+            // Create a copy of the box to modify
+            const updatedBox = { ...box };
+
+            // Helper function to replace text in a string
+            const replaceInString = (str: string | undefined): string => {
+                if (!str) return '';
+                return str.split(findText).join(replaceText);
+            };
+
+            // Replace in all text fields (excluding button press text)
+            // Header text
+            updatedBox.headerLabel = replaceInString(updatedBox.headerLabel);
+            updatedBox.headerLabelSource = replaceInString(updatedBox.headerLabelSource);
+
+            // Left text
+            updatedBox.leftLabel = replaceInString(updatedBox.leftLabel);
+            updatedBox.leftLabelSource = replaceInString(updatedBox.leftLabelSource);
+
+            // Right text
+            updatedBox.rightLabel = replaceInString(updatedBox.rightLabel);
+            updatedBox.rightLabelSource = replaceInString(updatedBox.rightLabelSource);
+
+            // Color text fields
+            updatedBox.backgroundColorText = replaceInString(updatedBox.backgroundColorText);
+            updatedBox.headerColorText = replaceInString(updatedBox.headerColorText);
+            updatedBox.headerLabelColorText = replaceInString(updatedBox.headerLabelColorText);
+            updatedBox.leftLabelColorText = replaceInString(updatedBox.leftLabelColorText);
+            updatedBox.rightLabelColorText = replaceInString(updatedBox.rightLabelColorText);
+            updatedBox.borderColorText = replaceInString(updatedBox.borderColorText);
+            updatedBox.overlayColorText = replaceInString(updatedBox.overlayColorText);
+
+            // Opacity source
+            updatedBox.opacitySource = replaceInString(updatedBox.opacitySource);
+
+            // Overlay size source
+            updatedBox.overlaySizeSource = replaceInString(updatedBox.overlaySizeSource);
+
+            // Replace in variable color arrays
+            if (updatedBox.backgroundVariableColors) {
+                updatedBox.backgroundVariableColors = updatedBox.backgroundVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+            if (updatedBox.headerVariableColors) {
+                updatedBox.headerVariableColors = updatedBox.headerVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+            if (updatedBox.headerLabelVariableColors) {
+                updatedBox.headerLabelVariableColors = updatedBox.headerLabelVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+            if (updatedBox.leftLabelVariableColors) {
+                updatedBox.leftLabelVariableColors = updatedBox.leftLabelVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+            if (updatedBox.rightLabelVariableColors) {
+                updatedBox.rightLabelVariableColors = updatedBox.rightLabelVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+            if (updatedBox.borderVariableColors) {
+                updatedBox.borderVariableColors = updatedBox.borderVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+            if (updatedBox.overlayVariableColors) {
+                updatedBox.overlayVariableColors = updatedBox.overlayVariableColors.map(vc => ({
+                    ...vc,
+                    variable: replaceInString(vc.variable),
+                    value: replaceInString(vc.value)
+                }));
+            }
+
+            // Replace in opacity variable values
+            if (updatedBox.opacityVariableValues) {
+                updatedBox.opacityVariableValues = updatedBox.opacityVariableValues.map(ov => ({
+                    ...ov,
+                    variable: replaceInString(ov.variable),
+                    value: replaceInString(ov.value)
+                }));
+            }
+
+            // Replace in overlay size variable values
+            if (updatedBox.overlaySizeVariableValues) {
+                updatedBox.overlaySizeVariableValues = updatedBox.overlaySizeVariableValues.map(osv => ({
+                    ...osv,
+                    variable: replaceInString(osv.variable),
+                    value: replaceInString(osv.value)
+                }));
+            }
+
+            return updatedBox;
+        }));
+    };
+
     // Handle keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            // Open find and replace with Cmd+Shift+F (Mac) or Ctrl+Shift+F (Windows/Linux)
+            if (event.key === 'f' && (event.metaKey || event.ctrlKey) && event.shiftKey) {
+                event.preventDefault();
+                setFindReplaceModalOpen(true);
+            }
+            // Don't process other shortcuts if find/replace modal is open
+            else if (findReplaceModalOpen) {
+                return;
+            }
             // Delete selected boxes
-            if (selectedBoxIds.length > 0 && (event.key === 'Backspace' || event.key === 'Delete')) {
+            else if (selectedBoxIds.length > 0 && (event.key === 'Backspace' || event.key === 'Delete')) {
                 // Prevent default behavior (like navigating back in browser)
                 event.preventDefault();
                 // Delete all selected boxes
@@ -1335,7 +1461,7 @@ export default function App() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selectedBoxIds]);
+    }, [selectedBoxIds, findReplaceModalOpen]);
 
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
@@ -1496,6 +1622,14 @@ export default function App() {
                     </div>
                 </div>
             )}
+
+            <FindReplaceModal
+                isOpen={findReplaceModalOpen}
+                onClose={() => setFindReplaceModalOpen(false)}
+                boxes={boxes}
+                selectedBoxIds={selectedBoxIds}
+                onReplace={handleFindReplace}
+            />
 
             <SettingsMenu
                 ref={settingsMenuRef}
