@@ -528,6 +528,7 @@ export default function Box({
     const sendCompanionButtonPress = async () => {
         console.log('sendCompanionButtonPress called', {
             companionButtonLocation: boxData.companionButtonLocation,
+            companionButtonConnectionId: boxData.companionButtonConnectionId,
             companionBaseUrl,
             boxesLocked
         });
@@ -544,8 +545,17 @@ export default function Box({
             return;
         }
 
+        // Determine which connection URL to use
+        let baseUrl = companionBaseUrl; // Default to main connection
+        if (boxData.companionButtonConnectionId) {
+            const selectedConnection = connections.find(c => c.id === boxData.companionButtonConnectionId);
+            if (selectedConnection) {
+                baseUrl = selectedConnection.url;
+            }
+        }
+
         const [page, row, column] = parts;
-        const url = `${companionBaseUrl}/api/location/${page}/${row}/${column}/press`;
+        const url = `${baseUrl}/api/location/${page}/${row}/${column}/press`;
 
         console.log('Sending POST to:', url);
 
@@ -1091,6 +1101,7 @@ export default function Box({
                         onDuplicate(boxData);
                         setShowModal(false);
                     }}
+                    connections={connections}
                 />
             )}
         </div>

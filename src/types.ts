@@ -126,6 +126,7 @@ export interface BoxData {
 
     // Companion Integration
     companionButtonLocation?: string; // Format: "page/row/column"
+    companionButtonConnectionId?: string; // Which connection to use for click action (defaults to main if not set)
 }
 
 // ============================================================================

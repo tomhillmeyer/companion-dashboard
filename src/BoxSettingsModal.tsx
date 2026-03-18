@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -25,11 +25,12 @@ interface BoxSettingsModalProps {
     onCancel: () => void;
     onDelete: (boxId: string) => void;
     onDuplicate: (boxData: BoxData) => void;
+    connections?: CompanionConnection[];
 }
 
 type SettingSection = 'full' | 'background' | 'header' | 'left' | 'right';
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [] }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -1550,6 +1551,33 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             />
                         </div>
                     </div>
+                    {connections.length > 0 && (
+                        <div className="setting-row">
+                            <div className="setting-label">
+                                <span className="setting-header">Connection</span>
+                                <select
+                                    value={formData.companionButtonConnectionId || ''}
+                                    onChange={(e) => updateField('companionButtonConnectionId', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        backgroundColor: '#1a1a1a',
+                                        color: 'white',
+                                        border: '1px solid #61BAFA',
+                                        borderRadius: '4px',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    <option value="">Default Connection</option>
+                                    {connections.map((conn) => (
+                                        <option key={conn.id} value={conn.id}>
+                                            {conn.label || conn.url}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
