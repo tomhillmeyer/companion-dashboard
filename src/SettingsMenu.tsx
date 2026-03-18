@@ -258,12 +258,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 return;
             }
 
-            console.log('[WebServer] Checking server status, syncPort:', syncPort);
-
             // @ts-ignore - electronAPI is available via preload script
             const status = await window.electronAPI?.webServer.getStatus();
-
-            console.log('[WebServer] Status received:', status);
 
             if (status) {
                 setWebServerRunning(status.isRunning);
@@ -272,11 +268,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
                 // Sync the port from server state only on initial load or when explicitly requested
                 if (syncPort && status.isRunning) {
-                    console.log('[WebServer] Syncing port to:', status.port);
                     setWebServerPort(status.port);
                 }
-            } else {
-                console.warn('[WebServer] Status is null/undefined');
             }
         } catch (error) {
             console.error('Failed to check web server status:', error);
@@ -396,6 +389,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 }
             }
 
+            // Get web server settings
+            const webServerPort = localStorage.getItem(`window_${windowId}_web_server_port`);
+            const webServerHostname = localStorage.getItem(`window_${windowId}_web_server_hostname`);
+
             // Create config object
             const config = {
                 version: '1.0',
@@ -407,7 +404,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 background_image_data: backgroundImageData,
                 font_family: localStorage.getItem(FONT_STORAGE_KEY) || '',
                 scale_enabled: localStorage.getItem(`window_${windowId}_scale_enabled`) === 'true',
-                design_width: parseInt(localStorage.getItem(`window_${windowId}_design_width`) || '1920')
+                design_width: parseInt(localStorage.getItem(`window_${windowId}_design_width`) || '1920'),
+                web_server: {
+                    enabled: webServerRunning,
+                    port: webServerPort ? parseInt(webServerPort, 10) : 80,
+                    hostname: webServerHostname || 'dashboard'
+                }
             };
 
             console.log('Config export:', {
@@ -1206,6 +1208,19 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         }
                     }
                 }
+            }
+
+            // Restore web server settings if they exist
+            if (pendingConfig.web_server) {
+                if (pendingConfig.web_server.port) {
+                    localStorage.setItem(`window_${windowId}_web_server_port`, pendingConfig.web_server.port.toString());
+                    setWebServerPort(pendingConfig.web_server.port);
+                }
+                if (pendingConfig.web_server.hostname) {
+                    localStorage.setItem(`window_${windowId}_web_server_hostname`, pendingConfig.web_server.hostname);
+                    setWebServerHostname(pendingConfig.web_server.hostname);
+                }
+                console.log('Web server settings restored:', pendingConfig.web_server);
             }
 
             // Update local input state first
