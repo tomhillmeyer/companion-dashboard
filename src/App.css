@@ -3,6 +3,25 @@
     position: relative;
 }
 
+/* Hide scrollbars but keep scroll functionality */
+html {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+html::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+}
+
+body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+body::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+}
+
 .canvas-container.has-background-image::before {
     content: '';
     position: fixed;

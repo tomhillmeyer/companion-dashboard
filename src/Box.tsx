@@ -88,10 +88,12 @@ export default function Box({
     boxesLocked = false,
     centralVariableValues,
     videoRelayManager,
+    boxRef,
+    isMultiSelect = false,
 }: {
     boxData: BoxData;
     isSelected: boolean;
-    onSelect: () => void;
+    onSelect: (event?: React.MouseEvent) => void;
     onDeselect: () => void;
     onBoxUpdate: (boxData: BoxData) => void;
     onDelete: (boxId: string) => void;
@@ -107,6 +109,8 @@ export default function Box({
     boxesLocked?: boolean;
     videoRelayManager?: VideoRelayManager | null;
     videoRelayManagerReady?: boolean;
+    boxRef?: (el: HTMLDivElement | null) => void;
+    isMultiSelect?: boolean;
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
@@ -777,7 +781,10 @@ export default function Box({
             <DoubleTapBox onDoubleTap={() => { if (!boxesLocked) setShowModal(true) }}>
                 <div className="box-container">
                     <div
-                        ref={targetRef}
+                        ref={(el) => {
+                            (targetRef as any).current = el;
+                            if (boxRef) boxRef(el);
+                        }}
                         className={`box ${boxData.noBorder ? 'no-border' : 'with-border'} ${(loadedBackgroundImage || (resolveBoxBackgroundColor() && isImageUrl(resolveBoxBackgroundColor()))) ? 'has-background-image' : ''}`}
                         onClick={(e) => {
                             if (boxesLocked) {
@@ -802,7 +809,8 @@ export default function Box({
                                 };
                                 onDuplicate(duplicatedBox);
                             } else {
-                                onSelect();
+                                // Pass the event to onSelect for multi-select support
+                                onSelect(e);
                             }
                         }}
                         onDoubleClick={(e) => {
@@ -1008,7 +1016,7 @@ export default function Box({
                         )}
                     </div>
 
-                    {isSelected && !boxesLocked && (
+                    {isSelected && !boxesLocked && !isMultiSelect && (
                         <Moveable
                             target={targetRef}
                             draggable

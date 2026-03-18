@@ -24,6 +24,12 @@
     border-radius: 10px;
 }
 
+/* Selected box visual feedback */
+.box.box-selected {
+    outline: 2px solid #61BAFA;
+    outline-offset: 2px;
+}
+
 /* Background image with opacity support */
 .box.has-background-image::before {
     content: '';

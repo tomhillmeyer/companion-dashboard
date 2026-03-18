@@ -10,6 +10,7 @@ import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
 import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor } from './types';
+import Moveable from 'react-moveable';
 
 
 // Get window ID for isolated storage
@@ -76,7 +77,7 @@ export default function App() {
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any) => {
         setBoxes(newBoxes);
         setCompanionBaseUrl(newConnectionUrl);
-        setSelectedBoxId(null); // Clear any selection
+        setSelectedBoxIds([]); // Clear any selection
 
         // Apply canvas settings if provided
         if (canvasSettings) {
@@ -115,7 +116,7 @@ export default function App() {
 
     const deleteAllBoxes = () => {
         setBoxes([]);
-        setSelectedBoxId(null); // Clear any selection
+        setSelectedBoxIds([]); // Clear any selection
     };
 
     const duplicateBox = (originalBoxData: BoxData) => {
@@ -136,7 +137,7 @@ export default function App() {
     };
 
 
-    const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+    const [selectedBoxIds, setSelectedBoxIds] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [isConnected, setIsConnected] = useState<boolean>(true);
     const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -144,6 +145,29 @@ export default function App() {
     const hasReceivedInitialStateRef = useRef<boolean>(false);
     const videoRelayManagerRef = useRef<VideoRelayManager | null>(null);
     const [videoRelayManagerReady, setVideoRelayManagerReady] = useState(false);
+    const boxRefsMap = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // Grid lines for snapping (same as Box component)
+    const getGridLines = (gridSize: number) => {
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const numVerticalLines = Math.ceil(viewportWidth / gridSize);
+        const numHorizontalLines = Math.ceil(viewportHeight / gridSize);
+        return {
+            verticalGridLines: Array.from({ length: numVerticalLines + 1 }, (_, i) => i * gridSize),
+            horizontalGridLines: Array.from({ length: numHorizontalLines + 1 }, (_, i) => i * gridSize),
+        };
+    };
+    const [gridLines, setGridLines] = useState(() => getGridLines(15));
+
+    // Update grid lines on window resize
+    useEffect(() => {
+        const handleResize = () => {
+            setGridLines(getGridLines(15));
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Track dragging state globally for WebSocket sync
     useEffect(() => {
@@ -1284,13 +1308,18 @@ export default function App() {
     // Handle keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            // Delete selected box
-            if (selectedBoxId && (event.key === 'Backspace' || event.key === 'Delete')) {
+            // Delete selected boxes
+            if (selectedBoxIds.length > 0 && (event.key === 'Backspace' || event.key === 'Delete')) {
                 // Prevent default behavior (like navigating back in browser)
                 event.preventDefault();
-                // Delete the selected box
-                setBoxes((prev) => prev.filter((b) => b.id !== selectedBoxId));
-                setSelectedBoxId(null);
+                // Delete all selected boxes
+                setBoxes((prev) => prev.filter((b) => !selectedBoxIds.includes(b.id)));
+                setSelectedBoxIds([]);
+            }
+            // Clear selection with Escape
+            else if (event.key === 'Escape' && selectedBoxIds.length > 0) {
+                event.preventDefault();
+                setSelectedBoxIds([]);
             }
             // Create new box with Cmd+N (Mac) or Ctrl+N (Windows/Linux)
             else if (event.key === 'n' && (event.metaKey || event.ctrlKey)) {
@@ -1306,7 +1335,7 @@ export default function App() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selectedBoxId]);
+    }, [selectedBoxIds]);
 
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
@@ -1559,15 +1588,28 @@ export default function App() {
                         <Box
                             key={box.id}
                             boxData={box}
-                            isSelected={selectedBoxId === box.id} // Pass down selection state
-                            onSelect={() => setSelectedBoxId(box.id)} // Pass down select handler
-                            onDeselect={() => setSelectedBoxId(null)} // Pass down deselect handler
+                            isSelected={selectedBoxIds.includes(box.id)} // Pass down selection state
+                            isMultiSelect={selectedBoxIds.length > 1} // Hide individual Moveable when multi-select
+                            onSelect={(event) => {
+                                // Multi-select with Cmd/Ctrl/Shift key
+                                if (event?.metaKey || event?.ctrlKey || event?.shiftKey) {
+                                    setSelectedBoxIds(prev =>
+                                        prev.includes(box.id)
+                                            ? prev.filter(id => id !== box.id) // Toggle off if already selected
+                                            : [...prev, box.id] // Add to selection
+                                    );
+                                } else {
+                                    // Single select (replace selection)
+                                    setSelectedBoxIds([box.id]);
+                                }
+                            }}
+                            onDeselect={() => setSelectedBoxIds([])} // Clear all selections
                             onBoxUpdate={(updatedBox) => {
                                 setBoxes(prev => prev.map(b => b.id === updatedBox.id ? updatedBox : b));
                             }}
                             onDelete={(boxId) => {
                                 setBoxes((prev) => prev.filter((b) => b.id !== boxId));
-                                setSelectedBoxId(null);
+                                setSelectedBoxIds(prev => prev.filter(id => id !== boxId));
                             }}
                             onDuplicate={duplicateBox}
                             companionBaseUrl={companionBaseUrl}
@@ -1580,8 +1622,97 @@ export default function App() {
                             centralVariableValues={isWebClient ? receivedVariableValues : undefined}
                             videoRelayManager={videoRelayManagerRef.current}
                             videoRelayManagerReady={videoRelayManagerReady}
+                            boxRef={(el) => {
+                                if (el) {
+                                    boxRefsMap.current[box.id] = el;
+                                } else {
+                                    delete boxRefsMap.current[box.id];
+                                }
+                            }}
                         />
                     ))
+                )}
+
+                {/* Group Moveable for multi-select */}
+                {!boxesLocked && selectedBoxIds.length > 1 && (
+                    <Moveable
+                        target={selectedBoxIds
+                            .map(id => boxRefsMap.current[id])
+                            .filter((el): el is HTMLDivElement => el !== null)}
+                        draggable
+                        resizable
+                        snappable
+                        snapThreshold={15}
+                        snapDirections={{ top: true, left: true, bottom: true, right: true }}
+                        verticalGuidelines={gridLines.verticalGridLines}
+                        horizontalGuidelines={gridLines.horizontalGridLines}
+                        useResizeObserver={true}
+                        touchAction="none"
+                        dragContainer={document.body}
+                        preventDefault={true}
+                        stopDragging={false}
+                        onDragGroupStart={() => {
+                            setIsDragging(true);
+                        }}
+                        onDragGroup={(e) => {
+                            e.events.forEach((ev) => {
+                                const target = ev.target as HTMLDivElement;
+                                target.style.transform = ev.transform;
+                            });
+                        }}
+                        onDragGroupEnd={(e) => {
+                            setIsDragging(false);
+                            // Update all box positions
+                            e.events.forEach((ev) => {
+                                const target = ev.target as HTMLDivElement;
+                                const boxId = selectedBoxIds.find(id => boxRefsMap.current[id] === target);
+                                if (boxId) {
+                                    const box = boxes.find(b => b.id === boxId);
+                                    if (box) {
+                                        const newFrame = {
+                                            ...box.frame,
+                                            translate: [ev.lastEvent.beforeTranslate[0], ev.lastEvent.beforeTranslate[1]] as [number, number]
+                                        };
+                                        setBoxes(prev => prev.map(b =>
+                                            b.id === boxId ? { ...b, frame: newFrame } : b
+                                        ));
+                                    }
+                                }
+                            });
+                        }}
+                        onResizeGroupStart={() => {
+                            setIsDragging(true);
+                        }}
+                        onResizeGroup={(e) => {
+                            e.events.forEach((ev) => {
+                                const target = ev.target as HTMLDivElement;
+                                target.style.width = `${ev.width}px`;
+                                target.style.height = `${ev.height}px`;
+                                target.style.transform = ev.drag.transform;
+                            });
+                        }}
+                        onResizeGroupEnd={(e) => {
+                            setIsDragging(false);
+                            // Update all box sizes and positions
+                            e.events.forEach((ev) => {
+                                const target = ev.target as HTMLDivElement;
+                                const boxId = selectedBoxIds.find(id => boxRefsMap.current[id] === target);
+                                if (boxId) {
+                                    const box = boxes.find(b => b.id === boxId);
+                                    if (box && ev.lastEvent) {
+                                        const newFrame = {
+                                            translate: [ev.lastEvent.drag.beforeTranslate[0], ev.lastEvent.drag.beforeTranslate[1]] as [number, number],
+                                            width: ev.lastEvent.width,
+                                            height: ev.lastEvent.height
+                                        };
+                                        setBoxes(prev => prev.map(b =>
+                                            b.id === boxId ? { ...b, frame: newFrame } : b
+                                        ));
+                                    }
+                                }
+                            });
+                        }}
+                    />
                 )}
             </div>
         </div >
