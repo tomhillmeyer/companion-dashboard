@@ -205,12 +205,23 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 setWebServerStatus('Web server not available in dev mode without Electron');
                 return;
             }
+
+            // If server is already running, stop it first to allow restart with new settings
+            if (webServerRunning) {
+                console.log('Server already running, stopping before restart...');
+                // @ts-ignore - electronAPI is available via preload script
+                await window.electronAPI?.webServer.stop();
+                // Wait a moment for the server to fully stop
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
             // @ts-ignore - electronAPI is available via preload script
             const result = await window.electronAPI?.webServer.start(webServerPort, webServerHostname);
             if (result?.success) {
                 setWebServerRunning(true);
+                setWebServerPort(result.port); // Sync the actual port that started
                 setWebServerStatus(`Running on port ${result.port}`);
-                localStorage.setItem(`window_${windowId}_web_server_port`, webServerPort.toString());
+                localStorage.setItem(`window_${windowId}_web_server_port`, result.port.toString());
                 localStorage.setItem(`window_${windowId}_web_server_hostname`, webServerHostname);
                 console.log(`Web server started on port ${result.port}`);
             } else {
@@ -240,21 +251,32 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     };
 
 
-    const checkWebServerStatus = async () => {
+    const checkWebServerStatus = async (syncPort: boolean = false) => {
         try {
             if (isDev && !isDesktop) {
                 setWebServerStatus('Web server not available in dev mode without Electron');
                 return;
             }
+
+            console.log('[WebServer] Checking server status, syncPort:', syncPort);
+
             // @ts-ignore - electronAPI is available via preload script
             const status = await window.electronAPI?.webServer.getStatus();
+
+            console.log('[WebServer] Status received:', status);
+
             if (status) {
-                setWebServerRunning(status.running);
-                setWebServerStatus(status.running ? `Running on port ${status.port}` : 'Stopped');
+                setWebServerRunning(status.isRunning);
+                setWebServerStatus(status.isRunning ? `Running on port ${status.port}` : 'Stopped');
                 setWebServerEndpoints(status.endpoints || []);
-                if (status.running) {
+
+                // Sync the port from server state only on initial load or when explicitly requested
+                if (syncPort && status.isRunning) {
+                    console.log('[WebServer] Syncing port to:', status.port);
                     setWebServerPort(status.port);
                 }
+            } else {
+                console.warn('[WebServer] Status is null/undefined');
             }
         } catch (error) {
             console.error('Failed to check web server status:', error);
@@ -265,6 +287,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     // Load saved web server port and hostname on mount
     useEffect(() => {
         if (showWebServer) {
+            // Load saved settings from localStorage first
             const savedPort = localStorage.getItem(`window_${windowId}_web_server_port`);
             if (savedPort) {
                 setWebServerPort(parseInt(savedPort, 10));
@@ -273,7 +296,19 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             if (savedHostname) {
                 setWebServerHostname(savedHostname);
             }
-            checkWebServerStatus();
+
+            // Check actual server status and sync port if server is running
+            // This ensures UI matches reality (e.g., if server auto-started from saved state)
+            // Check immediately
+            checkWebServerStatus(true);
+
+            // Also check after a delay to catch server that's auto-starting
+            // (server has 2.5s delay in main.js before it starts)
+            const timer = setTimeout(() => {
+                checkWebServerStatus(true);
+            }, 3000);
+
+            return () => clearTimeout(timer);
         }
     }, [showWebServer]);
 

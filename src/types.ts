@@ -198,9 +198,9 @@ export interface WebServerEndpoint {
 }
 
 export interface WebServerStatus {
-    running: boolean;
+    isRunning: boolean;
     port: number;
-    hostname: string;
+    hostname?: string;
     endpoints: WebServerEndpoint[];
 }
 

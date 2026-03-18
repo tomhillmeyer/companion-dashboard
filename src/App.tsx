@@ -1434,6 +1434,32 @@ export default function App() {
             else if (findReplaceModalOpen) {
                 return;
             }
+            // Duplicate selected boxes with Cmd+D (Mac) or Ctrl+D (Windows/Linux)
+            else if (event.key === 'd' && (event.metaKey || event.ctrlKey) && selectedBoxIds.length > 0) {
+                event.preventDefault();
+                event.stopPropagation();
+                // Get all selected boxes
+                const selectedBoxes = boxes.filter(b => selectedBoxIds.includes(b.id));
+                // Create duplicated boxes with new IDs and offset positions
+                const duplicatedBoxes = selectedBoxes.map(box => ({
+                    ...box,
+                    id: uuid(),
+                    frame: {
+                        ...box.frame,
+                        translate: [
+                            box.frame.translate[0] + 20,
+                            box.frame.translate[1] + 20
+                        ] as [number, number]
+                    },
+                    leftRightRatio: box.leftRightRatio ?? 50
+                }));
+                // Add duplicated boxes to the boxes array
+                setBoxes(prev => [...prev, ...duplicatedBoxes]);
+                // Select only the newly duplicated boxes (use setTimeout to ensure state updates after boxes are added)
+                setTimeout(() => {
+                    setSelectedBoxIds(duplicatedBoxes.map(b => b.id));
+                }, 0);
+            }
             // Delete selected boxes
             else if (selectedBoxIds.length > 0 && (event.key === 'Backspace' || event.key === 'Delete')) {
                 // Prevent default behavior (like navigating back in browser)
@@ -1461,7 +1487,7 @@ export default function App() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selectedBoxIds, findReplaceModalOpen]);
+    }, [selectedBoxIds, findReplaceModalOpen, boxes]);
 
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
