@@ -1,13 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './ROIModal.css';
-
-export interface ROI {
-    x: number; // percentage 0-100 of video dimensions
-    y: number; // percentage 0-100 of video dimensions
-    width: number; // percentage 0-100 of video dimensions
-    height: number; // percentage 0-100 of video dimensions
-}
+import type { ROI } from './types';
 
 interface ROIModalProps {
     deviceId: string;

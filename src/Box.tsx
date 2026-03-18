@@ -5,17 +5,11 @@ const windowId = (window as any).electronAPI?.windowId || '1';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
-import type { BoxData } from './App';
+import type { BoxData, CompanionConnection } from './types';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
-
-interface CompanionConnection {
-    id: string;
-    url: string;
-    label: string;
-}
 
 // Component for rendering markdown content
 const MarkdownContent = React.memo(({

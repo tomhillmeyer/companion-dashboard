@@ -9,6 +9,7 @@ import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
 import { VideoRelayManager } from './VideoRelayManager';
+import type { BoxData, CompanionConnection, VariableColor } from './types';
 
 
 // Get window ID for isolated storage
@@ -29,95 +30,7 @@ const LOCK_STORAGE_KEY = `window_${windowId}_boxes_locked`;
 const SCALE_ENABLED_KEY = `window_${windowId}_scale_enabled`;
 const DESIGN_WIDTH_KEY = `window_${windowId}_design_width`;
 
-interface CompanionConnection {
-    id: string;
-    url: string;
-    label: string;
-}
-
-export interface VariableColor {
-    id: string;
-    variable: string;
-    value: string;
-    color: string;
-}
-
-export interface VariableOpacity {
-    id: string;
-    variable: string;
-    value: string;
-    opacity: number;
-}
-
-export interface VariableOverlaySize {
-    id: string;
-    variable: string;
-    value: string;
-    size: number;
-}
-
-export interface BoxData {
-    id: string;
-    frame: { translate: [number, number]; width: number; height: number };
-    anchorPoint: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
-    zIndex: number;
-    opacity: number;
-    opacitySource: string;
-    opacityVariableValues: VariableOpacity[];
-    backgroundColor: string;
-    backgroundColorText: string;
-    backgroundVariableColors: VariableColor[];
-    overlayColor: string;
-    overlayColorText: string;
-    overlayVariableColors: VariableColor[];
-    overlayDirection: 'left' | 'right' | 'top' | 'bottom';
-    overlaySize: number;
-    overlaySizeSource: string;
-    overlaySizeVariableValues: VariableOverlaySize[];
-    backgroundImage?: string;
-    backgroundImageSize?: 'cover' | 'contain';
-    backgroundImageOpacity?: number;
-    backgroundVideoDeviceId?: string;
-    backgroundVideoSize?: 'cover' | 'contain';
-    backgroundVideoROI?: { x: number; y: number; width: number; height: number };
-    borderColor: string;
-    borderColorText: string;
-    borderVariableColors: VariableColor[];
-    noBorder: boolean;
-    borderRadius: number;
-    headerColor: string;
-    headerColorText: string;
-    headerVariableColors: VariableColor[];
-    headerLabelSource: string;
-    headerLabel: string;
-    headerLabelSize: number;
-    headerLabelColor: string;
-    headerLabelColorText: string;
-    headerLabelVariableColors: VariableColor[];
-    headerLabelVisible: boolean;
-    headerLabelAlign?: 'left' | 'center' | 'right';
-    headerLabelFont?: string;
-    leftLabelSource: string;
-    leftLabel: string;
-    leftLabelSize: number;
-    leftLabelColor: string;
-    leftLabelColorText: string;
-    leftLabelVariableColors: VariableColor[];
-    leftVisible: boolean;
-    leftLabelAlign?: 'left' | 'center' | 'right';
-    leftLabelFont?: string;
-    rightLabelSource: string;
-    rightLabel: string;
-    rightLabelSize: number;
-    rightLabelColor: string;
-    rightLabelColorText: string;
-    rightLabelVariableColors: VariableColor[];
-    rightVisible: boolean;
-    rightLabelAlign?: 'left' | 'center' | 'right';
-    rightLabelFont?: string;
-    leftRightRatio: number; // Percentage for left side (0-100), right will be 100 - this value
-    companionButtonLocation?: string; // Format: "page/row/column"
-}
+// Type definitions now imported from ./types.ts
 
 
 

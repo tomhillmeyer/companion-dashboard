@@ -9,11 +9,11 @@ import { FaLock } from "react-icons/fa6";
 import { FaLockOpen } from "react-icons/fa6";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
-import type { VariableColor } from './App';
+import type { VariableColor, CompanionConnection, ROI } from './types';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
-import ROIModal, { type ROI } from './ROIModal';
+import ROIModal from './ROIModal';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -30,12 +30,6 @@ const windowId = (window as any).electronAPI?.windowId || '1';
 const STORAGE_KEY = `window_${windowId}_companion_connection_url`;
 const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 const FONT_STORAGE_KEY = `global_font_family`;
-
-interface CompanionConnection {
-    id: string;
-    url: string;
-    label: string;
-}
 
 const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox: () => void;
@@ -255,10 +249,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             // @ts-ignore - electronAPI is available via preload script
             const status = await window.electronAPI?.webServer.getStatus();
             if (status) {
-                setWebServerRunning(status.isRunning);
-                setWebServerStatus(status.isRunning ? `Running on port ${status.port}` : 'Stopped');
+                setWebServerRunning(status.running);
+                setWebServerStatus(status.running ? `Running on port ${status.port}` : 'Stopped');
                 setWebServerEndpoints(status.endpoints || []);
-                if (status.isRunning) {
+                if (status.running) {
                     setWebServerPort(status.port);
                 }
             }

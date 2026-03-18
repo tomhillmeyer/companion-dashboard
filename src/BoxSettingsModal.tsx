@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize } from './App';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
-import ROIModal, { type ROI } from './ROIModal';
+import ROIModal from './ROIModal';
 
 import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";

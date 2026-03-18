@@ -32,6 +32,9 @@ capacitor.config.ts
 icons
 manifest.webmanifest
 vite.svg
+.claude
+.claudeignore
+CLAUDE.md
 
 transparent-poc/
 
