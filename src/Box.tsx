@@ -676,6 +676,7 @@ export default function Box({
             backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues),
             color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues),
             fontSize: `${boxData.headerLabelSize}px`,
+            fontFamily: boxData.headerLabelFont || undefined,
             textAlign: align as 'left' | 'center' | 'right',
             display: boxData.headerLabelVisible ? 'flex' : 'none',
             alignItems: 'center' as const,
@@ -684,7 +685,7 @@ export default function Box({
     }, [
         boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
         boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, variableValues
+        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, variableValues
     ]);
 
     const leftStyle = useMemo(() => {
@@ -714,6 +715,7 @@ export default function Box({
         return {
             color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
             fontSize: `${boxData.leftLabelSize}px`,
+            fontFamily: boxData.leftLabelFont || undefined,
             display: boxData.leftVisible ? 'flex' : 'none',
             justifyContent: justifyMap[align],
             textAlign: align as 'left' | 'center' | 'right',
@@ -723,7 +725,7 @@ export default function Box({
     }, [
         boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
         boxData.leftLabelSize, boxData.leftVisible,
-        boxData.rightVisible, boxData.leftRightRatio, boxData.leftLabelAlign, variableValues
+        boxData.rightVisible, boxData.leftRightRatio, boxData.leftLabelAlign, boxData.leftLabelFont, variableValues
     ]);
 
     const rightStyle = useMemo(() => {
@@ -753,6 +755,7 @@ export default function Box({
         return {
             color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
             fontSize: `${boxData.rightLabelSize}px`,
+            fontFamily: boxData.rightLabelFont || undefined,
             display: boxData.rightVisible ? 'flex' : 'none',
             justifyContent: justifyMap[align],
             textAlign: align as 'left' | 'center' | 'right',
@@ -762,7 +765,7 @@ export default function Box({
     }, [
         boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
         boxData.rightLabelSize, boxData.rightVisible,
-        boxData.leftVisible, boxData.leftRightRatio, boxData.rightLabelAlign, variableValues
+        boxData.leftVisible, boxData.leftRightRatio, boxData.rightLabelAlign, boxData.rightLabelFont, variableValues
     ]);
 
     return (

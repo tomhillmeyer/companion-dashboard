@@ -24,5 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onWebRTCSignaling: (callback) => {
         ipcRenderer.on('webrtc-signaling', (event, data) => callback(data));
     },
-    openExternal: (url) => ipcRenderer.invoke('open-external', url)
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
+    getSystemFonts: () => ipcRenderer.invoke('get-system-fonts')
 });

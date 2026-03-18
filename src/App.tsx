@@ -96,6 +96,7 @@ export interface BoxData {
     headerLabelVariableColors: VariableColor[];
     headerLabelVisible: boolean;
     headerLabelAlign?: 'left' | 'center' | 'right';
+    headerLabelFont?: string;
     leftLabelSource: string;
     leftLabel: string;
     leftLabelSize: number;
@@ -104,6 +105,7 @@ export interface BoxData {
     leftLabelVariableColors: VariableColor[];
     leftVisible: boolean;
     leftLabelAlign?: 'left' | 'center' | 'right';
+    leftLabelFont?: string;
     rightLabelSource: string;
     rightLabel: string;
     rightLabelSize: number;
@@ -112,6 +114,7 @@ export interface BoxData {
     rightLabelVariableColors: VariableColor[];
     rightVisible: boolean;
     rightLabelAlign?: 'left' | 'center' | 'right';
+    rightLabelFont?: string;
     leftRightRatio: number; // Percentage for left side (0-100), right will be 100 - this value
     companionButtonLocation?: string; // Format: "page/row/column"
 }

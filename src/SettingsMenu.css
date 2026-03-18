@@ -105,16 +105,34 @@
     width: 100%;
 }
 
+.section-label-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding-bottom: 10px;
+    margin-top: 50px;
+    margin-bottom: 10px;
+    border-bottom: .5px solid #61BAFA;
+    transition: opacity 0.2s ease;
+    user-select: none;
+}
+
+.section-label-container:hover {
+    opacity: 0.8;
+}
+
+.section-label-container svg {
+    font-size: 14px;
+    color: #61BAFA;
+}
+
 .section-label {
     font-size: 12px;
     letter-spacing: 3px;
     font-weight: 700;
     color: #61BAFA;
     text-transform: uppercase;
-    padding-bottom: 10px;
-    margin-top: 50px;
-    margin-bottom: 10px;
-    border-bottom: .5px solid #61BAFA;
 }
 
 input[type="text"] {

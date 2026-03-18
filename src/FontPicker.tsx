@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import './FontPicker.css';
-// @ts-ignore
-import 'font-detective';
 
 interface FontPickerProps {
     value: string;
@@ -9,117 +7,69 @@ interface FontPickerProps {
     className?: string;
 }
 
-// Google Fonts API interface
-interface GoogleFontItem {
-    family: string;
-    category: string;
+// Font info from font-list library
+interface FontInfo {
+    name: string;
+    familyName: string;
+    postScriptName: string;
+    weight: string;
+    style: string;
+    width: string;
+    monospace: boolean;
 }
 
-// System fonts by category
-const SYSTEM_SERIF_FONTS = [
-    'Times New Roman',
-    'Georgia',
-    'Times',
-    'Palatino',
-    'Baskerville',
-    'Hoefler Text',
-    'Palatino Linotype',
-    'serif'
-];
-
-const SYSTEM_SANS_SERIF_FONTS = [
-    'Arial',
-    'Helvetica',
-    'Helvetica Neue',
-    'Verdana',
-    'Tahoma',
-    'Segoe UI',
-    'Calibri',
-    'Trebuchet MS',
-    'Lucida Sans Unicode',
-    'Liberation Sans',
-    'DejaVu Sans',
-    'Ubuntu',
-    'Cantarell',
-    'Noto Sans',
-    'system-ui',
-    'ui-sans-serif',
-    'sans-serif'
-];
-
-const SYSTEM_MONOSPACE_FONTS = [
-    'Courier New',
-    'Monaco',
-    'Menlo',
-    'Consolas',
-    'Lucida Console',
-    'SF Mono',
-    'Courier',
-    'Liberation Mono',
-    'DejaVu Sans Mono',
-    'Ubuntu Mono',
-    'Noto Mono',
-    'ui-monospace',
-    'monospace'
-];
-
-const SYSTEM_CURSIVE_FONTS = [
-    'Apple Chancery',
-    'Zapfino',
-    'Comic Sans MS',
-    'cursive'
-];
-
 // Helper function to categorize system fonts
-const categorizeSystemFont = (fontName: string): 'serif' | 'sans-serif' | 'monospace' | 'cursive' | 'display' => {
-    const name = fontName.toLowerCase();
-    
-    // Monospace patterns
-    if (name.includes('mono') || name.includes('courier') || name.includes('consolas') || 
-        name.includes('menlo') || name.includes('monaco') || name.includes('inconsolata') ||
-        name.includes('code') || name.includes('terminal') || name.includes('fixed')) {
+// Uses actual monospace property from font-list, and smart heuristics for serif/sans-serif/cursive/display
+const categorizeSystemFont = (font: FontInfo): 'serif' | 'sans-serif' | 'monospace' | 'cursive' | 'display' => {
+    const name = font.familyName.toLowerCase();
+
+    // Use actual monospace property from font-list
+    if (font.monospace) {
         return 'monospace';
     }
-    
+
     // Serif patterns
-    if (name.includes('serif') && !name.includes('sans') || 
+    if ((name.includes('serif') && !name.includes('sans')) ||
         name.includes('times') || name.includes('georgia') || name.includes('palatino') ||
-        name.includes('baskerville') || name.includes('garamond') || name.includes('cambria')) {
+        name.includes('baskerville') || name.includes('garamond') || name.includes('cambria') ||
+        name.includes('bodoni') || name.includes('caslon') || name.includes('didot')) {
         return 'serif';
     }
-    
-    // Cursive patterns
+
+    // Cursive/Script patterns
     if (name.includes('script') || name.includes('cursive') || name.includes('handwriting') ||
         name.includes('brush') || name.includes('calligraphy') || name.includes('chancery') ||
-        name.includes('zapfino') || name.includes('comic')) {
+        name.includes('zapfino') || name.includes('comic') || name.includes('marker')) {
         return 'cursive';
     }
-    
+
     // Display patterns
     if (name.includes('display') || name.includes('decorative') || name.includes('ornament') ||
-        name.includes('fantasy') || name.includes('impact') || name.includes('black') ||
-        name.includes('ultra') || name.includes('heavy')) {
+        name.includes('fantasy') || name.includes('impact') || name.includes('stencil') ||
+        name.includes('poster')) {
         return 'display';
     }
-    
+
     // Default to sans-serif
     return 'sans-serif';
 };
 
-// Fetch Google Fonts from API
-const fetchGoogleFonts = async (): Promise<GoogleFontItem[]> => {
+// Get system fonts using font-list via Electron IPC
+const getSystemFonts = async (): Promise<FontInfo[]> => {
     try {
-        const response = await fetch('https://www.googleapis.com/webfonts/v1/webfonts?sort=popularity&key=AIzaSyCaayBwQM10HMcVHs5KWhc97CvsWeD-Yt4', {
-            signal: AbortSignal.timeout(5000) // 5 second timeout
-        });
-        if (!response.ok) {
-            return []; // Silently fail, no Google Fonts available
+        // Check if running in Electron
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+
+        if (isElectron) {
+            // Call Electron to get system fonts with detailed info
+            const fonts = await (window as any).electronAPI.getSystemFonts();
+            return fonts || [];
+        } else {
+            // Fallback to empty array for web environments
+            return [];
         }
-        const data = await response.json();
-        return data.items || [];
     } catch (error) {
-        // Silently handle network errors, offline scenarios, or timeouts
-        // Google Fonts just won't be available
+        console.error('Error loading system fonts:', error);
         return [];
     }
 };
@@ -127,110 +77,56 @@ const fetchGoogleFonts = async (): Promise<GoogleFontItem[]> => {
 const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = '' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [detectedSystemFonts, setDetectedSystemFonts] = useState<string[]>([]);
+    const [detectedSystemFonts, setDetectedSystemFonts] = useState<FontInfo[]>([]);
     const [systemFontsLoaded, setSystemFontsLoaded] = useState(false);
-    const [googleFonts, setGoogleFonts] = useState<GoogleFontItem[]>([]);
-    const [googleFontsLoaded, setGoogleFontsLoaded] = useState(false);
-
-    // Load Google Font when selected
-    const loadGoogleFont = (fontFamily: string) => {
-        // Convert font name to URL-friendly format
-        const fontUrl = fontFamily.replace(/ /g, '+');
-        
-        // Check if link already exists
-        const existingLink = document.querySelector(`link[href*="${fontUrl}"]`);
-        if (existingLink) return;
-
-        // Create new link element for Google Fonts
-        const link = document.createElement('link');
-        link.href = `https://fonts.googleapis.com/css2?family=${fontUrl}:wght@300;400;500;600;700&display=swap`;
-        link.rel = 'stylesheet';
-        
-        // Add to document head
-        document.head.appendChild(link);
-    };
 
     const handleFontSelect = (fontFamily: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        // Check if it's a Google Font
-        const isGoogleFont = googleFonts.some(font => font.family === fontFamily);
-        if (isGoogleFont) {
-            loadGoogleFont(fontFamily);
-        }
         onChange(fontFamily);
         setIsOpen(false);
         setSearchTerm('');
     };
 
-    // Get combined font lists including detected system fonts and Google Fonts
+    // Get categorized font lists from detected system fonts
     const getCombinedFonts = () => {
-        // Categorize Google Fonts
-        const googleFontCategories = {
-            serif: [] as string[],
-            sansSerif: [] as string[],
-            monospace: [] as string[],
-            cursive: [] as string[],
-            display: [] as string[]
-        };
-        
-        googleFonts.forEach(font => {
-            switch (font.category) {
-                case 'serif':
-                    googleFontCategories.serif.push(font.family);
-                    break;
-                case 'sans-serif':
-                    googleFontCategories.sansSerif.push(font.family);
-                    break;
-                case 'monospace':
-                    googleFontCategories.monospace.push(font.family);
-                    break;
-                case 'handwriting':
-                    googleFontCategories.cursive.push(font.family);
-                    break;
-                case 'display':
-                    googleFontCategories.display.push(font.family);
-                    break;
-                default:
-                    googleFontCategories.sansSerif.push(font.family);
-            }
-        });
-        
         // Categorize detected system fonts
-        const detectedCategories = {
+        const categories = {
             serif: [] as string[],
             sansSerif: [] as string[],
             monospace: [] as string[],
             cursive: [] as string[],
             display: [] as string[]
         };
-        
+
         detectedSystemFonts.forEach(font => {
             const category = categorizeSystemFont(font);
+            const fontName = font.familyName;
             switch (category) {
                 case 'serif':
-                    detectedCategories.serif.push(font);
+                    categories.serif.push(fontName);
                     break;
                 case 'sans-serif':
-                    detectedCategories.sansSerif.push(font);
+                    categories.sansSerif.push(fontName);
                     break;
                 case 'monospace':
-                    detectedCategories.monospace.push(font);
+                    categories.monospace.push(fontName);
                     break;
                 case 'cursive':
-                    detectedCategories.cursive.push(font);
+                    categories.cursive.push(fontName);
                     break;
                 case 'display':
-                    detectedCategories.display.push(font);
+                    categories.display.push(fontName);
                     break;
             }
         });
-        
+
+        // Sort fonts alphabetically within each category
         return {
-            serif: [...new Set([...googleFontCategories.serif, ...SYSTEM_SERIF_FONTS, ...detectedCategories.serif])],
-            sansSerif: [...new Set([...googleFontCategories.sansSerif, ...SYSTEM_SANS_SERIF_FONTS, ...detectedCategories.sansSerif])],
-            monospace: [...new Set([...googleFontCategories.monospace, ...SYSTEM_MONOSPACE_FONTS, ...detectedCategories.monospace])],
-            cursive: [...new Set([...googleFontCategories.cursive, ...SYSTEM_CURSIVE_FONTS, ...detectedCategories.cursive])],
-            display: [...new Set([...googleFontCategories.display, ...detectedCategories.display])]
+            serif: categories.serif.sort((a, b) => a.localeCompare(b)),
+            sansSerif: categories.sansSerif.sort((a, b) => a.localeCompare(b)),
+            monospace: categories.monospace.sort((a, b) => a.localeCompare(b)),
+            cursive: categories.cursive.sort((a, b) => a.localeCompare(b)),
+            display: categories.display.sort((a, b) => a.localeCompare(b))
         };
     };
 
@@ -255,34 +151,15 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
     const filteredCursive = showAllCursive ? combinedFonts.cursive : filterFonts(combinedFonts.cursive);
     const filteredDisplay = showAllDisplay ? combinedFonts.display : filterFonts(combinedFonts.display);
 
-    // Fetch Google Fonts on component mount
-    useEffect(() => {
-        if (!googleFontsLoaded) {
-            fetchGoogleFonts().then(fonts => {
-                setGoogleFonts(fonts);
-                setGoogleFontsLoaded(true);
-            });
-        }
-    }, [googleFontsLoaded]);
-
     // Detect system fonts on component mount
     useEffect(() => {
         if (!systemFontsLoaded) {
-            // @ts-ignore
-            window.FontDetective.all((fonts: any[]) => {
-                const fontNames = fonts.map((font: any) => font.name);
-                setDetectedSystemFonts(fontNames);
+            getSystemFonts().then(fonts => {
+                setDetectedSystemFonts(fonts);
                 setSystemFontsLoaded(true);
             });
         }
     }, [systemFontsLoaded]);
-
-    // Load current font on component mount
-    useEffect(() => {
-        if (value && googleFonts.some(font => font.family === value)) {
-            loadGoogleFont(value);
-        }
-    }, [value, googleFonts]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -324,6 +201,15 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                     />
                     
                     <div className="font-picker-list">
+                        {/* Use Global Font option */}
+                        <div
+                            className={`font-picker-item ${value === 'Use Global Font' ? 'selected' : ''}`}
+                            onClick={(e) => handleFontSelect('Use Global Font', e)}
+                            style={{ fontWeight: 600, borderBottom: '2px solid #444' }}
+                        >
+                            Use Global Font
+                        </div>
+
                         {filteredSerif.length > 0 && (
                             <>
                                 <div className="font-category-header">Serif</div>
@@ -332,6 +218,7 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                                         key={font}
                                         className={`font-picker-item ${value === font ? 'selected' : ''}`}
                                         onClick={(e) => handleFontSelect(font, e)}
+                                        style={{ fontFamily: `"${font}", serif` }}
                                     >
                                         {font}
                                     </div>
@@ -347,6 +234,7 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                                         key={font}
                                         className={`font-picker-item ${value === font ? 'selected' : ''}`}
                                         onClick={(e) => handleFontSelect(font, e)}
+                                        style={{ fontFamily: `"${font}", sans-serif` }}
                                     >
                                         {font}
                                     </div>
@@ -362,6 +250,7 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                                         key={font}
                                         className={`font-picker-item ${value === font ? 'selected' : ''}`}
                                         onClick={(e) => handleFontSelect(font, e)}
+                                        style={{ fontFamily: `"${font}", monospace` }}
                                     >
                                         {font}
                                     </div>
@@ -377,6 +266,7 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                                         key={font}
                                         className={`font-picker-item ${value === font ? 'selected' : ''}`}
                                         onClick={(e) => handleFontSelect(font, e)}
+                                        style={{ fontFamily: `"${font}", cursive` }}
                                     >
                                         {font}
                                     </div>
@@ -392,6 +282,7 @@ const FontPicker: React.FC<FontPickerProps> = ({ value, onChange, className = ''
                                         key={font}
                                         className={`font-picker-item ${value === font ? 'selected' : ''}`}
                                         onClick={(e) => handleFontSelect(font, e)}
+                                        style={{ fontFamily: `"${font}", sans-serif` }}
                                     >
                                         {font}
                                     </div>

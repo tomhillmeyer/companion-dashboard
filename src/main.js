@@ -523,6 +523,18 @@ ipcMain.handle('open-external', async (event, url) => {
     }
 });
 
+// Handler to get system fonts with detailed info
+ipcMain.handle('get-system-fonts', async () => {
+    try {
+        const fontList = await import('font-list');
+        const fonts = await fontList.getFonts2({ disableQuoting: true });
+        return fonts;
+    } catch (error) {
+        console.error('Failed to get system fonts:', error);
+        return [];
+    }
+});
+
 // Clean up on app quit
 app.on('before-quit', (event) => {
     console.log('App is quitting. Current windows:', windows.size);

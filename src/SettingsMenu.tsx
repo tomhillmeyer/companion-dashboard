@@ -7,6 +7,7 @@ import { FaCircleMinus } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa6";
 import { FaLock } from "react-icons/fa6";
 import { FaLockOpen } from "react-icons/fa6";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
 import type { VariableColor } from './App';
 import ColorPicker from './ColorPicker';
@@ -183,6 +184,24 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [webServerRunning, setWebServerRunning] = useState<boolean>(false);
     const [webServerStatus, setWebServerStatus] = useState<string>('Stopped');
     const [webServerEndpoints, setWebServerEndpoints] = useState<any[]>([]);
+
+    // Section collapse state
+    const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({
+        companionConnection: false,
+        font: true,
+        responsiveScaling: true,
+        background: true,
+        boxes: true,
+        webServer: true,
+        configuration: true
+    });
+
+    const toggleSection = (section: string) => {
+        setCollapsedSections(prev => ({
+            ...prev,
+            [section]: !prev[section]
+        }));
+    };
 
 
     // Web server functions
@@ -1223,25 +1242,30 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         <img src={dashboardIcon} style={{ height: '100px' }} alt="Dashboard" />
                         <span className='wordmark'>COMPANION<b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
                     </div>
-                    <span className='section-label'>Companion Connection</span>
-                    <div className='menu-section'>
-                        <div className="settings-subsection">
-                            <div className="canvas-refresh-rate-controls">
-                                <label htmlFor="canvas-refresh-rate" className="connection-label">Variable Refresh Rate (ms)</label>
-                                <input
-                                    id="canvas-refresh-rate"
-                                    type="number"
-                                    min="50"
-                                    max="10000"
-                                    value={refreshRateMs || 100}
-                                    onChange={(e) => onRefreshRateMsChange?.(parseInt(e.target.value) || 100)}
-                                    className="canvas-color-text"
-                                    style={{ marginLeft: '15px', textAlign: 'center' }}
-                                />
-                            </div>
-                        </div>
+                    <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('companionConnection'); }}>
+                        <span className='section-label'>Companion Connection</span>
+                        {collapsedSections.companionConnection ? <FaChevronDown /> : <FaChevronUp />}
                     </div>
-                    <div className="menu-section-column" style={{ marginTop: '15px' }}>
+                    {!collapsedSections.companionConnection && (
+                        <>
+                            <div className='menu-section'>
+                                <div className="settings-subsection">
+                                    <div className="canvas-refresh-rate-controls">
+                                        <label htmlFor="canvas-refresh-rate" className="connection-label">Variable Refresh Rate (ms)</label>
+                                        <input
+                                            id="canvas-refresh-rate"
+                                            type="number"
+                                            min="50"
+                                            max="10000"
+                                            value={refreshRateMs || 100}
+                                            onChange={(e) => onRefreshRateMsChange?.(parseInt(e.target.value) || 100)}
+                                            className="canvas-color-text"
+                                            style={{ marginLeft: '15px', textAlign: 'center' }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="menu-section-column" style={{ marginTop: '15px' }}>
                         <div className="settings-subsection">
                             <div className="connection-item">
                                 <span className="connection-label">Default Connection</span>
@@ -1299,22 +1323,34 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             </button>
                         </div>
                     </div>
-                    <span className='section-label'>Font</span>
-                    <div className='menu-section font-section'>
-                        <FontPicker
-                            value={fontFamily || 'Work Sans'}
-                            onChange={(font) => {
-                                localStorage.setItem(FONT_STORAGE_KEY, font);
-                                onFontFamilyChange?.(font);
-                            }}
-                            className="settings-font-picker"
-                        />
+                        </>
+                    )}
+                    <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('font'); }}>
+                        <span className='section-label'>Global Font</span>
+                        {collapsedSections.font ? <FaChevronDown /> : <FaChevronUp />}
                     </div>
+                    {!collapsedSections.font && (
+                        <div className='menu-section font-section'>
+                            <FontPicker
+                                value={fontFamily || 'Work Sans'}
+                                onChange={(font) => {
+                                    localStorage.setItem(FONT_STORAGE_KEY, font);
+                                    onFontFamilyChange?.(font);
+                                }}
+                                className="settings-font-picker"
+                            />
+                        </div>
+                    )}
 
                     {!Capacitor.isNativePlatform() && (
                         <>
-                            <span className='section-label'>Responsive Scaling</span>
-                            <div className='menu-section'>
+                            <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('responsiveScaling'); }}>
+                                <span className='section-label'>Responsive Scaling</span>
+                                {collapsedSections.responsiveScaling ? <FaChevronDown /> : <FaChevronUp />}
+                            </div>
+                            {!collapsedSections.responsiveScaling && (
+                                <>
+                                    <div className='menu-section'>
                                 <div className='settings-subsection'>
                                     <div className='scaling-checkbox-row'>
                                         <input
@@ -1358,11 +1394,17 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     </div>
                                 </div>
                             </div>
+                                </>
+                            )}
                         </>
                     )}
 
-                    <span className='section-label'>Background</span>
-                    <div className='menu-section canvas-section'>
+                    <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('background'); }}>
+                        <span className='section-label'>Background</span>
+                        {collapsedSections.background ? <FaChevronDown /> : <FaChevronUp />}
+                    </div>
+                    {!collapsedSections.background && (
+                        <div className='menu-section canvas-section'>
                         <div className="settings-subsection">
                             <span className="canvas-color-label">Color</span>
                             <div className="canvas-color-input-group">
@@ -1576,29 +1618,40 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             )}
                         </div>
                     </div>
+                    )}
 
-                    <span className='section-label'>Boxes</span>
-                    <div className='menu-section'>
-                        <button onClick={onNewBox}>NEW BOX</button>
-                        <button
-                            onClick={() => {
-                                const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
-                                if (confirmed) {
-                                    onDeleteAllBoxes();
-                                }
-                            }}
-                            className='clear-boxes'
-                        >
-                            CLEAR ALL
-                        </button>
+                    <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('boxes'); }}>
+                        <span className='section-label'>Boxes</span>
+                        {collapsedSections.boxes ? <FaChevronDown /> : <FaChevronUp />}
                     </div>
+                    {!collapsedSections.boxes && (
+                        <div className='menu-section'>
+                            <button onClick={onNewBox}>NEW BOX</button>
+                            <button
+                                onClick={() => {
+                                    const confirmed = window.confirm("Are you sure you want to clear all of the boxes?");
+                                    if (confirmed) {
+                                        onDeleteAllBoxes();
+                                    }
+                                }}
+                                className='clear-boxes'
+                            >
+                                CLEAR ALL
+                            </button>
+                        </div>
+                    )}
 
                     {showWebServer && (
                         <>
-                            <span className='section-label'>WEB SERVER</span>
-                            <div className='menu-section'>
-                                <div className="settings-subsection">
-                                    <div className="web-server-controls">
+                            <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('webServer'); }}>
+                                <span className='section-label'>WEB SERVER</span>
+                                {collapsedSections.webServer ? <FaChevronDown /> : <FaChevronUp />}
+                            </div>
+                            {!collapsedSections.webServer && (
+                                <>
+                                    <div className='menu-section'>
+                                    <div className="settings-subsection">
+                                        <div className="web-server-controls">
                                         <div className="web-server-port-container">
                                             <label htmlFor="web-server-hostname">mDNS:</label>
                                             <input
@@ -1707,28 +1760,37 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     </div>
                                 </>
                             )}
+                                </>
+                            )}
                         </>
                     )}
 
-                    <span className='section-label'>CONFIGURATION</span>
-                    <div className='menu-section'>
-                        <button onClick={downloadConfig}>SAVE</button>
-                        <button onClick={triggerFileInput}>LOAD</button>
+                    <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('configuration'); }}>
+                        <span className='section-label'>CONFIGURATION</span>
+                        {collapsedSections.configuration ? <FaChevronDown /> : <FaChevronUp />}
                     </div>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".json"
-                        onChange={handleFileRestore}
-                        style={{ display: 'none' }}
-                    />
-                    <input
-                        ref={backgroundImageInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleBackgroundImageChange}
-                        style={{ display: 'none' }}
-                    />
+                    {!collapsedSections.configuration && (
+                        <>
+                            <div className='menu-section'>
+                                <button onClick={downloadConfig}>SAVE</button>
+                                <button onClick={triggerFileInput}>LOAD</button>
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".json"
+                                onChange={handleFileRestore}
+                                style={{ display: 'none' }}
+                            />
+                            <input
+                                ref={backgroundImageInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={handleBackgroundImageChange}
+                                style={{ display: 'none' }}
+                            />
+                        </>
+                    )}
                     <span className='footer'>v{packageJson.version}<br />Created by Tom Hillmeyer</span>
                 </div>
             </div>

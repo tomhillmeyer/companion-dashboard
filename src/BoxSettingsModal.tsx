@@ -4,6 +4,7 @@ import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize } fro
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
+import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
 import ROIModal, { type ROI } from './ROIModal';
 
@@ -11,11 +12,11 @@ import { FaCirclePlus } from "react-icons/fa6";
 import { FaCircleMinus } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
 
-import backgroundIcon from './assets/background_icon.png';
+import boxSettingsIcon from './assets/box_settings_icon.png';
+import backgroundBorderIcon from './assets/background_border_icon.png';
 import headerIcon from './assets/header_icon.png';
 import leftIcon from './assets/left_icon.png';
 import rightIcon from './assets/right_icon.png';
-import fullIcon from './assets/full_icon.png';
 
 
 interface BoxSettingsModalProps {
@@ -876,7 +877,17 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             type="text"
                             value={formData.headerLabelSource}
                             onChange={(e) => updateField('headerLabelSource', e.target.value)}
-                            className="full-width-input"
+                            className="content-text-input"
+                        />
+                    </div>
+                </div>
+                <div className="setting-row">
+                    <div className="setting-label">
+                        <span className="setting-header">Font</span>
+                        <FontPicker
+                            value={formData.headerLabelFont || 'Use Global Font'}
+                            onChange={(font) => updateField('headerLabelFont', font === 'Use Global Font' ? '' : font)}
+                            className="setting-font-picker"
                         />
                     </div>
                 </div>
@@ -1027,7 +1038,17 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             type="text"
                             value={formData.leftLabelSource}
                             onChange={(e) => updateField('leftLabelSource', e.target.value)}
-                            className="full-width-input"
+                            className="content-text-input"
+                        />
+                    </div>
+                </div>
+                <div className="setting-row">
+                    <div className="setting-label">
+                        <span className="setting-header">Font</span>
+                        <FontPicker
+                            value={formData.leftLabelFont || 'Use Global Font'}
+                            onChange={(font) => updateField('leftLabelFont', font === 'Use Global Font' ? '' : font)}
+                            className="setting-font-picker"
                         />
                     </div>
                 </div>
@@ -1178,7 +1199,17 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             type="text"
                             value={formData.rightLabelSource}
                             onChange={(e) => updateField('rightLabelSource', e.target.value)}
-                            className="full-width-input"
+                            className="content-text-input"
+                        />
+                    </div>
+                </div>
+                <div className="setting-row">
+                    <div className="setting-label">
+                        <span className="setting-header">Font</span>
+                        <FontPicker
+                            value={formData.rightLabelFont || 'Use Global Font'}
+                            onChange={(font) => updateField('rightLabelFont', font === 'Use Global Font' ? '' : font)}
+                            className="setting-font-picker"
                         />
                     </div>
                 </div>
@@ -1571,31 +1602,36 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             className={`nav-item ${activeSection === 'full' ? 'active' : ''}`}
                             onClick={() => setActiveSection('full')}
                         >
-                            <img src={fullIcon} alt="Full" className="nav-icon" />
+                            <img src={boxSettingsIcon} alt="Box Settings" className="nav-icon" />
+                            <span className="nav-label">Box Settings</span>
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'background' ? 'active' : ''}`}
                             onClick={() => setActiveSection('background')}
                         >
-                            <img src={backgroundIcon} alt="Background" className="nav-icon" />
+                            <img src={backgroundBorderIcon} alt="Background & Border" className="nav-icon" />
+                            <span className="nav-label">Background & Border</span>
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'header' ? 'active' : ''}`}
                             onClick={() => setActiveSection('header')}
                         >
                             <img src={headerIcon} alt="Header" className="nav-icon" />
+                            <span className="nav-label">Header</span>
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'left' ? 'active' : ''}`}
                             onClick={() => setActiveSection('left')}
                         >
                             <img src={leftIcon} alt="Left" className="nav-icon" />
+                            <span className="nav-label">Left</span>
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'right' ? 'active' : ''}`}
                             onClick={() => setActiveSection('right')}
                         >
                             <img src={rightIcon} alt="Right" className="nav-icon" />
+                            <span className="nav-label">Right</span>
                         </div>
                     </div>
 
