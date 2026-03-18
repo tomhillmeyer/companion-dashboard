@@ -5,7 +5,7 @@ const windowId = (window as any).electronAPI?.windowId || '1';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
-import type { BoxData, CompanionConnection } from './types';
+import type { BoxData, CompanionConnection, PageData } from './types';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
@@ -91,6 +91,7 @@ export default function Box({
     videoRelayManager,
     boxRef,
     isMultiSelect = false,
+    pages = [],
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -112,6 +113,7 @@ export default function Box({
     videoRelayManagerReady?: boolean;
     boxRef?: (el: HTMLDivElement | null) => void;
     isMultiSelect?: boolean;
+    pages?: PageData[];
 }) {
 
     const targetRef = useRef<HTMLDivElement>(null);
@@ -1111,6 +1113,7 @@ export default function Box({
                         setShowModal(false);
                     }}
                     connections={connections}
+                    pages={pages}
                 />
             )}
         </div>

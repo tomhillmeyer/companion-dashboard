@@ -456,13 +456,13 @@ ipcMain.handle('web-server-stop', async (event) => {
     }
 });
 
-ipcMain.handle('web-server-status', async (event) => {
+ipcMain.handle('web-server-status', async (event, pages) => {
     try {
         const webServer = getWebServerForWindow(event);
         return {
             isRunning: webServer.isServerRunning(),
             port: webServer.getPort(),
-            endpoints: webServer.isServerRunning() ? webServer.getEndpoints() : []
+            endpoints: webServer.isServerRunning() ? webServer.getEndpoints(pages) : []
         };
     } catch (error) {
         return {

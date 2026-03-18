@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
 import FindReplaceModal from './FindReplaceModal.tsx';
+import { PageTabs } from './PageTabs.tsx';
 import './App.css';
 import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
@@ -10,7 +11,7 @@ import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
 import { VideoRelayManager } from './VideoRelayManager';
-import type { BoxData, CompanionConnection, VariableColor } from './types';
+import type { BoxData, CompanionConnection, VariableColor, PageData } from './types';
 import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
 
@@ -26,6 +27,8 @@ const getWindowId = () => {
 
 const windowId = getWindowId();
 const STORAGE_KEY = `window_${windowId}_boxes`;
+const PAGES_STORAGE_KEY = `window_${windowId}_pages`;
+const CURRENT_PAGE_STORAGE_KEY = `window_${windowId}_current_page`;
 const CANVAS_STORAGE_KEY = `window_${windowId}_canvas_settings`;
 const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 const FONT_STORAGE_KEY = `global_font_family`;
@@ -49,15 +52,41 @@ export default function App() {
         }));
     };
 
+    // Initialize pages state with localStorage data
+    const [pages, setPages] = useState<PageData[]>(() => {
+        const savedPages = localStorage.getItem(PAGES_STORAGE_KEY);
+        if (savedPages) {
+            try {
+                return JSON.parse(savedPages);
+            } catch (error) {
+                console.error('Failed to parse saved pages:', error);
+                return [{ id: uuid(), name: 'Page 1', order: 0 }];
+            }
+        } else {
+            return [{ id: uuid(), name: 'Page 1', order: 0 }];
+        }
+    });
+
+    // Initialize current page
+    const [currentPageId, setCurrentPageId] = useState<string>(() => {
+        const savedCurrentPage = localStorage.getItem(CURRENT_PAGE_STORAGE_KEY);
+        if (savedCurrentPage && pages.some(p => p.id === savedCurrentPage)) {
+            return savedCurrentPage;
+        }
+        return pages[0]?.id || '';
+    });
+
     // Initialize state with localStorage data immediately
     const [boxes, setBoxes] = useState<BoxData[]>(() => {
         const savedBoxes = localStorage.getItem(STORAGE_KEY);
+        const defaultPageId = pages[0]?.id || '';
         if (savedBoxes) {
             try {
                 const parsed = JSON.parse(savedBoxes);
                 // Ensure all boxes have required fields (migration for older boxes)
                 return parsed.map((box: BoxData) => ({
                     ...box,
+                    pageId: box.pageId ?? defaultPageId, // Migrate old boxes to first page
                     anchorPoint: box.anchorPoint ?? 'top-left',
                     leftRightRatio: box.leftRightRatio ?? 50,
                     leftVisible: box.leftVisible ?? true,
@@ -81,20 +110,22 @@ export default function App() {
                 }));
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
-                return defaultBoxes;
+                return defaultBoxes.map(box => ({ ...box, pageId: defaultPageId }));
             }
         } else {
-            return defaultBoxes;
+            return defaultBoxes.map(box => ({ ...box, pageId: defaultPageId }));
         }
     });
 
 
 
 
-    const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any) => {
+    const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any, importedPages?: PageData[]) => {
         // Migrate boxes during restore
+        const defaultPageId = pages[0]?.id || '';
         const migratedBoxes = newBoxes.map((box: BoxData) => ({
             ...box,
+            pageId: box.pageId ?? defaultPageId, // Assign to first page if no pageId
             opacityVariableValues: migrateVariableConditions(box.opacityVariableValues),
             overlayVariableColors: migrateVariableConditions(box.overlayVariableColors),
             overlaySizeVariableValues: migrateVariableConditions(box.overlaySizeVariableValues),
@@ -109,6 +140,13 @@ export default function App() {
         setBoxes(migratedBoxes);
         setCompanionBaseUrl(newConnectionUrl);
         setSelectedBoxIds([]); // Clear any selection
+
+        // Handle pages import if provided
+        if (importedPages && importedPages.length > 0) {
+            setPages(importedPages);
+            // Set current page to first imported page
+            setCurrentPageId(importedPages[0].id);
+        }
 
         // Apply canvas settings if provided
         if (canvasSettings) {
@@ -167,6 +205,53 @@ export default function App() {
         setBoxes((prev) => [...prev, duplicatedBox]);
     };
 
+    // Page management handlers
+    const handlePageAdd = () => {
+        const newPage: PageData = {
+            id: uuid(),
+            name: `Page ${pages.length + 1}`,
+            order: pages.length
+        };
+        setPages(prev => [...prev, newPage]);
+        setCurrentPageId(newPage.id);
+    };
+
+    const handlePageChange = (pageId: string) => {
+        if (isDisplayMode) {
+            // In display mode, update separate state (doesn't persist to localStorage)
+            setDisplayModePageId(pageId);
+        } else {
+            // In control mode, update localStorage-backed state
+            setCurrentPageId(pageId);
+        }
+        setSelectedBoxIds([]); // Clear selection when changing pages
+    };
+
+    const handlePageRename = (pageId: string, newName: string) => {
+        setPages(prev => prev.map(page =>
+            page.id === pageId ? { ...page, name: newName } : page
+        ));
+    };
+
+    const handlePageDelete = (pageId: string) => {
+        // Don't allow deleting the last page
+        if (pages.length <= 1) return;
+
+        // Delete all boxes on this page
+        setBoxes(prev => prev.filter(box => box.pageId !== pageId));
+
+        // Remove the page
+        setPages(prev => prev.filter(page => page.id !== pageId));
+
+        // If we're deleting the current page, switch to the first remaining page
+        if (currentPageId === pageId) {
+            const remainingPages = pages.filter(page => page.id !== pageId);
+            if (remainingPages.length > 0) {
+                setCurrentPageId(remainingPages[0].id);
+            }
+        }
+    };
+
 
     const [selectedBoxIds, setSelectedBoxIds] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -178,6 +263,10 @@ export default function App() {
     const videoRelayManagerRef = useRef<VideoRelayManager | null>(null);
     const [videoRelayManagerReady, setVideoRelayManagerReady] = useState(false);
     const boxRefsMap = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // Mouse movement tracking for auto-hide page tabs
+    const [showPageTabs, setShowPageTabs] = useState<boolean>(false);
+    const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Grid lines for snapping (same as Box component)
     const getGridLines = (gridSize: number) => {
@@ -199,6 +288,27 @@ export default function App() {
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Mouse movement tracking for auto-hide page tabs
+    useEffect(() => {
+        const handleMouseMove = () => {
+            setShowPageTabs(true);
+            if (mouseTimeoutRef.current) {
+                clearTimeout(mouseTimeoutRef.current);
+            }
+            mouseTimeoutRef.current = setTimeout(() => {
+                setShowPageTabs(false);
+            }, 3000);
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            if (mouseTimeoutRef.current) {
+                clearTimeout(mouseTimeoutRef.current);
+            }
+        };
     }, []);
 
     // Track dragging state globally for WebSocket sync
@@ -374,14 +484,45 @@ export default function App() {
 
     const [scale, setScale] = useState<number>(1);
 
-    // Check if we're in display mode (root path, not /control)
+    // Check if we're in display mode (root path with optional ?page param, not /control)
     const [isDisplayMode] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
-        const isRootPath = window.location.pathname === '/';
+        const pathname = window.location.pathname;
+        const isRootPath = pathname === '/';
         const isElectron = !!(window as any).electronAPI;
         const isCapacitor = Capacitor.isNativePlatform();
         return isRootPath && !isElectron && !isCapacitor;
     });
+
+    // Extract page slug from URL query parameter (?page=slug)
+    const initialPageSlugFromUrl = (() => {
+        if (typeof window === 'undefined') return null;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('page');
+    })();
+
+    // Track whether URL has a page parameter (for hiding tabs)
+    const hasPageParamInUrl = initialPageSlugFromUrl !== null;
+
+    // State for current page in display mode (allows navigation without localStorage)
+    const [displayModePageId, setDisplayModePageId] = useState<string | null>(null);
+
+    // Helper function to convert page name to URL slug
+    const pageNameToSlug = (name: string): string => {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+            .replace(/^-+|-+$/g, ''); // Trim hyphens from start/end
+    };
+
+    // Find page ID from slug when in page-specific mode
+    const pageIdFromSlug = initialPageSlugFromUrl ?
+        pages.find(p => pageNameToSlug(p.name) === initialPageSlugFromUrl)?.id : null;
+
+    // Override current page if we're on a page-specific URL
+    // If in display mode without a page param, use displayModePageId or default to first page
+    const effectiveCurrentPageId = pageIdFromSlug ||
+        (isDisplayMode && pages.length > 0 ? (displayModePageId || pages[0]?.id) : currentPageId);
 
     // Boxes locked state - initialize from localStorage, but force true in display mode
     const [boxesLocked, setBoxesLocked] = useState<boolean>(() => {
@@ -405,6 +546,16 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(boxes));
     }, [boxes]);
+
+    // Save pages to localStorage whenever pages state changes
+    useEffect(() => {
+        localStorage.setItem(PAGES_STORAGE_KEY, JSON.stringify(pages));
+    }, [pages]);
+
+    // Save current page to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem(CURRENT_PAGE_STORAGE_KEY, currentPageId);
+    }, [currentPageId]);
 
     // Save canvas settings to localStorage whenever canvas state changes
     useEffect(() => {
@@ -729,6 +880,7 @@ export default function App() {
 
                 const state = {
                     boxes,
+                    pages,
                     canvasSettings,
                     connections,
                     companionBaseUrl,
@@ -751,7 +903,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -899,6 +1051,12 @@ export default function App() {
                             if (data.boxes) {
                                 setBoxes(data.boxes);
                                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data.boxes));
+                            }
+
+                            // Update pages
+                            if (data.pages) {
+                                setPages(data.pages);
+                                localStorage.setItem(PAGES_STORAGE_KEY, JSON.stringify(data.pages));
                             }
 
                             // Update canvas settings
@@ -1278,6 +1436,7 @@ export default function App() {
     const createNewBox = () => {
         const newBox: BoxData = {
             id: uuid(),
+            pageId: currentPageId,
             frame: {
                 translate: [30, 60] as [number, number],
                 width: 600,
@@ -1728,6 +1887,7 @@ export default function App() {
                 onScaleEnabledChange={setScaleEnabled}
                 designWidth={designWidth}
                 onDesignWidthChange={setDesignWidth}
+                pages={pages}
             />
             <div style={{
                 transform: `scale(${scale})`,
@@ -1736,7 +1896,7 @@ export default function App() {
                 minHeight: '100vh',
                 position: 'relative'
             }}>
-                {boxes.length === 0 ? (
+                {boxes.filter(box => box.pageId === effectiveCurrentPageId).length === 0 ? (
                     <div style={{
                         position: 'fixed',
                         top: '0',
@@ -1774,7 +1934,7 @@ export default function App() {
                         </div>
                     </div>
                 ) : (
-                    boxes.map((box) => (
+                    boxes.filter(box => box.pageId === effectiveCurrentPageId).map((box) => (
                         <Box
                             key={box.id}
                             boxData={box}
@@ -1819,6 +1979,7 @@ export default function App() {
                                     delete boxRefsMap.current[box.id];
                                 }
                             }}
+                            pages={pages}
                         />
                     ))
                 )}
@@ -1905,6 +2066,20 @@ export default function App() {
                     />
                 )}
             </div>
+
+            {/* Page tabs - hide if viewing specific page via ?page= parameter */}
+            {!hasPageParamInUrl && (
+                <PageTabs
+                    pages={pages}
+                    currentPageId={effectiveCurrentPageId}
+                    onPageChange={handlePageChange}
+                    onPageAdd={handlePageAdd}
+                    onPageRename={handlePageRename}
+                    onPageDelete={handlePageDelete}
+                    visible={showPageTabs}
+                    readOnly={isDisplayMode}
+                />
+            )}
         </div >
     );
 }

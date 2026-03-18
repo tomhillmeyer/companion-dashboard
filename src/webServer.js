@@ -23,6 +23,7 @@ class DashboardWebServer {
         this.bonjourService = null;
         this.currentState = {
             boxes: [],
+            pages: [],
             canvasSettings: {},
             connections: [],
             imageData: {},
@@ -83,6 +84,7 @@ class DashboardWebServer {
         }));
 
         // Serve the read-only locked view at root
+        // Supports ?page=<page-slug> parameter to filter to specific page
         this.app.get('/', (req, res) => {
             res.sendFile(path.join(distPath, 'index.html'));
         });
@@ -315,14 +317,14 @@ class DashboardWebServer {
     getNetworkInterfaces() {
         const interfaces = os.networkInterfaces();
         const addresses = [];
-        
+
         // Add localhost
         addresses.push({
             name: 'Localhost',
             address: '127.0.0.1',
             url: `http://127.0.0.1:${this.port}`
         });
-        
+
         // Add all network interfaces
         Object.keys(interfaces).forEach(name => {
             const nets = interfaces[name];
@@ -339,8 +341,64 @@ class DashboardWebServer {
                 });
             }
         });
-        
+
         return addresses;
+    }
+
+    // Convert page name to URL slug
+    pageNameToSlug(name) {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric with hyphens
+            .replace(/^-+|-+$/g, ''); // Trim hyphens from start/end
+    }
+
+    // Get page-specific endpoints
+    getPageEndpoints(pages) {
+        if (!pages || pages.length === 0) return [];
+
+        const interfaces = os.networkInterfaces();
+        const endpoints = [];
+
+        pages.forEach(page => {
+            const slug = this.pageNameToSlug(page.name);
+            const pageEndpoints = [];
+
+            // Add localhost
+            pageEndpoints.push({
+                name: 'Localhost',
+                address: '127.0.0.1',
+                url: `http://127.0.0.1:${this.port}/page/${slug}`,
+                pageName: page.name,
+                pageId: page.id
+            });
+
+            // Add all network interfaces
+            Object.keys(interfaces).forEach(name => {
+                const nets = interfaces[name];
+                if (nets) {
+                    nets.forEach(net => {
+                        if (net.family === 'IPv4' && !net.internal) {
+                            pageEndpoints.push({
+                                name: name,
+                                address: net.address,
+                                url: `http://${net.address}:${this.port}/page/${slug}`,
+                                pageName: page.name,
+                                pageId: page.id
+                            });
+                        }
+                    });
+                }
+            });
+
+            endpoints.push({
+                page: page,
+                slug: slug,
+                endpoints: pageEndpoints
+            });
+        });
+
+        return endpoints;
     }
     
     // Send WebRTC signaling from Electron host to specific web client
@@ -376,7 +434,7 @@ class DashboardWebServer {
         }
     }
 
-    getEndpoints() {
+    getEndpoints(pages) {
         const baseUrls = this.getNetworkInterfaces();
         const endpoints = [];
 
@@ -386,25 +444,57 @@ class DashboardWebServer {
             const localUrl = `http://${this.hostname}.local${portSuffix}`;
             endpoints.push({
                 url: localUrl,
-                type: 'read-only'
+                type: 'read-only',
+                label: 'All Pages (Read-Only)'
             });
             endpoints.push({
                 url: `${localUrl}/control`,
-                type: 'full-app'
+                type: 'full-app',
+                label: 'Full Control'
             });
+
+            // Add page-specific endpoints (using query parameters)
+            if (pages && pages.length > 0) {
+                pages.forEach(page => {
+                    const slug = this.pageNameToSlug(page.name);
+                    endpoints.push({
+                        url: `${localUrl}?page=${slug}`,
+                        type: 'page',
+                        label: `${page.name} (Read-Only)`,
+                        pageId: page.id,
+                        pageName: page.name
+                    });
+                });
+            }
         }
 
         baseUrls.forEach(base => {
             // Add read-only endpoint
             endpoints.push({
                 url: base.url,
-                type: 'read-only'
+                type: 'read-only',
+                label: 'All Pages (Read-Only)'
             });
             // Add full app endpoint
             endpoints.push({
                 url: `${base.url}/control`,
-                type: 'full-app'
+                type: 'full-app',
+                label: 'Full Control'
             });
+
+            // Add page-specific endpoints (using query parameters)
+            if (pages && pages.length > 0) {
+                pages.forEach(page => {
+                    const slug = this.pageNameToSlug(page.name);
+                    endpoints.push({
+                        url: `${base.url}?page=${slug}`,
+                        type: 'page',
+                        label: `${page.name} (Read-Only)`,
+                        pageId: page.id,
+                        pageName: page.name
+                    });
+                });
+            }
         });
 
         return endpoints;

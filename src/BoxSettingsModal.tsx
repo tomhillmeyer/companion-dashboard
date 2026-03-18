@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -26,11 +26,12 @@ interface BoxSettingsModalProps {
     onDelete: (boxId: string) => void;
     onDuplicate: (boxData: BoxData) => void;
     connections?: CompanionConnection[];
+    pages?: PageData[];
 }
 
 type SettingSection = 'full' | 'background' | 'header' | 'left' | 'right';
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [] }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [] }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -1444,6 +1445,30 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </select>
                         </div>
                     </div>
+                    {pages.length > 0 && (
+                        <div className='box-settings-row'>
+                            <div className="setting-label box-settings-item">
+                                <span className="setting-header">Page</span>
+                                <select
+                                    value={formData.pageId}
+                                    onChange={(e) => updateField('pageId', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        backgroundColor: '#1a1a1a',
+                                        color: 'white',
+                                        border: '1px solid #61BAFA',
+                                        borderRadius: '4px',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    {pages.sort((a, b) => a.order - b.order).map(page => (
+                                        <option key={page.id} value={page.id}>{page.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                     <div className='box-settings-row'>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">Width</span>

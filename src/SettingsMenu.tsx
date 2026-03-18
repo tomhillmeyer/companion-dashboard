@@ -7,9 +7,9 @@ import { FaCircleMinus } from "react-icons/fa6";
 import { FaTrash } from "react-icons/fa6";
 import { FaLock } from "react-icons/fa6";
 import { FaLockOpen } from "react-icons/fa6";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
+import { FaChevronDown, FaChevronUp, FaCopy } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
-import type { VariableColor, CompanionConnection, ROI, ComparisonOperator } from './types';
+import type { VariableColor, CompanionConnection, ROI, ComparisonOperator, PageData } from './types';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
@@ -40,7 +40,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onMainConnectionValidChange?: (valid: boolean | null) => void;
     additionalConnectionValidities?: { [key: string]: boolean | null };
     onAdditionalConnectionValiditiesChange?: (validities: { [key: string]: boolean | null }) => void;
-    onConfigRestore: (boxes: any[], connectionUrl: string, canvasSettings?: any) => void;
+    onConfigRestore: (boxes: any[], connectionUrl: string, canvasSettings?: any, pages?: any[]) => void;
     onDeleteAllBoxes: () => void;
     canvasBackgroundColor?: string;
     canvasBackgroundColorText?: string;
@@ -72,6 +72,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onScaleEnabledChange?: (enabled: boolean) => void;
     designWidth?: number;
     onDesignWidthChange?: (width: number) => void;
+    pages?: PageData[];
 }>(({
     onNewBox,
     connectionUrl,
@@ -112,7 +113,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     scaleEnabled = false,
     onScaleEnabledChange,
     designWidth = 1920,
-    onDesignWidthChange
+    onDesignWidthChange,
+    pages = []
 }, ref) => {
     const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
@@ -145,6 +147,15 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     };
     const [mainConnectionStopped, setMainConnectionStopped] = useState<boolean>(false);
     const [connectionsStopped, setConnectionsStopped] = useState<boolean>(false);
+    const handleCopyUrl = (url: string, e: React.MouseEvent) => {
+        navigator.clipboard.writeText(url);
+        const target = e.currentTarget as HTMLElement;
+        target.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+            target.style.transform = 'scale(1)';
+        }, 200);
+    };
+
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isActive, setIsActive] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -178,6 +189,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [webServerRunning, setWebServerRunning] = useState<boolean>(false);
     const [webServerStatus, setWebServerStatus] = useState<string>('Stopped');
     const [webServerEndpoints, setWebServerEndpoints] = useState<any[]>([]);
+    const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
 
     // Section collapse state
     const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({
@@ -251,6 +263,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     };
 
 
+    // Use a ref to always have the latest pages value
+    const pagesRef = useRef(pages);
+    useEffect(() => {
+        pagesRef.current = pages;
+    }, [pages]);
+
     const checkWebServerStatus = async (syncPort: boolean = false) => {
         try {
             if (isDev && !isDesktop) {
@@ -259,7 +277,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             }
 
             // @ts-ignore - electronAPI is available via preload script
-            const status = await window.electronAPI?.webServer.getStatus();
+            const status = await window.electronAPI?.webServer.getStatus(pagesRef.current);
 
             if (status) {
                 setWebServerRunning(status.isRunning);
@@ -308,10 +326,17 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     // Check web server status periodically
     useEffect(() => {
         if (showWebServer) {
-            const interval = setInterval(checkWebServerStatus, 5000);
+            const interval = setInterval(() => checkWebServerStatus(), 5000);
             return () => clearInterval(interval);
         }
     }, [showWebServer]);
+
+    // Re-check web server status when pages change (to update page endpoints)
+    useEffect(() => {
+        if (showWebServer && webServerRunning) {
+            checkWebServerStatus();
+        }
+    }, [pages, showWebServer, webServerRunning]);
 
 
     // Sync internal state when props change (for external updates via WebSocket)
@@ -369,6 +394,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         try {
             // Get data from localStorage
             const boxes = localStorage.getItem(`window_${windowId}_boxes`);
+            const pages = localStorage.getItem(`window_${windowId}_pages`);
             const connectionUrl = localStorage.getItem('companion_connection_url');
             const connections = localStorage.getItem(`window_${windowId}_companion_connections`);
             const canvasSettings = localStorage.getItem(`window_${windowId}_canvas_settings`);
@@ -398,6 +424,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 version: '1.0',
                 timestamp: new Date().toISOString(),
                 boxes: boxes ? JSON.parse(boxes) : [],
+                pages: pages ? JSON.parse(pages) : [],
                 companion_connection_url: connectionUrl || '',
                 companion_connections: connections ? JSON.parse(connections) : [],
                 canvas_settings: canvasSettingsObj,
@@ -1243,7 +1270,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
             // Update parent state - this will trigger connection restart
             console.log('Calling onConfigRestore with URL:', urlForRestore);
-            onConfigRestore(pendingConfig.boxes, urlForRestore, pendingConfig.canvas_settings);
+            onConfigRestore(pendingConfig.boxes, urlForRestore, pendingConfig.canvas_settings, pendingConfig.pages);
 
             console.log('Full configuration replaced successfully');
         }
@@ -1757,66 +1784,278 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     </div>
                                 </div>
                             </div>
-                            {webServerRunning && webServerEndpoints.length > 0 && (
-                                <>
-                                    <div className='menu-section' style={{ marginTop: '15px' }}>
-                                        <div className="settings-subsection">
-                                            <div className='menu-section-column'>
-                                                {/* Display View URLs (Read-Only) */}
-                                                {webServerEndpoints.filter(e => e.type === 'read-only').length > 0 && (
-                                                    <>
-                                                        <div className="endpoint-section-label">
-                                                            Display View (Canvas Locked)
-                                                        </div>
-                                                        {webServerEndpoints.filter(e => e.type === 'read-only').map((endpoint, index) => (
-                                                            <a
-                                                                key={`ro-${index}`}
-                                                                href="#"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    if ((window as any).electronAPI?.openExternal) {
-                                                                        (window as any).electronAPI.openExternal(endpoint.url);
-                                                                    } else {
-                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
-                                                                    }
-                                                                }}
-                                                                className="endpoint-link"
-                                                            >
-                                                                <code>{endpoint.url}</code>
-                                                            </a>
-                                                        ))}
-                                                    </>
-                                                )}
-                                                {/* Control View URLs (Full App) */}
-                                                {webServerEndpoints.filter(e => e.type === 'full-app').length > 0 && (
-                                                    <>
-                                                        <div className="endpoint-section-label">
-                                                            Control View (Full App)
-                                                        </div>
-                                                        {webServerEndpoints.filter(e => e.type === 'full-app').map((endpoint, index) => (
-                                                            <a
-                                                                key={`fa-${index}`}
-                                                                href="#"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault();
-                                                                    if ((window as any).electronAPI?.openExternal) {
-                                                                        (window as any).electronAPI.openExternal(endpoint.url);
-                                                                    } else {
-                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
-                                                                    }
-                                                                }}
-                                                                className="endpoint-link"
-                                                            >
-                                                                <code>{endpoint.url}</code>
-                                                            </a>
-                                                        ))}
-                                                    </>
-                                                )}
+                            {webServerRunning && webServerEndpoints.length > 0 && (() => {
+                                // Group endpoints by base URL
+                                const interfaceMap = new Map<string, { baseUrl: string; endpoints: any[] }>();
+
+                                webServerEndpoints.forEach(endpoint => {
+                                    const url = new URL(endpoint.url);
+                                    const baseUrl = `${url.protocol}//${url.host}`;
+
+                                    if (!interfaceMap.has(baseUrl)) {
+                                        interfaceMap.set(baseUrl, { baseUrl, endpoints: [] });
+                                    }
+                                    interfaceMap.get(baseUrl)!.endpoints.push(endpoint);
+                                });
+
+                                const interfaces = Array.from(interfaceMap.values());
+                                const currentInterface = selectedInterface ?
+                                    interfaces.find(i => i.baseUrl === selectedInterface) :
+                                    interfaces[0];
+
+                                return (
+                                    <>
+                                        <div className='menu-section' style={{ marginTop: '15px' }}>
+                                            <div className="settings-subsection">
+                                                <div style={{ display: 'flex', gap: '15px' }}>
+                                                    {/* Left Column: Network Interfaces */}
+                                                    <div style={{ flex: '0 0 140px', borderRight: '1px solid #333', paddingRight: '15px' }}>
+                                                        {interfaces.map((iface, index) => {
+                                                            const displayUrl = iface.baseUrl.replace(/^https?:\/\//, '');
+                                                            return (
+                                                                <div
+                                                                    key={index}
+                                                                    onClick={() => setSelectedInterface(iface.baseUrl)}
+                                                                    style={{
+                                                                        padding: '10px 12px',
+                                                                        margin: '0 0 8px 0',
+                                                                        backgroundColor: currentInterface?.baseUrl === iface.baseUrl ? '#1a1a1a' : 'transparent',
+                                                                        border: currentInterface?.baseUrl === iface.baseUrl ? '1px solid #61BAFA' : '1px solid #333',
+                                                                        borderRadius: '6px',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '11px',
+                                                                        transition: 'all 0.2s',
+                                                                        color: '#61BAFA',
+                                                                    }}
+                                                                    onMouseEnter={(e) => {
+                                                                        if (currentInterface?.baseUrl !== iface.baseUrl) {
+                                                                            e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                                                            e.currentTarget.style.borderColor = '#444';
+                                                                        }
+                                                                    }}
+                                                                    onMouseLeave={(e) => {
+                                                                        if (currentInterface?.baseUrl !== iface.baseUrl) {
+                                                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                                                            e.currentTarget.style.borderColor = '#333';
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {displayUrl}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Right Column: Endpoints for Selected Interface */}
+                                                    <div style={{ flex: '1' }}>
+                                                        {currentInterface && (
+                                                            <>
+                                                                {/* Display View */}
+                                                                {currentInterface.endpoints.filter(e => e.type === 'read-only').map((endpoint, index) => {
+                                                                    const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
+                                                                    return (
+                                                                        <div key={`ro-${index}`} style={{
+                                                                            padding: '12px 0',
+                                                                            borderBottom: '1px solid #333',
+                                                                        }}>
+                                                                            <div style={{
+                                                                                display: 'flex',
+                                                                                justifyContent: 'space-between',
+                                                                                alignItems: 'center',
+                                                                                marginBottom: '8px'
+                                                                            }}>
+                                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
+                                                                                    Display
+                                                                                </div>
+                                                                                <div
+                                                                                    onClick={(e) => handleCopyUrl(endpoint.url, e)}
+                                                                                    style={{
+                                                                                        color: '#61BAFA',
+                                                                                        cursor: 'pointer',
+                                                                                        fontSize: '20px',
+                                                                                        opacity: 0.7,
+                                                                                        transition: 'all 0.2s ease',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center'
+                                                                                    }}
+                                                                                    onMouseEnter={(e) => {
+                                                                                        e.currentTarget.style.opacity = '1';
+                                                                                    }}
+                                                                                    onMouseLeave={(e) => {
+                                                                                        e.currentTarget.style.opacity = '0.7';
+                                                                                    }}
+                                                                                    title="Copy URL to clipboard"
+                                                                                >
+                                                                                    <FaCopy />
+                                                                                </div>
+                                                                            </div>
+                                                                            <a
+                                                                                href="#"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    if ((window as any).electronAPI?.openExternal) {
+                                                                                        (window as any).electronAPI.openExternal(endpoint.url);
+                                                                                    } else {
+                                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
+                                                                                    }
+                                                                                }}
+                                                                                style={{
+                                                                                    color: '#61BAFA',
+                                                                                    textDecoration: 'none',
+                                                                                    fontSize: '11px',
+                                                                                    opacity: 0.8,
+                                                                                    display: 'block',
+                                                                                    wordBreak: 'break-all'
+                                                                                }}
+                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                            >
+                                                                                {displayUrl}
+                                                                            </a>
+                                                                        </div>
+                                                                    );
+                                                                })}
+
+                                                                {/* Control View */}
+                                                                {currentInterface.endpoints.filter(e => e.type === 'full-app').map((endpoint, index) => {
+                                                                    const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
+                                                                    return (
+                                                                        <div key={`fa-${index}`} style={{
+                                                                            padding: '12px 0',
+                                                                            borderBottom: '1px solid #333',
+                                                                        }}>
+                                                                            <div style={{
+                                                                                display: 'flex',
+                                                                                justifyContent: 'space-between',
+                                                                                alignItems: 'center',
+                                                                                marginBottom: '8px'
+                                                                            }}>
+                                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
+                                                                                    Control
+                                                                                </div>
+                                                                                <div
+                                                                                    onClick={(e) => handleCopyUrl(endpoint.url, e)}
+                                                                                    style={{
+                                                                                        color: '#61BAFA',
+                                                                                        cursor: 'pointer',
+                                                                                        fontSize: '20px',
+                                                                                        opacity: 0.7,
+                                                                                        transition: 'all 0.2s ease',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center'
+                                                                                    }}
+                                                                                    onMouseEnter={(e) => {
+                                                                                        e.currentTarget.style.opacity = '1';
+                                                                                    }}
+                                                                                    onMouseLeave={(e) => {
+                                                                                        e.currentTarget.style.opacity = '0.7';
+                                                                                    }}
+                                                                                    title="Copy URL to clipboard"
+                                                                                >
+                                                                                    <FaCopy />
+                                                                                </div>
+                                                                            </div>
+                                                                            <a
+                                                                                href="#"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    if ((window as any).electronAPI?.openExternal) {
+                                                                                        (window as any).electronAPI.openExternal(endpoint.url);
+                                                                                    } else {
+                                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
+                                                                                    }
+                                                                                }}
+                                                                                style={{
+                                                                                    color: '#61BAFA',
+                                                                                    textDecoration: 'none',
+                                                                                    fontSize: '11px',
+                                                                                    opacity: 0.8,
+                                                                                    display: 'block',
+                                                                                    wordBreak: 'break-all'
+                                                                                }}
+                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                            >
+                                                                                {displayUrl}
+                                                                            </a>
+                                                                        </div>
+                                                                    );
+                                                                })}
+
+                                                                {/* Individual Pages - only show if more than one page */}
+                                                                {pages.length > 1 && currentInterface.endpoints.filter(e => e.type === 'page').map((endpoint, index) => {
+                                                                    const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
+                                                                    return (
+                                                                        <div key={`page-${index}`} style={{
+                                                                            padding: '12px 0',
+                                                                            borderBottom: '1px solid #333',
+                                                                        }}>
+                                                                            <div style={{
+                                                                                display: 'flex',
+                                                                                justifyContent: 'space-between',
+                                                                                alignItems: 'center',
+                                                                                marginBottom: '8px'
+                                                                            }}>
+                                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
+                                                                                    {endpoint.pageName}
+                                                                                </div>
+                                                                                <div
+                                                                                    onClick={(e) => handleCopyUrl(endpoint.url, e)}
+                                                                                    style={{
+                                                                                        color: '#61BAFA',
+                                                                                        cursor: 'pointer',
+                                                                                        fontSize: '20px',
+                                                                                        opacity: 0.7,
+                                                                                        transition: 'all 0.2s ease',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center'
+                                                                                    }}
+                                                                                    onMouseEnter={(e) => {
+                                                                                        e.currentTarget.style.opacity = '1';
+                                                                                    }}
+                                                                                    onMouseLeave={(e) => {
+                                                                                        e.currentTarget.style.opacity = '0.7';
+                                                                                    }}
+                                                                                    title="Copy URL to clipboard"
+                                                                                >
+                                                                                    <FaCopy />
+                                                                                </div>
+                                                                            </div>
+                                                                            <a
+                                                                                href="#"
+                                                                                onClick={(e) => {
+                                                                                    e.preventDefault();
+                                                                                    if ((window as any).electronAPI?.openExternal) {
+                                                                                        (window as any).electronAPI.openExternal(endpoint.url);
+                                                                                    } else {
+                                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
+                                                                                    }
+                                                                                }}
+                                                                                style={{
+                                                                                    color: '#61BAFA',
+                                                                                    textDecoration: 'none',
+                                                                                    fontSize: '11px',
+                                                                                    opacity: 0.8,
+                                                                                    display: 'block',
+                                                                                    wordBreak: 'break-all'
+                                                                                }}
+                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                            >
+                                                                                {displayUrl}
+                                                                            </a>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                );
+                            })()}
                                 </>
                             )}
                         </>

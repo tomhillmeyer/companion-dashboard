@@ -53,6 +53,9 @@ export interface BoxData {
     // Identity
     id: string;
 
+    // Page Assignment
+    pageId: string;
+
     // Layout
     frame: { translate: [number, number]; width: number; height: number };
     anchorPoint: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
@@ -135,6 +138,16 @@ export interface BoxData {
 }
 
 // ============================================================================
+// Page Type
+// ============================================================================
+
+export interface PageData {
+    id: string;
+    name: string;
+    order: number;
+}
+
+// ============================================================================
 // Canvas Settings Type
 // ============================================================================
 
@@ -159,6 +172,7 @@ export interface DashboardConfig {
     version: string;
     timestamp: string;
     boxes: BoxData[];
+    pages: PageData[];
     companion_connection_url: string;
     companion_connections: CompanionConnection[];
     canvas_settings: Partial<CanvasSettings>;

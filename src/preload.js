@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     webServer: {
         start: (port, hostname) => ipcRenderer.invoke('web-server-start', port, hostname),
         stop: () => ipcRenderer.invoke('web-server-stop'),
-        getStatus: () => ipcRenderer.invoke('web-server-status'),
+        getStatus: (pages) => ipcRenderer.invoke('web-server-status', pages),
         updateState: (state) => ipcRenderer.invoke('web-server-update-state', state),
         updateVariables: (variableValues, variableHtmlValues) => ipcRenderer.invoke('web-server-update-variables', variableValues, variableHtmlValues),
         sendWebRTCSignal: (data) => ipcRenderer.invoke('web-server-send-webrtc-signal', data)
