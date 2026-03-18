@@ -9,7 +9,7 @@ import { FaLock } from "react-icons/fa6";
 import { FaLockOpen } from "react-icons/fa6";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
-import type { VariableColor, CompanionConnection, ROI } from './types';
+import type { VariableColor, CompanionConnection, ROI, ComparisonOperator } from './types';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
@@ -886,6 +886,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         const newVariableColor: VariableColor = {
             id: uuid(),
             variable: '',
+            operator: '==',
             value: '',
             color: '#ffffff'
         };
@@ -1478,6 +1479,18 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                                 placeholder="Variable"
                                                 className="canvas-variable-input"
                                             />
+                                            <select
+                                                value={vc.operator}
+                                                onChange={(e) => updateCanvasVariableColor(vc.id, 'operator', e.target.value as ComparisonOperator)}
+                                                className="canvas-operator-select"
+                                            >
+                                                <option value="==">=</option>
+                                                <option value="!=">≠</option>
+                                                <option value="<">&lt;</option>
+                                                <option value="<=">&lt;=</option>
+                                                <option value=">">&gt;</option>
+                                                <option value=">=">&gt;=</option>
+                                            </select>
                                             <input
                                                 type="text"
                                                 value={vc.value}

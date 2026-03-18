@@ -12,6 +12,7 @@ import { Capacitor } from '@capacitor/core';
 import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor } from './types';
 import Moveable from 'react-moveable';
+import { evaluateComparison } from './variableComparison';
 
 
 // Get window ID for isolated storage
@@ -39,6 +40,15 @@ const DESIGN_WIDTH_KEY = `window_${windowId}_design_width`;
 
 
 export default function App() {
+    // Helper function to add default operator to variable conditions
+    const migrateVariableConditions = (conditions: any[] | undefined) => {
+        if (!conditions) return [];
+        return conditions.map((cond: any) => ({
+            ...cond,
+            operator: cond.operator ?? '=='
+        }));
+    };
+
     // Initialize state with localStorage data immediately
     const [boxes, setBoxes] = useState<BoxData[]>(() => {
         const savedBoxes = localStorage.getItem(STORAGE_KEY);
@@ -54,14 +64,20 @@ export default function App() {
                     rightVisible: box.rightVisible ?? true,
                     opacity: box.opacity ?? 100,
                     opacitySource: box.opacitySource ?? "",
-                    opacityVariableValues: box.opacityVariableValues ?? [],
+                    opacityVariableValues: migrateVariableConditions(box.opacityVariableValues),
                     overlayColor: box.overlayColor ?? "#00000000",
                     overlayColorText: box.overlayColorText ?? "",
-                    overlayVariableColors: box.overlayVariableColors ?? [],
+                    overlayVariableColors: migrateVariableConditions(box.overlayVariableColors),
                     overlayDirection: box.overlayDirection ?? 'bottom',
                     overlaySize: box.overlaySize ?? 100,
                     overlaySizeSource: box.overlaySizeSource ?? "",
-                    overlaySizeVariableValues: box.overlaySizeVariableValues ?? []
+                    overlaySizeVariableValues: migrateVariableConditions(box.overlaySizeVariableValues),
+                    backgroundVariableColors: migrateVariableConditions(box.backgroundVariableColors),
+                    borderVariableColors: migrateVariableConditions(box.borderVariableColors),
+                    headerVariableColors: migrateVariableConditions(box.headerVariableColors),
+                    headerLabelVariableColors: migrateVariableConditions(box.headerLabelVariableColors),
+                    leftLabelVariableColors: migrateVariableConditions(box.leftLabelVariableColors),
+                    rightLabelVariableColors: migrateVariableConditions(box.rightLabelVariableColors)
                 }));
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
@@ -76,7 +92,21 @@ export default function App() {
 
 
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any) => {
-        setBoxes(newBoxes);
+        // Migrate boxes during restore
+        const migratedBoxes = newBoxes.map((box: BoxData) => ({
+            ...box,
+            opacityVariableValues: migrateVariableConditions(box.opacityVariableValues),
+            overlayVariableColors: migrateVariableConditions(box.overlayVariableColors),
+            overlaySizeVariableValues: migrateVariableConditions(box.overlaySizeVariableValues),
+            backgroundVariableColors: migrateVariableConditions(box.backgroundVariableColors),
+            borderVariableColors: migrateVariableConditions(box.borderVariableColors),
+            headerVariableColors: migrateVariableConditions(box.headerVariableColors),
+            headerLabelVariableColors: migrateVariableConditions(box.headerLabelVariableColors),
+            leftLabelVariableColors: migrateVariableConditions(box.leftLabelVariableColors),
+            rightLabelVariableColors: migrateVariableConditions(box.rightLabelVariableColors)
+        }));
+
+        setBoxes(migratedBoxes);
         setCompanionBaseUrl(newConnectionUrl);
         setSelectedBoxIds([]); // Clear any selection
 
@@ -89,7 +119,7 @@ export default function App() {
                 setCanvasBackgroundColorText(canvasSettings.canvasBackgroundColorText);
             }
             if (canvasSettings.canvasBackgroundVariableColors !== undefined) {
-                setCanvasBackgroundVariableColors(canvasSettings.canvasBackgroundVariableColors);
+                setCanvasBackgroundVariableColors(migrateVariableConditions(canvasSettings.canvasBackgroundVariableColors));
             }
             if (canvasSettings.canvasBackgroundImageOpacity !== undefined) {
                 setCanvasBackgroundImageOpacity(canvasSettings.canvasBackgroundImageOpacity);
@@ -234,7 +264,7 @@ export default function App() {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                return parsed.canvasBackgroundVariableColors || [];
+                return migrateVariableConditions(parsed.canvasBackgroundVariableColors);
             } catch (error) {
                 return [];
             }
@@ -751,7 +781,7 @@ export default function App() {
                     const cs = stateData.canvasSettings;
                     if (cs.canvasBackgroundColor !== undefined) setCanvasBackgroundColor(cs.canvasBackgroundColor);
                     if (cs.canvasBackgroundColorText !== undefined) setCanvasBackgroundColorText(cs.canvasBackgroundColorText);
-                    if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(cs.canvasBackgroundVariableColors);
+                    if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(migrateVariableConditions(cs.canvasBackgroundVariableColors));
                     if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
                     if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                     if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
@@ -876,7 +906,7 @@ export default function App() {
                                 const cs = data.canvasSettings;
                                 if (cs.canvasBackgroundColor !== undefined) setCanvasBackgroundColor(cs.canvasBackgroundColor);
                                 if (cs.canvasBackgroundColorText !== undefined) setCanvasBackgroundColorText(cs.canvasBackgroundColorText);
-                                if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(cs.canvasBackgroundVariableColors);
+                                if (cs.canvasBackgroundVariableColors !== undefined) setCanvasBackgroundVariableColors(migrateVariableConditions(cs.canvasBackgroundVariableColors));
                                 if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
                                 if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                                 if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
@@ -1055,7 +1085,7 @@ export default function App() {
             for (const varColor of variableColors) {
                 if (varColor && varColor.variable && varColor.value) {
                     const variableValue = allVariableValues[varColor.variable] || '';
-                    if (variableValue === varColor.value) {
+                    if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
                         return varColor.color;
                     }
                 }

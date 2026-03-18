@@ -10,6 +10,7 @@ import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
+import { evaluateComparison } from './variableComparison';
 
 // Component for rendering markdown content
 const MarkdownContent = React.memo(({
@@ -427,7 +428,7 @@ export default function Box({
             for (const varOpacity of boxData.opacityVariableValues) {
                 if (varOpacity && varOpacity.variable && varOpacity.value) {
                     const variableValue = variableValues[varOpacity.variable] || '';
-                    if (variableValue === varOpacity.value) {
+                    if (evaluateComparison(variableValue, varOpacity.operator, varOpacity.value)) {
                         return varOpacity.opacity / 100;
                     }
                 }
@@ -455,7 +456,7 @@ export default function Box({
             for (const varSize of boxData.overlaySizeVariableValues) {
                 if (varSize && varSize.variable && varSize.value) {
                     const variableValue = variableValues[varSize.variable] || '';
-                    if (variableValue === varSize.value) {
+                    if (evaluateComparison(variableValue, varSize.operator, varSize.value)) {
                         return varSize.size;
                     }
                 }
@@ -483,7 +484,7 @@ export default function Box({
             for (const varColor of variableColors) {
                 if (varColor && varColor.variable && varColor.value) {
                     const variableValue = variableValues[varColor.variable] || '';
-                    if (variableValue === varColor.value) {
+                    if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
                         return varColor.color;
                     }
                 }
@@ -507,7 +508,7 @@ export default function Box({
                 for (const varColor of boxData.backgroundVariableColors) {
                     if (varColor && varColor.variable && varColor.value) {
                         const variableValue = variableValues[varColor.variable] || '';
-                        if (variableValue === varColor.value) {
+                        if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
                             return varColor.color || '';
                         }
                     }

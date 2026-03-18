@@ -19,9 +19,12 @@ export interface CompanionConnection {
 // Variable Types
 // ============================================================================
 
+export type ComparisonOperator = '==' | '!=' | '<' | '<=' | '>' | '>=';
+
 export interface VariableColor {
     id: string;
     variable: string;
+    operator: ComparisonOperator;
     value: string;
     color: string;
 }
@@ -29,6 +32,7 @@ export interface VariableColor {
 export interface VariableOpacity {
     id: string;
     variable: string;
+    operator: ComparisonOperator;
     value: string;
     opacity: number;
 }
@@ -36,6 +40,7 @@ export interface VariableOpacity {
 export interface VariableOverlaySize {
     id: string;
     variable: string;
+    operator: ComparisonOperator;
     value: string;
     size: number;
 }

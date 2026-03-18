@@ -277,8 +277,25 @@ a {
     min-width: 0;
 }
 
+.canvas-operator-select {
+    width: 55px;
+    height: 35px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    background-color: #1a1a1a;
+    color: white;
+    padding: 0 8px;
+    font-size: 13px;
+    cursor: pointer;
+    text-align: center;
+    box-sizing: border-box;
+    line-height: 1.2;
+    vertical-align: middle;
+}
+
 .canvas-variable-input:focus,
-.canvas-value-input:focus {
+.canvas-value-input:focus,
+.canvas-operator-select:focus {
     outline: none;
     border-color: #61BAFA;
 }

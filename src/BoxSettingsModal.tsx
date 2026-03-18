@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -126,6 +126,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         const newVariableColor: VariableColor = {
             id: uuid(),
             variable: '',
+            operator: '==',
             value: '',
             color: '#ffffff'
         };
@@ -150,6 +151,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         const newVariableOpacity: VariableOpacity = {
             id: uuid(),
             variable: '',
+            operator: '==',
             value: '',
             opacity: 100
         };
@@ -174,6 +176,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         const newVariableOverlaySize: VariableOverlaySize = {
             id: uuid(),
             variable: '',
+            operator: '==',
             value: '',
             size: 100
         };
@@ -360,6 +363,18 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     placeholder="Variable"
                                     className="variable-input"
                                 />
+                                <select
+                                    value={vc.operator}
+                                    onChange={(e) => updateVariableColor(field, vc.id, 'operator', e.target.value as ComparisonOperator)}
+                                    className="operator-select"
+                                >
+                                    <option value="==">=</option>
+                                    <option value="!=">≠</option>
+                                    <option value="<">&lt;</option>
+                                    <option value="<=">&lt;=</option>
+                                    <option value=">">&gt;</option>
+                                    <option value=">=">&gt;=</option>
+                                </select>
                                 <input
                                     type="text"
                                     value={vc.value}
@@ -692,6 +707,18 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                                 onChange={(e) => updateVariableOverlaySize(varSize.id, 'variable', e.target.value)}
                                                 placeholder="Variable"
                                             />
+                                            <select
+                                                value={varSize.operator}
+                                                onChange={(e) => updateVariableOverlaySize(varSize.id, 'operator', e.target.value as ComparisonOperator)}
+                                                className="operator-select"
+                                            >
+                                                <option value="==">=</option>
+                                                <option value="!=">≠</option>
+                                                <option value="<">&lt;</option>
+                                                <option value="<=">&lt;=</option>
+                                                <option value=">">&gt;</option>
+                                                <option value=">=">&gt;=</option>
+                                            </select>
                                             <input
                                                 type="text"
                                                 className="value-input"
@@ -1497,6 +1524,18 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                             placeholder="Variable"
                                             className="variable-input"
                                         />
+                                        <select
+                                            value={vo.operator}
+                                            onChange={(e) => updateVariableOpacity(vo.id, 'operator', e.target.value as ComparisonOperator)}
+                                            className="operator-select"
+                                        >
+                                            <option value="==">=</option>
+                                            <option value="!=">≠</option>
+                                            <option value="<">&lt;</option>
+                                            <option value="<=">&lt;=</option>
+                                            <option value=">">&gt;</option>
+                                            <option value=">=">&gt;=</option>
+                                        </select>
                                         <input
                                             type="text"
                                             value={vo.value}
