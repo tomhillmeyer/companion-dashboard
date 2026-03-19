@@ -62,6 +62,8 @@ button {
   background-color: #3883c7;
   cursor: pointer;
   transition: border-color 0.25s;
+  height: 40px;
+  box-sizing: border-box;
 }
 
 button:hover {
@@ -71,6 +73,104 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Global utility classes for consistent UI elements */
+.standard-input {
+  height: 40px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #1a1a1a;
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.standard-input:focus {
+  outline: none;
+  border-color: #61BAFA;
+}
+
+.standard-select {
+  height: 40px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background-color: #1a1a1a;
+  color: white;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.standard-select:focus {
+  outline: none;
+  border-color: #61BAFA;
+}
+
+.standard-button {
+  height: 40px;
+  padding: 0 15px;
+  background-color: #2a2a2a;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.standard-button:hover {
+  background-color: #3a3a3a;
+  border-color: #61BAFA;
+}
+
+.add-button {
+  height: 40px;
+  padding: 0 15px;
+  background-color: #2a2a2a;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.add-button:hover {
+  background-color: #3a3a3a;
+  border-color: #61BAFA;
+}
+
+.delete-button {
+  height: 40px;
+  width: 40px;
+  min-width: 40px;
+  background-color: #C63E37;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  box-sizing: border-box;
+  font-size: 16px;
+  padding: 0;
+}
+
+.delete-button:hover {
+  background-color: #a33329;
 }
 
 /*

@@ -8,8 +8,7 @@ import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
 import ROIModal from './ROIModal';
 
-import { FaCirclePlus } from "react-icons/fa6";
-import { FaCircleMinus } from "react-icons/fa6";
+import { FaX } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
 
 import boxSettingsIcon from './assets/box_settings_icon.png';
@@ -396,7 +395,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     className="remove-variable-color-button"
                                     onClick={() => removeVariableColor(field, vc.id)}
                                 >
-                                    <FaCircleMinus />
+                                    <FaX style={{ fontSize: '16px' }} />
                                 </button>
                             </div>
                         ))}
@@ -406,7 +405,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         className="add-variable-color-button"
                         onClick={() => addVariableColor(field)}
                     >
-                        <FaCirclePlus />
+                        ADD
                     </button>
                 </div>
             </div>
@@ -743,7 +742,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                                 onClick={() => removeVariableOverlaySize(varSize.id)}
                                                 className="remove-variable-color-button"
                                             >
-                                                <FaCircleMinus />
+                                                <FaX style={{ fontSize: '16px' }} />
                                             </button>
                                         </div>
                                     ))}
@@ -753,7 +752,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     className="add-variable-color-button"
                                     onClick={addVariableOverlaySize}
                                 >
-                                    <FaCirclePlus />
+                                    ADD
                                 </button>
                             </div>
                         </div>
@@ -1609,7 +1608,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                             className="remove-variable-color-button"
                                             onClick={() => removeVariableOpacity(vo.id)}
                                         >
-                                            <FaCircleMinus />
+                                            <FaX style={{ fontSize: '16px' }} />
                                         </button>
                                     </div>
                                 ))}
@@ -1619,7 +1618,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                 className="add-variable-color-button"
                                 onClick={addVariableOpacity}
                             >
-                                <FaCirclePlus />
+                                ADD
                             </button>
                         </div>
                     </div>

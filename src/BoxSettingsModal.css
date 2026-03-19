@@ -44,13 +44,15 @@
 }
 
 .modal-buttons button {
-    padding: 16px 16px;
+    padding: 0 16px;
+    height: 40px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-weight: 500;
     max-width: 125px;
     margin: 0px;
+    box-sizing: border-box;
 }
 
 .modal-save-button {
@@ -69,7 +71,7 @@
 }
 
 .modal-duplicate-button {
-    background-color: #059669;
+    background-color: #4E81C3;
     color: white;
 }
 
@@ -314,7 +316,8 @@
 }
 
 .modal-content input[type="text"] {
-    padding: 8px 12px;
+    height: 40px;
+    padding: 0 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
@@ -322,6 +325,7 @@
     font-size: 14px;
     width: 100%;
     min-width: 120px;
+    box-sizing: border-box;
 }
 
 .modal-content input[type="text"]:focus {
@@ -331,13 +335,15 @@
 
 .modal-content input[type="number"] {
     width: 60px;
-    padding: 8px 12px;
+    height: 40px;
+    padding: 0 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
     text-align: center;
     font-size: 14px;
+    box-sizing: border-box;
 }
 
 .modal-content input[type="number"]:focus {
@@ -347,11 +353,12 @@
 
 .modal-content input[type="color"] {
     width: 40px;
-    height: 32px;
+    height: 40px;
     border: 1px solid #444;
     border-radius: 4px;
     cursor: pointer;
     background: none;
+    box-sizing: border-box;
 }
 
 .checkbox-container {
@@ -362,9 +369,10 @@
 }
 
 .checkbox-container input[type="checkbox"] {
-    width: 35px;
-    height: 35px;
+    width: 40px;
+    height: 40px;
     accent-color: #61BAFA;
+    cursor: pointer;
 }
 
 .checkbox-container label {
@@ -407,21 +415,26 @@
 }
 
 .add-variable-color-button {
-    background-color: #059669;
+    background-color: #2a2a2a;
     color: white;
-    border: none;
-    border-radius: 25px;
+    border: 1px solid #444;
+    border-radius: 4px;
     cursor: pointer;
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
-    font-weight: bold;
-    transition: background-color 0.2s ease;
-    padding: 4px 5px 0px 5px;
+    width: auto;
+    min-width: 60px;
+    height: 40px;
+    padding: 0 15px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-sizing: border-box;
 }
 
 .add-variable-color-button:hover {
-    background-color: #047857;
+    background-color: #3a3a3a;
+    border-color: #61BAFA;
 }
 
 .variable-color-row {
@@ -441,7 +454,7 @@
 .operator-select {
     width: 60px;
     height: 40px;
-    padding: 8px 12px;
+    padding: 0 8px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
@@ -466,13 +479,15 @@
 
 .opacity-value-input {
     width: 80px;
-    padding: 8px 12px;
+    height: 40px;
+    padding: 0 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
     text-align: center;
     font-size: 14px;
+    box-sizing: border-box;
 }
 
 /* Default fields (color and opacity) take 25% */
@@ -505,27 +520,31 @@
 /* Updated for ColorPicker component */
 .color-picker .color-picker-button {
     width: 40px;
-    height: 32px;
+    height: 40px;
     flex-shrink: 0;
 }
 
 .remove-variable-color-button {
-    background-color: #ef4444;
+    background-color: #C63E37;
     color: white;
     border: none;
-    border-radius: 25px;
-    width: 30px;
-    height: 30px;
+    border-radius: 4px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
     cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
     flex-shrink: 0;
-    padding: 4px 5px 0px 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: background-color 0.2s ease;
+    box-sizing: border-box;
+    font-size: 16px;
+    padding: 0;
 }
 
 .remove-variable-color-button:hover {
-    background-color: #dc2626;
+    background-color: #a33329;
 }
 
 .image-controls {
@@ -582,9 +601,10 @@
 }
 
 .image-size-controls input[type="radio"] {
-    width: 35px;
-    height: 35px;
+    width: 40px;
+    height: 40px;
     accent-color: #61BAFA;
+    cursor: pointer;
 }
 
 .opacity-controls {
@@ -605,13 +625,15 @@
 
 .opacity-input {
     width: 80px;
-    padding: 8px 12px;
+    height: 40px;
+    padding: 0 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
     text-align: center;
     font-size: 14px;
+    box-sizing: border-box;
 }
 
 .opacity-input:focus {

@@ -2,9 +2,7 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { FaAngleRight } from "react-icons/fa6";
 import { FaAngleLeft } from "react-icons/fa6";
-import { FaCirclePlus } from "react-icons/fa6";
-import { FaCircleMinus } from "react-icons/fa6";
-import { FaTrash } from "react-icons/fa6";
+import { FaX } from "react-icons/fa6";
 import { FaLock } from "react-icons/fa6";
 import { FaLockOpen } from "react-icons/fa6";
 import { FaChevronDown, FaChevronUp, FaCopy } from "react-icons/fa6";
@@ -569,7 +567,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 console.error('Failed to parse cached connections:', error);
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run on mount
 
     useEffect(() => {
@@ -1338,63 +1336,63 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                 </div>
                             </div>
                             <div className="menu-section-column" style={{ marginTop: '15px' }}>
-                        <div className="settings-subsection">
-                            <div className="connection-item">
-                                <span className="connection-label">Default Connection</span>
-                                <div className="connection-controls">
-                                    <input
-                                        type="text"
-                                        value={inputUrl}
-                                        onChange={handleUrlChange}
-                                        placeholder="http://127.0.0.1:8888/"
-                                        style={{
-                                            border: '1px solid',
-                                            borderColor:
-                                                effectiveIsValidUrl === null ? 'gray' :
-                                                    effectiveIsValidUrl === true ? 'green' :
-                                                        'red'
-                                        }}
-                                    />
-                                    <button onClick={handleUrlSubmit}>SET</button>
+                                <div className="settings-subsection">
+                                    <div className="connection-item">
+                                        <span className="connection-label">Default Connection</span>
+                                        <div className="connection-controls">
+                                            <input
+                                                type="text"
+                                                value={inputUrl}
+                                                onChange={handleUrlChange}
+                                                placeholder="http://127.0.0.1:8888/"
+                                                style={{
+                                                    border: '1px solid',
+                                                    borderColor:
+                                                        effectiveIsValidUrl === null ? 'gray' :
+                                                            effectiveIsValidUrl === true ? 'green' :
+                                                                'red'
+                                                }}
+                                            />
+                                            <button onClick={handleUrlSubmit}>SET</button>
+                                        </div>
+                                    </div>
+
+                                    {connections.map((connection, index) => (
+                                        <div key={connection.id} className="connection-item">
+                                            <span className="connection-label">Connection [{index + 1}]</span>
+                                            <div className="connection-controls">
+                                                <input
+                                                    type="text"
+                                                    value={connectionInputs[connection.id] || ''}
+                                                    onChange={(e) => handleConnectionUrlChange(connection.id, e.target.value)}
+                                                    placeholder="http://127.0.0.1:8888/"
+                                                    style={{
+                                                        border: '1px solid',
+                                                        borderColor:
+                                                            effectiveConnectionValidities[connection.id] === null ? 'gray' :
+                                                                effectiveConnectionValidities[connection.id] === true ? 'green' :
+                                                                    'red'
+                                                    }}
+                                                />
+                                                <button onClick={() => handleConnectionUrlSubmit(connection.id)}>SET</button>
+                                                <button
+                                                    onClick={(e) => deleteConnection(connection.id, e)}
+                                                    className="delete-connection-button"
+                                                >
+                                                    <FaX />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    <button
+                                        className="add-connection-button"
+                                        onClick={addConnection}
+                                    >
+                                        ADD CONNECTION
+                                    </button>
                                 </div>
                             </div>
-
-                            {connections.map((connection, index) => (
-                                <div key={connection.id} className="connection-item">
-                                    <span className="connection-label">Connection [{index + 1}]</span>
-                                    <div className="connection-controls">
-                                        <input
-                                            type="text"
-                                            value={connectionInputs[connection.id] || ''}
-                                            onChange={(e) => handleConnectionUrlChange(connection.id, e.target.value)}
-                                            placeholder="http://127.0.0.1:8888/"
-                                            style={{
-                                                border: '1px solid',
-                                                borderColor:
-                                                    effectiveConnectionValidities[connection.id] === null ? 'gray' :
-                                                        effectiveConnectionValidities[connection.id] === true ? 'green' :
-                                                            'red'
-                                            }}
-                                        />
-                                        <button onClick={() => handleConnectionUrlSubmit(connection.id)}>SET</button>
-                                        <button
-                                            onClick={(e) => deleteConnection(connection.id, e)}
-                                            className="delete-connection-button"
-                                        >
-                                            <FaTrash />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-
-                            <button
-                                className="add-connection-button"
-                                onClick={addConnection}
-                            >
-                                <FaCirclePlus />
-                            </button>
-                        </div>
-                    </div>
                         </>
                     )}
                     <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('font'); }}>
@@ -1423,49 +1421,49 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             {!collapsedSections.responsiveScaling && (
                                 <>
                                     <div className='menu-section'>
-                                <div className='settings-subsection'>
-                                    <div className='scaling-checkbox-row'>
-                                        <input
-                                            type="checkbox"
-                                            id="scale-enabled"
-                                            checked={scaleEnabled}
-                                            onChange={(e) => onScaleEnabledChange?.(e.target.checked)}
-                                        />
-                                        <label htmlFor="scale-enabled" className="connection-label">
-                                            Scale based on width
-                                        </label>
+                                        <div className='settings-subsection'>
+                                            <div className='scaling-checkbox-row'>
+                                                <input
+                                                    type="checkbox"
+                                                    id="scale-enabled"
+                                                    checked={scaleEnabled}
+                                                    onChange={(e) => onScaleEnabledChange?.(e.target.checked)}
+                                                />
+                                                <label htmlFor="scale-enabled" className="connection-label">
+                                                    Scale based on width
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                            <div className='menu-section' style={{ marginTop: '15px' }}>
-                                <div className='settings-subsection'>
-                                    <div className='scaling-width-row'>
-                                        <label htmlFor="design-width">
-                                            Width (px)
-                                        </label>
-                                        <input
-                                            id="design-width"
-                                            type="number"
-                                            value={designWidth}
-                                            onChange={(e) => {
-                                                const value = parseInt(e.target.value) || 1920;
-                                                onDesignWidthChange?.(value);
-                                            }}
-                                            min="320"
-                                            max="7680"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                if (typeof window !== 'undefined') {
-                                                    onDesignWidthChange?.(window.innerWidth);
-                                                }
-                                            }}
-                                        >
-                                            USE CURRENT CANVAS WIDTH
-                                        </button>
+                                    <div className='menu-section' style={{ marginTop: '15px' }}>
+                                        <div className='settings-subsection'>
+                                            <div className='scaling-width-row'>
+                                                <label htmlFor="design-width">
+                                                    Width (px)
+                                                </label>
+                                                <input
+                                                    id="design-width"
+                                                    type="number"
+                                                    value={designWidth}
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value) || 1920;
+                                                        onDesignWidthChange?.(value);
+                                                    }}
+                                                    min="320"
+                                                    max="7680"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        if (typeof window !== 'undefined') {
+                                                            onDesignWidthChange?.(window.innerWidth);
+                                                        }
+                                                    }}
+                                                >
+                                                    USE CURRENT CANVAS WIDTH
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
                                 </>
                             )}
                         </>
@@ -1477,231 +1475,239 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                     </div>
                     {!collapsedSections.background && (
                         <div className='menu-section canvas-section'>
-                        <div className="settings-subsection">
-                            <span className="canvas-color-label">Color</span>
-                            <div className="canvas-color-input-group">
-                                <ColorPicker
-                                    value={canvasBackgroundColor || '#000000'}
-                                    onChange={(color) => onCanvasBackgroundColorChange?.(color)}
-                                    className="canvas-color-picker"
-                                />
-                                <input
-                                    type="text"
-                                    value={canvasBackgroundColorText || ''}
-                                    onChange={(e) => onCanvasBackgroundColorTextChange?.(e.target.value)}
-                                    placeholder="Variable, HEX, or Image URL"
-                                    className="canvas-color-text"
-                                />
-                            </div>
-
-                            <div className="canvas-variable-color-container">
-                                <span className="canvas-color-label">Variable Background Color</span>
-                                <div className="canvas-variable-color-section">
-                                    {(canvasBackgroundVariableColors || []).map(vc => (
-                                        <div key={vc.id} className="canvas-variable-color-row">
-                                            <input
-                                                type="text"
-                                                value={vc.variable}
-                                                onChange={(e) => updateCanvasVariableColor(vc.id, 'variable', e.target.value)}
-                                                placeholder="Variable"
-                                                className="canvas-variable-input"
-                                            />
-                                            <select
-                                                value={vc.operator}
-                                                onChange={(e) => updateCanvasVariableColor(vc.id, 'operator', e.target.value as ComparisonOperator)}
-                                                className="canvas-operator-select"
-                                            >
-                                                <option value="==">=</option>
-                                                <option value="!=">≠</option>
-                                                <option value="<">&lt;</option>
-                                                <option value="<=">&lt;=</option>
-                                                <option value=">">&gt;</option>
-                                                <option value=">=">&gt;=</option>
-                                            </select>
-                                            <input
-                                                type="text"
-                                                value={vc.value}
-                                                onChange={(e) => updateCanvasVariableColor(vc.id, 'value', e.target.value)}
-                                                placeholder="Value"
-                                                className="canvas-value-input"
-                                            />
-                                            <ColorPicker
-                                                value={vc.color}
-                                                onChange={(color) => updateCanvasVariableColor(vc.id, 'color', color)}
-                                                className="canvas-variable-color-picker"
-                                            />
-                                            <button
-                                                type="button"
-                                                className="canvas-remove-variable-color-button"
-                                                onClick={(e) => removeCanvasVariableColor(vc.id, e)}
-                                            >
-                                                <FaCircleMinus />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button
-                                    type="button"
-                                    className="canvas-add-variable-color-button"
-                                    onClick={addCanvasVariableColor}
-                                >
-                                    <FaCirclePlus />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="canvas-image-group">
-                            <span className="canvas-color-label">Background Image</span>
-                            <div className="canvas-image-controls">
-                                <button
-                                    type="button"
-                                    onClick={handleBackgroundImageBrowse}
-                                    className="canvas-browse-button"
-                                >
-                                    Browse Image
-                                </button>
-                                {canvasBackgroundColorText && canvasBackgroundColorText.startsWith('./src/assets/background_') && (
-                                    <button
-                                        type="button"
-                                        onClick={clearCachedBackground}
-                                        className="canvas-clear-button"
-                                    >
-                                        Clear Image
-                                    </button>
-                                )}
-                            </div>
-                            <div className="canvas-opacity-controls">
-                                <label htmlFor="canvas-background-opacity">Background Image Opacity (%)</label>
-                                <input
-                                    id="canvas-background-opacity"
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={canvasBackgroundImageOpacity || 100}
-                                    onChange={(e) => onCanvasBackgroundImageOpacityChange?.(parseInt(e.target.value) || 100)}
-                                    className="canvas-opacity-input"
-                                />
-                            </div>
-                            <div className="canvas-image-size-controls">
-                                <label htmlFor="canvas-image-size">Background Image Size</label>
-                                <select
-                                    id="canvas-image-size"
-                                    value={canvasBackgroundImageSize || 'cover'}
-                                    onChange={(e) => onCanvasBackgroundImageSizeChange?.(e.target.value as 'cover' | 'contain' | 'width')}
-                                >
-                                    <option value="cover">Cover (fill canvas)</option>
-                                    <option value="contain">Contain (fit entire image)</option>
-                                    <option value="width">Custom Width</option>
-                                </select>
-                            </div>
-                            {canvasBackgroundImageSize === 'width' && (
-                                <div className="canvas-image-size-controls">
-                                    <label htmlFor="canvas-image-width">Custom Width (px)</label>
+                            <div className="settings-subsection">
+                                <span className="canvas-color-label">Color</span>
+                                <div className="canvas-color-input-group">
+                                    <ColorPicker
+                                        value={canvasBackgroundColor || '#000000'}
+                                        onChange={(color) => onCanvasBackgroundColorChange?.(color)}
+                                        className="canvas-color-picker"
+                                    />
                                     <input
-                                        id="canvas-image-width"
-                                        type="number"
-                                        min="100"
-                                        max="10000"
-                                        value={canvasBackgroundImageWidth || 1920}
-                                        onChange={(e) => onCanvasBackgroundImageWidthChange?.(parseInt(e.target.value) || 1920)}
+                                        type="text"
+                                        value={canvasBackgroundColorText || ''}
+                                        onChange={(e) => onCanvasBackgroundColorTextChange?.(e.target.value)}
+                                        placeholder="Variable, HEX, or Image URL"
+                                        className="canvas-color-text"
                                     />
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="canvas-image-group">
-                            <span className="canvas-color-label">Background Video</span>
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                                <select
-                                    value={canvasBackgroundVideoDeviceId || ''}
-                                    onChange={(e) => onCanvasBackgroundVideoDeviceIdChange?.(e.target.value)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '8px',
-                                        backgroundColor: '#1a1a1a',
-                                        color: 'white',
-                                        border: '1px solid #61BAFA',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    <option value="">No Video</option>
-                                    {videoDevices.map(device => (
-                                        <option key={device.deviceId} value={device.deviceId}>
-                                            {device.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    type="button"
-                                    onClick={refreshVideoDevices}
-                                    style={{
-                                        padding: '8px 16px',
-                                        backgroundColor: '#444',
-                                        color: 'white',
-                                        border: '1px solid #61BAFA',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '14px',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                >
-                                    Refresh
-                                </button>
-                            </div>
-                            {canvasBackgroundVideoDeviceId && (
-                                <>
-                                    <div className="canvas-image-size-controls" style={{ marginTop: '10px' }}>
-                                        <label htmlFor="canvas-video-size">Background Video Size</label>
-                                        <select
-                                            id="canvas-video-size"
-                                            value={canvasBackgroundVideoSize || 'cover'}
-                                            onChange={(e) => onCanvasBackgroundVideoSizeChange?.(e.target.value as 'cover' | 'contain')}
-                                        >
-                                            <option value="cover">Cover</option>
-                                            <option value="contain">Contain</option>
-                                        </select>
+                                <div className="canvas-variable-color-container">
+                                    <span className="canvas-color-label">Variable Background Color</span>
+                                    <div className="canvas-variable-color-section">
+                                        {(canvasBackgroundVariableColors || []).map(vc => (
+                                            <div key={vc.id} className="canvas-variable-color-row">
+                                                <input
+                                                    type="text"
+                                                    value={vc.variable}
+                                                    onChange={(e) => updateCanvasVariableColor(vc.id, 'variable', e.target.value)}
+                                                    placeholder="Variable"
+                                                    className="canvas-variable-input"
+                                                />
+                                                <select
+                                                    value={vc.operator}
+                                                    onChange={(e) => updateCanvasVariableColor(vc.id, 'operator', e.target.value as ComparisonOperator)}
+                                                    className="canvas-operator-select"
+                                                >
+                                                    <option value="==">=</option>
+                                                    <option value="!=">≠</option>
+                                                    <option value="<">&lt;</option>
+                                                    <option value="<=">&lt;=</option>
+                                                    <option value=">">&gt;</option>
+                                                    <option value=">=">&gt;=</option>
+                                                </select>
+                                                <input
+                                                    type="text"
+                                                    value={vc.value}
+                                                    onChange={(e) => updateCanvasVariableColor(vc.id, 'value', e.target.value)}
+                                                    placeholder="Value"
+                                                    className="canvas-value-input"
+                                                />
+                                                <ColorPicker
+                                                    value={vc.color}
+                                                    onChange={(color) => updateCanvasVariableColor(vc.id, 'color', color)}
+                                                    className="canvas-variable-color-picker"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="canvas-remove-variable-color-button"
+                                                    onClick={(e) => removeCanvasVariableColor(vc.id, e)}
+                                                >
+                                                    <FaX style={{ fontSize: '16px' }} />
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setShowCanvasROIModal(true)}
+                                        className="canvas-add-variable-color-button"
+                                        onClick={addCanvasVariableColor}
+                                    >
+                                        ADD
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="canvas-image-group">
+                                <span className="canvas-color-label">Background Image</span>
+                                <div className="canvas-image-controls">
+                                    <button
+                                        type="button"
+                                        onClick={handleBackgroundImageBrowse}
+                                        className="canvas-browse-button"
+                                    >
+                                        Browse Image
+                                    </button>
+                                    {canvasBackgroundColorText && canvasBackgroundColorText.startsWith('./src/assets/background_') && (
+                                        <button
+                                            type="button"
+                                            onClick={clearCachedBackground}
+                                            className="canvas-clear-button"
+                                        >
+                                            Clear Image
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="canvas-opacity-controls">
+                                    <label htmlFor="canvas-background-opacity">Background Image Opacity (%)</label>
+                                    <input
+                                        id="canvas-background-opacity"
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={canvasBackgroundImageOpacity || 100}
+                                        onChange={(e) => onCanvasBackgroundImageOpacityChange?.(parseInt(e.target.value) || 100)}
+                                        className="canvas-opacity-input"
+                                    />
+                                </div>
+                                <div className="canvas-image-size-controls">
+                                    <label htmlFor="canvas-image-size">Background Image Size</label>
+                                    <select
+                                        id="canvas-image-size"
+                                        value={canvasBackgroundImageSize || 'cover'}
+                                        onChange={(e) => onCanvasBackgroundImageSizeChange?.(e.target.value as 'cover' | 'contain' | 'width')}
+                                    >
+                                        <option value="cover">Cover (fill canvas)</option>
+                                        <option value="contain">Contain (fit entire image)</option>
+                                        <option value="width">Custom Width</option>
+                                    </select>
+                                </div>
+                                {canvasBackgroundImageSize === 'width' && (
+                                    <div className="canvas-image-size-controls">
+                                        <label htmlFor="canvas-image-width">Custom Width (px)</label>
+                                        <input
+                                            id="canvas-image-width"
+                                            type="number"
+                                            min="100"
+                                            max="10000"
+                                            value={canvasBackgroundImageWidth || 1920}
+                                            onChange={(e) => onCanvasBackgroundImageWidthChange?.(parseInt(e.target.value) || 1920)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="canvas-image-group">
+                                <span className="canvas-color-label">Background Video</span>
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                                    <select
+                                        value={canvasBackgroundVideoDeviceId || ''}
+                                        onChange={(e) => onCanvasBackgroundVideoDeviceIdChange?.(e.target.value)}
                                         style={{
-                                            marginTop: '10px',
-                                            padding: '8px 16px',
+                                            flex: 1,
+                                            height: '40px',
+                                            padding: '0 8px',
+                                            backgroundColor: '#1a1a1a',
+                                            color: 'white',
+                                            border: '1px solid #61BAFA',
+                                            borderRadius: '4px',
+                                            fontSize: '14px',
+                                            boxSizing: 'border-box'
+                                        }}
+                                    >
+                                        <option value="">No Video</option>
+                                        {videoDevices.map(device => (
+                                            <option key={device.deviceId} value={device.deviceId}>
+                                                {device.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={refreshVideoDevices}
+                                        style={{
+                                            height: '40px',
+                                            padding: '0 16px',
                                             backgroundColor: '#444',
                                             color: 'white',
                                             border: '1px solid #61BAFA',
                                             borderRadius: '4px',
                                             cursor: 'pointer',
                                             fontSize: '14px',
-                                            width: '100%'
+                                            whiteSpace: 'nowrap',
+                                            boxSizing: 'border-box'
                                         }}
                                     >
-                                        Set Region of Interest
+                                        Refresh
                                     </button>
-                                    {canvasBackgroundVideoROI && (
+                                </div>
+                                {canvasBackgroundVideoDeviceId && (
+                                    <>
+                                        <div className="canvas-image-size-controls" style={{ marginTop: '10px' }}>
+                                            <label htmlFor="canvas-video-size">Background Video Size</label>
+                                            <select
+                                                id="canvas-video-size"
+                                                value={canvasBackgroundVideoSize || 'cover'}
+                                                onChange={(e) => onCanvasBackgroundVideoSizeChange?.(e.target.value as 'cover' | 'contain')}
+                                            >
+                                                <option value="cover">Cover</option>
+                                                <option value="contain">Contain</option>
+                                            </select>
+                                        </div>
                                         <button
                                             type="button"
-                                            onClick={() => onCanvasBackgroundVideoROIChange?.(undefined)}
+                                            onClick={() => setShowCanvasROIModal(true)}
                                             style={{
-                                                marginTop: '5px',
-                                                padding: '8px 16px',
-                                                backgroundColor: '#333',
+                                                marginTop: '10px',
+                                                height: '40px',
+                                                padding: '0 16px',
+                                                backgroundColor: '#444',
                                                 color: 'white',
-                                                border: '1px solid #666',
+                                                border: '1px solid #61BAFA',
                                                 borderRadius: '4px',
                                                 cursor: 'pointer',
-                                                fontSize: '12px',
-                                                width: '100%'
+                                                fontSize: '14px',
+                                                width: '100%',
+                                                boxSizing: 'border-box'
                                             }}
                                         >
-                                            Clear Region of Interest
+                                            Set Region of Interest
                                         </button>
-                                    )}
-                                </>
-                            )}
+                                        {canvasBackgroundVideoROI && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onCanvasBackgroundVideoROIChange?.(undefined)}
+                                                style={{
+                                                    marginTop: '5px',
+                                                    height: '40px',
+                                                    padding: '0 16px',
+                                                    backgroundColor: '#333',
+                                                    color: 'white',
+                                                    border: '1px solid #666',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    width: '100%',
+                                                    boxSizing: 'border-box'
+                                                }}
+                                            >
+                                                Clear Region of Interest
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
                     )}
 
                     <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('boxes'); }}>
@@ -1734,328 +1740,328 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                             {!collapsedSections.webServer && (
                                 <>
                                     <div className='menu-section'>
-                                    <div className="settings-subsection">
-                                        <div className="web-server-controls">
-                                        <div className="web-server-port-container">
-                                            <label htmlFor="web-server-hostname">mDNS:</label>
-                                            <input
-                                                id="web-server-hostname"
-                                                type="text"
-                                                value={webServerHostname}
-                                                onChange={(e) => setWebServerHostname(e.target.value)}
-                                                disabled={webServerRunning}
-                                                placeholder="dashboard"
-                                                style={{ width: '120px', marginLeft: '10px' }}
-                                            />
-                                            <span style={{ marginLeft: '5px', opacity: 0.6 }}>.local</span>
-                                        </div>
-                                        <div className="web-server-port-container">
-                                            <label htmlFor="web-server-port">Port:</label>
-                                            <input
-                                                id="web-server-port"
-                                                type="number"
-                                                min="1"
-                                                max="65535"
-                                                value={webServerPort}
-                                                onChange={(e) => {
-                                                    const port = parseInt(e.target.value, 10);
-                                                    if (!isNaN(port)) {
-                                                        setWebServerPort(port);
-                                                    }
-                                                }}
-                                                disabled={webServerRunning}
-                                                style={{ width: '80px', marginLeft: '10px' }}
-                                            />
-                                        </div>
-                                        <div className="web-server-actions">
-                                            {webServerRunning ? (
-                                                <button onClick={stopWebServer} className="web-server-stop">
-                                                    STOP SERVER
-                                                </button>
-                                            ) : (
-                                                <button onClick={startWebServer} className="web-server-start">
-                                                    START SERVER
-                                                </button>
-                                            )}
-                                        </div>
-                                        <div className="web-server-status">
-                                            Status: {webServerStatus}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {webServerRunning && webServerEndpoints.length > 0 && (() => {
-                                // Group endpoints by base URL
-                                const interfaceMap = new Map<string, { baseUrl: string; endpoints: any[] }>();
-
-                                webServerEndpoints.forEach(endpoint => {
-                                    const url = new URL(endpoint.url);
-                                    const baseUrl = `${url.protocol}//${url.host}`;
-
-                                    if (!interfaceMap.has(baseUrl)) {
-                                        interfaceMap.set(baseUrl, { baseUrl, endpoints: [] });
-                                    }
-                                    interfaceMap.get(baseUrl)!.endpoints.push(endpoint);
-                                });
-
-                                const interfaces = Array.from(interfaceMap.values());
-                                const currentInterface = selectedInterface ?
-                                    interfaces.find(i => i.baseUrl === selectedInterface) :
-                                    interfaces[0];
-
-                                return (
-                                    <>
-                                        <div className='menu-section' style={{ marginTop: '15px' }}>
-                                            <div className="settings-subsection">
-                                                <div style={{ display: 'flex', gap: '15px' }}>
-                                                    {/* Left Column: Network Interfaces */}
-                                                    <div style={{ flex: '0 0 140px', borderRight: '1px solid #333', paddingRight: '15px' }}>
-                                                        {interfaces.map((iface, index) => {
-                                                            const displayUrl = iface.baseUrl.replace(/^https?:\/\//, '');
-                                                            return (
-                                                                <div
-                                                                    key={index}
-                                                                    onClick={() => setSelectedInterface(iface.baseUrl)}
-                                                                    style={{
-                                                                        padding: '10px 12px',
-                                                                        margin: '0 0 8px 0',
-                                                                        backgroundColor: currentInterface?.baseUrl === iface.baseUrl ? '#1a1a1a' : 'transparent',
-                                                                        border: currentInterface?.baseUrl === iface.baseUrl ? '1px solid #61BAFA' : '1px solid #333',
-                                                                        borderRadius: '6px',
-                                                                        cursor: 'pointer',
-                                                                        fontSize: '11px',
-                                                                        transition: 'all 0.2s',
-                                                                        color: '#61BAFA',
-                                                                    }}
-                                                                    onMouseEnter={(e) => {
-                                                                        if (currentInterface?.baseUrl !== iface.baseUrl) {
-                                                                            e.currentTarget.style.backgroundColor = '#1a1a1a';
-                                                                            e.currentTarget.style.borderColor = '#444';
-                                                                        }
-                                                                    }}
-                                                                    onMouseLeave={(e) => {
-                                                                        if (currentInterface?.baseUrl !== iface.baseUrl) {
-                                                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                                                            e.currentTarget.style.borderColor = '#333';
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {displayUrl}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-
-                                                    {/* Right Column: Endpoints for Selected Interface */}
-                                                    <div style={{ flex: '1' }}>
-                                                        {currentInterface && (
-                                                            <>
-                                                                {/* Display View */}
-                                                                {currentInterface.endpoints.filter(e => e.type === 'read-only').map((endpoint, index) => {
-                                                                    const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
-                                                                    return (
-                                                                        <div key={`ro-${index}`} style={{
-                                                                            padding: '12px 0',
-                                                                            borderBottom: '1px solid #333',
-                                                                        }}>
-                                                                            <div style={{
-                                                                                display: 'flex',
-                                                                                justifyContent: 'space-between',
-                                                                                alignItems: 'center',
-                                                                                marginBottom: '8px'
-                                                                            }}>
-                                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
-                                                                                    Display
-                                                                                </div>
-                                                                                <div
-                                                                                    onClick={(e) => handleCopyUrl(endpoint.url, e)}
-                                                                                    style={{
-                                                                                        color: '#61BAFA',
-                                                                                        cursor: 'pointer',
-                                                                                        fontSize: '20px',
-                                                                                        opacity: 0.7,
-                                                                                        transition: 'all 0.2s ease',
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center'
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => {
-                                                                                        e.currentTarget.style.opacity = '1';
-                                                                                    }}
-                                                                                    onMouseLeave={(e) => {
-                                                                                        e.currentTarget.style.opacity = '0.7';
-                                                                                    }}
-                                                                                    title="Copy URL to clipboard"
-                                                                                >
-                                                                                    <FaCopy />
-                                                                                </div>
-                                                                            </div>
-                                                                            <a
-                                                                                href="#"
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    if ((window as any).electronAPI?.openExternal) {
-                                                                                        (window as any).electronAPI.openExternal(endpoint.url);
-                                                                                    } else {
-                                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
-                                                                                    }
-                                                                                }}
-                                                                                style={{
-                                                                                    color: '#61BAFA',
-                                                                                    textDecoration: 'none',
-                                                                                    fontSize: '11px',
-                                                                                    opacity: 0.8,
-                                                                                    display: 'block',
-                                                                                    wordBreak: 'break-all'
-                                                                                }}
-                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-                                                                            >
-                                                                                {displayUrl}
-                                                                            </a>
-                                                                        </div>
-                                                                    );
-                                                                })}
-
-                                                                {/* Control View */}
-                                                                {currentInterface.endpoints.filter(e => e.type === 'full-app').map((endpoint, index) => {
-                                                                    const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
-                                                                    return (
-                                                                        <div key={`fa-${index}`} style={{
-                                                                            padding: '12px 0',
-                                                                            borderBottom: '1px solid #333',
-                                                                        }}>
-                                                                            <div style={{
-                                                                                display: 'flex',
-                                                                                justifyContent: 'space-between',
-                                                                                alignItems: 'center',
-                                                                                marginBottom: '8px'
-                                                                            }}>
-                                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
-                                                                                    Control
-                                                                                </div>
-                                                                                <div
-                                                                                    onClick={(e) => handleCopyUrl(endpoint.url, e)}
-                                                                                    style={{
-                                                                                        color: '#61BAFA',
-                                                                                        cursor: 'pointer',
-                                                                                        fontSize: '20px',
-                                                                                        opacity: 0.7,
-                                                                                        transition: 'all 0.2s ease',
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center'
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => {
-                                                                                        e.currentTarget.style.opacity = '1';
-                                                                                    }}
-                                                                                    onMouseLeave={(e) => {
-                                                                                        e.currentTarget.style.opacity = '0.7';
-                                                                                    }}
-                                                                                    title="Copy URL to clipboard"
-                                                                                >
-                                                                                    <FaCopy />
-                                                                                </div>
-                                                                            </div>
-                                                                            <a
-                                                                                href="#"
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    if ((window as any).electronAPI?.openExternal) {
-                                                                                        (window as any).electronAPI.openExternal(endpoint.url);
-                                                                                    } else {
-                                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
-                                                                                    }
-                                                                                }}
-                                                                                style={{
-                                                                                    color: '#61BAFA',
-                                                                                    textDecoration: 'none',
-                                                                                    fontSize: '11px',
-                                                                                    opacity: 0.8,
-                                                                                    display: 'block',
-                                                                                    wordBreak: 'break-all'
-                                                                                }}
-                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-                                                                            >
-                                                                                {displayUrl}
-                                                                            </a>
-                                                                        </div>
-                                                                    );
-                                                                })}
-
-                                                                {/* Individual Pages - only show if more than one page */}
-                                                                {pages.length > 1 && currentInterface.endpoints.filter(e => e.type === 'page').map((endpoint, index) => {
-                                                                    const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
-                                                                    return (
-                                                                        <div key={`page-${index}`} style={{
-                                                                            padding: '12px 0',
-                                                                            borderBottom: '1px solid #333',
-                                                                        }}>
-                                                                            <div style={{
-                                                                                display: 'flex',
-                                                                                justifyContent: 'space-between',
-                                                                                alignItems: 'center',
-                                                                                marginBottom: '8px'
-                                                                            }}>
-                                                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
-                                                                                    {endpoint.pageName}
-                                                                                </div>
-                                                                                <div
-                                                                                    onClick={(e) => handleCopyUrl(endpoint.url, e)}
-                                                                                    style={{
-                                                                                        color: '#61BAFA',
-                                                                                        cursor: 'pointer',
-                                                                                        fontSize: '20px',
-                                                                                        opacity: 0.7,
-                                                                                        transition: 'all 0.2s ease',
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center'
-                                                                                    }}
-                                                                                    onMouseEnter={(e) => {
-                                                                                        e.currentTarget.style.opacity = '1';
-                                                                                    }}
-                                                                                    onMouseLeave={(e) => {
-                                                                                        e.currentTarget.style.opacity = '0.7';
-                                                                                    }}
-                                                                                    title="Copy URL to clipboard"
-                                                                                >
-                                                                                    <FaCopy />
-                                                                                </div>
-                                                                            </div>
-                                                                            <a
-                                                                                href="#"
-                                                                                onClick={(e) => {
-                                                                                    e.preventDefault();
-                                                                                    if ((window as any).electronAPI?.openExternal) {
-                                                                                        (window as any).electronAPI.openExternal(endpoint.url);
-                                                                                    } else {
-                                                                                        window.open(endpoint.url, '_blank', 'noopener,noreferrer');
-                                                                                    }
-                                                                                }}
-                                                                                style={{
-                                                                                    color: '#61BAFA',
-                                                                                    textDecoration: 'none',
-                                                                                    fontSize: '11px',
-                                                                                    opacity: 0.8,
-                                                                                    display: 'block',
-                                                                                    wordBreak: 'break-all'
-                                                                                }}
-                                                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                                                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-                                                                            >
-                                                                                {displayUrl}
-                                                                            </a>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </>
-                                                        )}
-                                                    </div>
+                                        <div className="settings-subsection">
+                                            <div className="web-server-controls">
+                                                <div className="web-server-port-container">
+                                                    <label htmlFor="web-server-hostname">mDNS:</label>
+                                                    <input
+                                                        id="web-server-hostname"
+                                                        type="text"
+                                                        value={webServerHostname}
+                                                        onChange={(e) => setWebServerHostname(e.target.value)}
+                                                        disabled={webServerRunning}
+                                                        placeholder="dashboard"
+                                                        style={{ width: '120px', marginLeft: '10px' }}
+                                                    />
+                                                    <span style={{ marginLeft: '5px', opacity: 0.6 }}>.local</span>
+                                                </div>
+                                                <div className="web-server-port-container">
+                                                    <label htmlFor="web-server-port">Port:</label>
+                                                    <input
+                                                        id="web-server-port"
+                                                        type="number"
+                                                        min="1"
+                                                        max="65535"
+                                                        value={webServerPort}
+                                                        onChange={(e) => {
+                                                            const port = parseInt(e.target.value, 10);
+                                                            if (!isNaN(port)) {
+                                                                setWebServerPort(port);
+                                                            }
+                                                        }}
+                                                        disabled={webServerRunning}
+                                                        style={{ width: '80px', marginLeft: '10px' }}
+                                                    />
+                                                </div>
+                                                <div className="web-server-actions">
+                                                    {webServerRunning ? (
+                                                        <button onClick={stopWebServer} className="web-server-stop">
+                                                            STOP SERVER
+                                                        </button>
+                                                    ) : (
+                                                        <button onClick={startWebServer} className="web-server-start">
+                                                            START SERVER
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div className="web-server-status">
+                                                    Status: {webServerStatus}
                                                 </div>
                                             </div>
                                         </div>
-                                    </>
-                                );
-                            })()}
+                                    </div>
+                                    {webServerRunning && webServerEndpoints.length > 0 && (() => {
+                                        // Group endpoints by base URL
+                                        const interfaceMap = new Map<string, { baseUrl: string; endpoints: any[] }>();
+
+                                        webServerEndpoints.forEach(endpoint => {
+                                            const url = new URL(endpoint.url);
+                                            const baseUrl = `${url.protocol}//${url.host}`;
+
+                                            if (!interfaceMap.has(baseUrl)) {
+                                                interfaceMap.set(baseUrl, { baseUrl, endpoints: [] });
+                                            }
+                                            interfaceMap.get(baseUrl)!.endpoints.push(endpoint);
+                                        });
+
+                                        const interfaces = Array.from(interfaceMap.values());
+                                        const currentInterface = selectedInterface ?
+                                            interfaces.find(i => i.baseUrl === selectedInterface) :
+                                            interfaces[0];
+
+                                        return (
+                                            <>
+                                                <div className='menu-section' style={{ marginTop: '15px' }}>
+                                                    <div className="settings-subsection">
+                                                        <div style={{ display: 'flex', gap: '15px' }}>
+                                                            {/* Left Column: Network Interfaces */}
+                                                            <div style={{ flex: '0 0 140px', borderRight: '1px solid #333', paddingRight: '15px' }}>
+                                                                {interfaces.map((iface, index) => {
+                                                                    const displayUrl = iface.baseUrl.replace(/^https?:\/\//, '');
+                                                                    return (
+                                                                        <div
+                                                                            key={index}
+                                                                            onClick={() => setSelectedInterface(iface.baseUrl)}
+                                                                            style={{
+                                                                                padding: '10px 12px',
+                                                                                margin: '0 0 8px 0',
+                                                                                backgroundColor: currentInterface?.baseUrl === iface.baseUrl ? '#1a1a1a' : 'transparent',
+                                                                                border: currentInterface?.baseUrl === iface.baseUrl ? '1px solid #61BAFA' : '1px solid #333',
+                                                                                borderRadius: '6px',
+                                                                                cursor: 'pointer',
+                                                                                fontSize: '11px',
+                                                                                transition: 'all 0.2s',
+                                                                                color: '#61BAFA',
+                                                                            }}
+                                                                            onMouseEnter={(e) => {
+                                                                                if (currentInterface?.baseUrl !== iface.baseUrl) {
+                                                                                    e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                                                                    e.currentTarget.style.borderColor = '#444';
+                                                                                }
+                                                                            }}
+                                                                            onMouseLeave={(e) => {
+                                                                                if (currentInterface?.baseUrl !== iface.baseUrl) {
+                                                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                                                    e.currentTarget.style.borderColor = '#333';
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            {displayUrl}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            {/* Right Column: Endpoints for Selected Interface */}
+                                                            <div style={{ flex: '1' }}>
+                                                                {currentInterface && (
+                                                                    <>
+                                                                        {/* Display View */}
+                                                                        {currentInterface.endpoints.filter(e => e.type === 'read-only').map((endpoint, index) => {
+                                                                            const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
+                                                                            return (
+                                                                                <div key={`ro-${index}`} style={{
+                                                                                    padding: '12px 0',
+                                                                                    borderBottom: '1px solid #333',
+                                                                                }}>
+                                                                                    <div style={{
+                                                                                        display: 'flex',
+                                                                                        justifyContent: 'space-between',
+                                                                                        alignItems: 'center',
+                                                                                        marginBottom: '8px'
+                                                                                    }}>
+                                                                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
+                                                                                            Display
+                                                                                        </div>
+                                                                                        <div
+                                                                                            onClick={(e) => handleCopyUrl(endpoint.url, e)}
+                                                                                            style={{
+                                                                                                color: '#61BAFA',
+                                                                                                cursor: 'pointer',
+                                                                                                fontSize: '20px',
+                                                                                                opacity: 0.7,
+                                                                                                transition: 'all 0.2s ease',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center'
+                                                                                            }}
+                                                                                            onMouseEnter={(e) => {
+                                                                                                e.currentTarget.style.opacity = '1';
+                                                                                            }}
+                                                                                            onMouseLeave={(e) => {
+                                                                                                e.currentTarget.style.opacity = '0.7';
+                                                                                            }}
+                                                                                            title="Copy URL to clipboard"
+                                                                                        >
+                                                                                            <FaCopy />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <a
+                                                                                        href="#"
+                                                                                        onClick={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            if ((window as any).electronAPI?.openExternal) {
+                                                                                                (window as any).electronAPI.openExternal(endpoint.url);
+                                                                                            } else {
+                                                                                                window.open(endpoint.url, '_blank', 'noopener,noreferrer');
+                                                                                            }
+                                                                                        }}
+                                                                                        style={{
+                                                                                            color: '#61BAFA',
+                                                                                            textDecoration: 'none',
+                                                                                            fontSize: '11px',
+                                                                                            opacity: 0.8,
+                                                                                            display: 'block',
+                                                                                            wordBreak: 'break-all'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                                    >
+                                                                                        {displayUrl}
+                                                                                    </a>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+
+                                                                        {/* Control View */}
+                                                                        {currentInterface.endpoints.filter(e => e.type === 'full-app').map((endpoint, index) => {
+                                                                            const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
+                                                                            return (
+                                                                                <div key={`fa-${index}`} style={{
+                                                                                    padding: '12px 0',
+                                                                                    borderBottom: '1px solid #333',
+                                                                                }}>
+                                                                                    <div style={{
+                                                                                        display: 'flex',
+                                                                                        justifyContent: 'space-between',
+                                                                                        alignItems: 'center',
+                                                                                        marginBottom: '8px'
+                                                                                    }}>
+                                                                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
+                                                                                            Control
+                                                                                        </div>
+                                                                                        <div
+                                                                                            onClick={(e) => handleCopyUrl(endpoint.url, e)}
+                                                                                            style={{
+                                                                                                color: '#61BAFA',
+                                                                                                cursor: 'pointer',
+                                                                                                fontSize: '20px',
+                                                                                                opacity: 0.7,
+                                                                                                transition: 'all 0.2s ease',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center'
+                                                                                            }}
+                                                                                            onMouseEnter={(e) => {
+                                                                                                e.currentTarget.style.opacity = '1';
+                                                                                            }}
+                                                                                            onMouseLeave={(e) => {
+                                                                                                e.currentTarget.style.opacity = '0.7';
+                                                                                            }}
+                                                                                            title="Copy URL to clipboard"
+                                                                                        >
+                                                                                            <FaCopy />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <a
+                                                                                        href="#"
+                                                                                        onClick={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            if ((window as any).electronAPI?.openExternal) {
+                                                                                                (window as any).electronAPI.openExternal(endpoint.url);
+                                                                                            } else {
+                                                                                                window.open(endpoint.url, '_blank', 'noopener,noreferrer');
+                                                                                            }
+                                                                                        }}
+                                                                                        style={{
+                                                                                            color: '#61BAFA',
+                                                                                            textDecoration: 'none',
+                                                                                            fontSize: '11px',
+                                                                                            opacity: 0.8,
+                                                                                            display: 'block',
+                                                                                            wordBreak: 'break-all'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                                    >
+                                                                                        {displayUrl}
+                                                                                    </a>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+
+                                                                        {/* Individual Pages - only show if more than one page */}
+                                                                        {pages.length > 1 && currentInterface.endpoints.filter(e => e.type === 'page').map((endpoint, index) => {
+                                                                            const displayUrl = endpoint.url.replace(/^https?:\/\//, '');
+                                                                            return (
+                                                                                <div key={`page-${index}`} style={{
+                                                                                    padding: '12px 0',
+                                                                                    borderBottom: '1px solid #333',
+                                                                                }}>
+                                                                                    <div style={{
+                                                                                        display: 'flex',
+                                                                                        justifyContent: 'space-between',
+                                                                                        alignItems: 'center',
+                                                                                        marginBottom: '8px'
+                                                                                    }}>
+                                                                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
+                                                                                            {endpoint.pageName}
+                                                                                        </div>
+                                                                                        <div
+                                                                                            onClick={(e) => handleCopyUrl(endpoint.url, e)}
+                                                                                            style={{
+                                                                                                color: '#61BAFA',
+                                                                                                cursor: 'pointer',
+                                                                                                fontSize: '20px',
+                                                                                                opacity: 0.7,
+                                                                                                transition: 'all 0.2s ease',
+                                                                                                display: 'flex',
+                                                                                                alignItems: 'center'
+                                                                                            }}
+                                                                                            onMouseEnter={(e) => {
+                                                                                                e.currentTarget.style.opacity = '1';
+                                                                                            }}
+                                                                                            onMouseLeave={(e) => {
+                                                                                                e.currentTarget.style.opacity = '0.7';
+                                                                                            }}
+                                                                                            title="Copy URL to clipboard"
+                                                                                        >
+                                                                                            <FaCopy />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <a
+                                                                                        href="#"
+                                                                                        onClick={(e) => {
+                                                                                            e.preventDefault();
+                                                                                            if ((window as any).electronAPI?.openExternal) {
+                                                                                                (window as any).electronAPI.openExternal(endpoint.url);
+                                                                                            } else {
+                                                                                                window.open(endpoint.url, '_blank', 'noopener,noreferrer');
+                                                                                            }
+                                                                                        }}
+                                                                                        style={{
+                                                                                            color: '#61BAFA',
+                                                                                            textDecoration: 'none',
+                                                                                            fontSize: '11px',
+                                                                                            opacity: 0.8,
+                                                                                            display: 'block',
+                                                                                            wordBreak: 'break-all'
+                                                                                        }}
+                                                                                        onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                                                                        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+                                                                                    >
+                                                                                        {displayUrl}
+                                                                                    </a>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        );
+                                    })()}
                                 </>
                             )}
                         </>

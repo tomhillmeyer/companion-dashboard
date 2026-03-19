@@ -136,7 +136,7 @@
 }
 
 input[type="text"] {
-    width: 250%;
+    width: 100%;
     height: 40px;
     border-radius: 4px;
     border: 1px solid #444;
@@ -144,7 +144,7 @@ input[type="text"] {
     color: white;
     text-align: center;
     font-size: 18px;
-    padding: 8px 12px;
+    padding: 0 12px;
     box-sizing: border-box;
 }
 
@@ -266,7 +266,7 @@ a {
 .canvas-variable-input,
 .canvas-value-input {
     flex: 1;
-    height: 35px;
+    height: 40px;
     border-radius: 4px;
     border: 1px solid #444;
     background-color: #1a1a1a;
@@ -278,8 +278,8 @@ a {
 }
 
 .canvas-operator-select {
-    width: 55px;
-    height: 35px;
+    width: 60px;
+    height: 40px;
     border-radius: 4px;
     border: 1px solid #444;
     background-color: #1a1a1a;
@@ -303,44 +303,54 @@ a {
 /* Updated for ColorPicker component */
 .canvas-variable-color-picker .color-picker-button {
     width: 40px;
-    height: 35px;
+    height: 40px;
 }
 
 .canvas-remove-variable-color-button {
-    background-color: #ef4444;
+    background-color: #C63E37 !important;
     color: white;
     border: none;
-    border-radius: 25px;
-    width: 30px;
-    height: 30px;
     cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    flex-shrink: 0;
-    padding: 4px 5px 0px 5px;
     transition: background-color 0.2s ease;
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    font-size: 16px;
+    padding: 0 !important;
 }
 
 .canvas-remove-variable-color-button:hover {
-    background-color: #dc2626;
+    background-color: #a33329 !important;
 }
 
 .canvas-add-variable-color-button {
-    background-color: #059669;
+    margin: 0;
+    width: auto;
+    min-width: 60px;
+    height: 40px;
+    padding: 0 15px;
+    flex-shrink: 0;
+    background-color: #2a2a2a;
     color: white;
-    border: none;
-    border-radius: 25px;
+    border: 1px solid #444;
+    border-radius: 4px;
     cursor: pointer;
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
-    font-weight: bold;
-    transition: background-color 0.2s ease;
-    padding: 4px 5px 0px 5px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-sizing: border-box;
 }
 
 .canvas-add-variable-color-button:hover {
-    background-color: #047857;
+    background-color: #3a3a3a;
+    border-color: #61BAFA;
 }
 
 .canvas-image-controls {
@@ -610,12 +620,12 @@ a {
 }
 
 .config-dialog-button.add-boxes {
-    background-color: #059669;
+    background-color: #61BAFA;
     color: white;
 }
 
 .config-dialog-button.add-boxes:hover {
-    background-color: #047857;
+    background-color: #61BAFA;
     transform: translateY(-2px);
 }
 
@@ -708,13 +718,18 @@ a {
     background-color: #C63E37 !important;
     color: white;
     border: none;
+    border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s ease;
     width: 40px !important;
     min-width: 40px !important;
+    height: 40px !important;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    font-size: 16px;
+    padding: 0 !important;
 }
 
 .delete-connection-button:hover {
@@ -722,25 +737,28 @@ a {
 }
 
 .add-connection-button {
-    background-color: #059669 !important;
+    margin: 0;
+    width: auto;
+    min-width: 60px;
+    height: 40px;
+    padding: 0 15px;
+    flex-shrink: 0;
+    background-color: #2a2a2a;
     color: white;
-    border: none;
-    border-radius: 25px;
+    border: 1px solid #444;
+    border-radius: 4px;
     cursor: pointer;
-    width: 30px !important;
-    height: 30px;
-    font-size: 16px;
-    font-weight: bold;
-    transition: background-color 0.2s ease;
-    padding: 0px 5px 0px 5px;
-    margin: 10px 5px 5px 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-sizing: border-box;
 }
 
 .add-connection-button:hover {
-    background-color: #047857 !important;
+    background-color: #3a3a3a;
+    border-color: #61BAFA;
 }
 
 /* Web server controls */
@@ -797,21 +815,21 @@ a {
 }
 
 .web-server-start {
-    background-color: #059669 !important;
+    background-color: #61BAFA !important;
     color: white;
 }
 
 .web-server-start:hover {
-    background-color: #047857 !important;
+    background-color: #61BAFA !important;
 }
 
 .web-server-stop {
-    background-color: #dc2626 !important;
+    background-color: #333 !important;
     color: white;
 }
 
 .web-server-stop:hover {
-    background-color: #b91c1c !important;
+    background-color: #333 !important;
 }
 
 .web-server-status {
