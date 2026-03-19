@@ -189,15 +189,42 @@ export default function App() {
     };
 
     const duplicateBox = (originalBoxData: BoxData) => {
+        // Helper functions for position conversion
+        const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
+            const [x, y] = translate;
+            switch (anchor) {
+                case 'top-left': return [x, y];
+                case 'top-right': return [x + w, y];
+                case 'bottom-left': return [x, y + h];
+                case 'bottom-right': return [x + w, y + h];
+                case 'center': return [x + w / 2, y + h / 2];
+                default: return [x, y];
+            }
+        };
+
+        const getInternalPos = (displayPos: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
+            const [x, y] = displayPos;
+            switch (anchor) {
+                case 'top-left': return [x, y];
+                case 'top-right': return [x - w, y];
+                case 'bottom-left': return [x, y - h];
+                case 'bottom-right': return [x - w, y - h];
+                case 'center': return [x - w / 2, y - h / 2];
+                default: return [x, y];
+            }
+        };
+
+        // Get current display position, add offset, convert back to internal
+        const currentDisplayPos = getDisplayPos(originalBoxData.frame.translate, originalBoxData.frame.width, originalBoxData.frame.height, originalBoxData.anchorPoint);
+        const newDisplayPos: [number, number] = [currentDisplayPos[0] + 20, currentDisplayPos[1] + 20];
+        const newInternalPos = getInternalPos(newDisplayPos, originalBoxData.frame.width, originalBoxData.frame.height, originalBoxData.anchorPoint);
+
         const duplicatedBox: BoxData = {
             ...originalBoxData,
             id: uuid(), // New unique ID
             frame: {
                 ...originalBoxData.frame,
-                translate: [
-                    originalBoxData.frame.translate[0] + 20, // Offset by 20px
-                    originalBoxData.frame.translate[1] + 20
-                ] as [number, number]
+                translate: newInternalPos
             },
             // Ensure leftRightRatio has a valid value
             leftRightRatio: originalBoxData.leftRightRatio ?? 50
@@ -1627,21 +1654,50 @@ export default function App() {
             else if (event.key === 'd' && (event.metaKey || event.ctrlKey) && selectedBoxIds.length > 0) {
                 event.preventDefault();
                 event.stopPropagation();
+
+                // Helper functions for position conversion
+                const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
+                    const [x, y] = translate;
+                    switch (anchor) {
+                        case 'top-left': return [x, y];
+                        case 'top-right': return [x + w, y];
+                        case 'bottom-left': return [x, y + h];
+                        case 'bottom-right': return [x + w, y + h];
+                        case 'center': return [x + w / 2, y + h / 2];
+                        default: return [x, y];
+                    }
+                };
+
+                const getInternalPos = (displayPos: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
+                    const [x, y] = displayPos;
+                    switch (anchor) {
+                        case 'top-left': return [x, y];
+                        case 'top-right': return [x - w, y];
+                        case 'bottom-left': return [x, y - h];
+                        case 'bottom-right': return [x - w, y - h];
+                        case 'center': return [x - w / 2, y - h / 2];
+                        default: return [x, y];
+                    }
+                };
+
                 // Get all selected boxes
                 const selectedBoxes = boxes.filter(b => selectedBoxIds.includes(b.id));
-                // Create duplicated boxes with new IDs and offset positions
-                const duplicatedBoxes = selectedBoxes.map(box => ({
-                    ...box,
-                    id: uuid(),
-                    frame: {
-                        ...box.frame,
-                        translate: [
-                            box.frame.translate[0] + 20,
-                            box.frame.translate[1] + 20
-                        ] as [number, number]
-                    },
-                    leftRightRatio: box.leftRightRatio ?? 50
-                }));
+                // Create duplicated boxes with new IDs and offset positions based on display position
+                const duplicatedBoxes = selectedBoxes.map(box => {
+                    const currentDisplayPos = getDisplayPos(box.frame.translate, box.frame.width, box.frame.height, box.anchorPoint);
+                    const newDisplayPos: [number, number] = [currentDisplayPos[0] + 20, currentDisplayPos[1] + 20];
+                    const newInternalPos = getInternalPos(newDisplayPos, box.frame.width, box.frame.height, box.anchorPoint);
+
+                    return {
+                        ...box,
+                        id: uuid(),
+                        frame: {
+                            ...box.frame,
+                            translate: newInternalPos
+                        },
+                        leftRightRatio: box.leftRightRatio ?? 50
+                    };
+                });
                 // Add duplicated boxes to the boxes array
                 setBoxes(prev => [...prev, ...duplicatedBoxes]);
                 // Select only the newly duplicated boxes (use setTimeout to ensure state updates after boxes are added)

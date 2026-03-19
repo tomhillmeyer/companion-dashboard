@@ -607,39 +607,61 @@ export default function Box({
     const getBackgroundStyle = () => {
         try {
             const actualBackgroundColor = resolveBoxBackgroundColor();
-            const opacity = (boxData.backgroundImageOpacity || 100) / 100;
 
             // Check if the resolved background color is actually an image URL
             if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
                 return {
-                    backgroundColor: 'transparent', // Use transparent to support alpha
-                    position: 'relative' as const,
-                    '--background-image': `url("${actualBackgroundColor}")`,
-                    '--background-size': boxData.backgroundImageSize || 'cover',
-                    '--background-opacity': opacity
+                    backgroundColor: 'transparent'
                 };
             }
 
             // If there's a manually set background image, use it
             if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
                 return {
-                    backgroundColor: 'transparent', // Use transparent to support alpha
-                    position: 'relative' as const,
-                    '--background-image': `url(${loadedBackgroundImage})`,
-                    '--background-size': boxData.backgroundImageSize || 'cover',
-                    '--background-opacity': opacity
+                    backgroundColor: 'transparent'
                 };
             }
 
             // Otherwise, use as background color
             return {
-                backgroundColor: actualBackgroundColor || '#262626',
+                backgroundColor: actualBackgroundColor || '#262626'
             };
         } catch (error) {
             console.error('Error in getBackgroundStyle:', error);
             return {
-                backgroundColor: boxData.backgroundColor || '#262626',
+                backgroundColor: boxData.backgroundColor || '#262626'
             };
+        }
+    };
+
+    // Get background image info for rendering
+    const getBackgroundImageInfo = () => {
+        try {
+            const actualBackgroundColor = resolveBoxBackgroundColor();
+            const opacity = (boxData.backgroundImageOpacity || 100) / 100;
+
+            // Check if the resolved background color is actually an image URL
+            if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
+                return {
+                    url: actualBackgroundColor,
+                    size: boxData.backgroundImageSize || 'cover',
+                    opacity
+                };
+            }
+
+            // If there's a manually set background image, use it
+            if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
+                return {
+                    url: loadedBackgroundImage,
+                    size: boxData.backgroundImageSize || 'cover',
+                    opacity
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error in getBackgroundImageInfo:', error);
+            return null;
         }
     };
 
@@ -788,7 +810,7 @@ export default function Box({
                             (targetRef as any).current = el;
                             if (boxRef) boxRef(el);
                         }}
-                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'} ${(loadedBackgroundImage || (resolveBoxBackgroundColor() && isImageUrl(resolveBoxBackgroundColor()))) ? 'has-background-image' : ''}`}
+                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'}`}
                         onClick={(e) => {
                             if (boxesLocked) {
                                 // When locked, allow clicks to pass through to content
@@ -796,16 +818,44 @@ export default function Box({
                             }
                             e.stopPropagation();
                             if (e.altKey) {
-                                // Duplicate this box
+                                // Duplicate this box with proper position offset based on anchor point
+                                // Helper to get display position from internal position
+                                const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
+                                    const [x, y] = translate;
+                                    switch (anchor) {
+                                        case 'top-left': return [x, y];
+                                        case 'top-right': return [x + w, y];
+                                        case 'bottom-left': return [x, y + h];
+                                        case 'bottom-right': return [x + w, y + h];
+                                        case 'center': return [x + w / 2, y + h / 2];
+                                        default: return [x, y];
+                                    }
+                                };
+
+                                // Helper to get internal position from display position
+                                const getInternalPos = (displayPos: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
+                                    const [x, y] = displayPos;
+                                    switch (anchor) {
+                                        case 'top-left': return [x, y];
+                                        case 'top-right': return [x - w, y];
+                                        case 'bottom-left': return [x, y - h];
+                                        case 'bottom-right': return [x - w, y - h];
+                                        case 'center': return [x - w / 2, y - h / 2];
+                                        default: return [x, y];
+                                    }
+                                };
+
+                                // Get current display position, add offset, convert back to internal
+                                const currentDisplayPos = getDisplayPos(boxData.frame.translate, boxData.frame.width, boxData.frame.height, boxData.anchorPoint);
+                                const newDisplayPos: [number, number] = [currentDisplayPos[0] + 20, currentDisplayPos[1] + 20];
+                                const newInternalPos = getInternalPos(newDisplayPos, boxData.frame.width, boxData.frame.height, boxData.anchorPoint);
+
                                 const duplicatedBox: BoxData = {
                                     ...boxData,
                                     id: uuid(),
                                     frame: {
                                         ...boxData.frame,
-                                        translate: [
-                                            boxData.frame.translate[0] + 20,
-                                            boxData.frame.translate[1] + 20
-                                        ] as [number, number]
+                                        translate: newInternalPos
                                     },
                                     // Ensure leftRightRatio has a valid value
                                     leftRightRatio: boxData.leftRightRatio ?? 50
@@ -837,6 +887,31 @@ export default function Box({
                             pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
                         }}
                     >
+                        {/* Background image layer */}
+                        {(() => {
+                            const bgImageInfo = getBackgroundImageInfo();
+                            if (!bgImageInfo) return null;
+
+                            return (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        bottom: 0,
+                                        backgroundImage: `url("${bgImageInfo.url}")`,
+                                        backgroundSize: bgImageInfo.size,
+                                        backgroundPosition: 'center',
+                                        backgroundRepeat: 'no-repeat',
+                                        opacity: bgImageInfo.opacity,
+                                        pointerEvents: 'none',
+                                        borderRadius: `${boxData.borderRadius ?? 15}px`
+                                    }}
+                                />
+                            );
+                        })()}
+
                         {/* Video background layer */}
                         {boxData.backgroundVideoDeviceId && (() => {
                             const roi = boxData.backgroundVideoROI;

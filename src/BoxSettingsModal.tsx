@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData } from './types';
 import { v4 as uuid } from 'uuid';
@@ -82,12 +82,15 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices();
     const [showROIModal, setShowROIModal] = useState(false);
 
-    // Get display position for showing in inputs
-    const displayPosition = getDisplayPosition(
-        formData.frame.translate,
-        formData.frame.width,
-        formData.frame.height,
-        formData.anchorPoint
+    // Get display position for showing in inputs - reactive to formData changes
+    const displayPosition = useMemo(() =>
+        getDisplayPosition(
+            formData.frame.translate,
+            formData.frame.width,
+            formData.frame.height,
+            formData.anchorPoint
+        ),
+        [formData.frame.translate, formData.frame.width, formData.frame.height, formData.anchorPoint]
     );
 
     const handleSave = () => {
@@ -1476,10 +1479,20 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             <input
                                 type="number"
                                 value={formData.frame.width}
-                                onChange={(e) => updateField('frame', {
-                                    ...formData.frame,
-                                    width: parseInt(e.target.value) || 100
-                                })}
+                                onChange={(e) => {
+                                    const newWidth = parseInt(e.target.value) || 100;
+                                    const newInternalPos = getInternalPosition(
+                                        displayPosition,
+                                        newWidth,
+                                        formData.frame.height,
+                                        formData.anchorPoint
+                                    );
+                                    updateField('frame', {
+                                        ...formData.frame,
+                                        width: newWidth,
+                                        translate: newInternalPos
+                                    });
+                                }}
                                 min="10"
                             />
                         </div>
@@ -1488,10 +1501,20 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             <input
                                 type="number"
                                 value={formData.frame.height}
-                                onChange={(e) => updateField('frame', {
-                                    ...formData.frame,
-                                    height: parseInt(e.target.value) || 100
-                                })}
+                                onChange={(e) => {
+                                    const newHeight = parseInt(e.target.value) || 100;
+                                    const newInternalPos = getInternalPosition(
+                                        displayPosition,
+                                        formData.frame.width,
+                                        newHeight,
+                                        formData.anchorPoint
+                                    );
+                                    updateField('frame', {
+                                        ...formData.frame,
+                                        height: newHeight,
+                                        translate: newInternalPos
+                                    });
+                                }}
                                 min="10"
                             />
                         </div>
