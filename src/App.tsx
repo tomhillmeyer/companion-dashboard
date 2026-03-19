@@ -340,11 +340,11 @@ export default function App() {
         };
     }, []);
 
-    // Show licensing modal on app launch (Electron only)
+    // Show licensing modal on app launch (Electron only) - DISABLED FOR NOW
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
         if (isElectron) {
-            setLicensingModalOpen(true);
+            // setLicensingModalOpen(true); // TODO: Re-enable when licensing is ready
         }
     }, []);
 
