@@ -57,122 +57,140 @@ export function PageTabs({
                 gap: '8px',
                 transition: 'bottom 0.3s ease',
                 zIndex: 9999,
+                maxWidth: '50vw',
             }}
         >
-            {/* Page tabs - only show if more than one page */}
-            {pages.length > 1 && pages
-                .sort((a, b) => a.order - b.order)
-                .map((page) => (
-                    <div
-                        key={page.id}
-                        style={{
-                            position: 'relative',
-                            display: 'flex',
-                            alignItems: 'stretch',
-                            backgroundColor: currentPageId === page.id ? '#555' : '#2a2a2a',
-                            color: '#fff',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                            fontWeight: currentPageId === page.id ? '600' : '400',
-                            cursor: 'pointer',
-                            userSelect: 'none',
-                            transition: 'background-color 0.2s ease',
-                            border: currentPageId === page.id ? '1px solid #777' : '1px solid #444',
-                            overflow: 'hidden',
-                        }}
-                        onMouseEnter={(e) => {
-                            if (currentPageId !== page.id) {
-                                e.currentTarget.style.backgroundColor = '#3a3a3a';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (currentPageId !== page.id) {
-                                e.currentTarget.style.backgroundColor = '#2a2a2a';
-                            }
-                        }}
-                    >
-                        <div
-                            style={{
-                                padding: '8px 12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                flex: '0 0 auto',
-                            }}
-                            onClick={() => onPageChange(page.id)}
-                            onDoubleClick={() => handleDoubleClick(page)}
-                        >
-                            {editingPageId === page.id ? (
-                                <input
-                                    type="text"
-                                    value={editingName}
-                                    onChange={(e) => setEditingName(e.target.value)}
-                                    onBlur={() => handleRenameSubmit(page.id)}
-                                    onKeyDown={(e) => handleKeyDown(e, page.id)}
-                                    autoFocus
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: '#fff',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        outline: 'none',
-                                        width: `${editingName.length * 8.2}px`,
-                                        minWidth: `${page.name.length * 8.2}px`,
-                                        padding: 0,
-                                        margin: 0,
-                                        height: '1em',
-                                        lineHeight: '1',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'content-box',
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                            ) : (
-                                <span style={{ whiteSpace: 'nowrap', lineHeight: '1' }}>{page.name}</span>
-                            )}
-                        </div>
-
-                        {/* Delete button - only show if more than one page and not read-only */}
-                        {pages.length > 1 && !readOnly && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (window.confirm(`Delete page "${page.name}"? All boxes on this page will be deleted.`)) {
-                                        onPageDelete(page.id);
-                                    }
-                                }}
+            {/* Scrollable page tabs container - only show if more than one page */}
+            {pages.length > 1 && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        overflowX: 'auto',
+                        overflowY: 'hidden',
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: '#555 transparent',
+                        paddingBottom: '4px',
+                        marginBottom: '-4px',
+                    }}
+                >
+                    {pages
+                        .sort((a, b) => a.order - b.order)
+                        .map((page) => (
+                            <div
+                                key={page.id}
                                 style={{
-                                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                                    border: 'none',
-                                    borderLeft: '1px solid #444',
-                                    color: '#aaa',
-                                    cursor: 'pointer',
-                                    padding: '0 10px',
-                                    opacity: 0.7,
-                                    fontSize: '16px',
-                                    lineHeight: '1',
+                                    position: 'relative',
                                     display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    transition: 'background-color 0.2s ease, opacity 0.2s ease',
+                                    alignItems: 'stretch',
+                                    backgroundColor: currentPageId === page.id ? '#555' : '#2a2a2a',
+                                    color: '#fff',
+                                    fontSize: '18px',
+                                    fontWeight: currentPageId === page.id ? '600' : '400',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    transition: 'background-color 0.2s ease',
+                                    border: currentPageId === page.id ? '1px solid #777' : '1px solid #444',
+                                    overflow: 'hidden',
+                                    flexShrink: 0,
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.opacity = '1';
-                                    e.currentTarget.style.color = '#fff';
-                                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                                    if (currentPageId !== page.id) {
+                                        e.currentTarget.style.backgroundColor = '#3a3a3a';
+                                    }
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.opacity = '0.7';
-                                    e.currentTarget.style.color = '#aaa';
-                                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                                    if (currentPageId !== page.id) {
+                                        e.currentTarget.style.backgroundColor = '#2a2a2a';
+                                    }
                                 }}
-                                title="Delete page"
                             >
-                                ×
-                            </button>
-                        )}
-                    </div>
-                ))}
+                                <div
+                                    style={{
+                                        padding: '8px 12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        flex: '0 0 auto',
+                                    }}
+                                    onClick={() => onPageChange(page.id)}
+                                    onDoubleClick={() => handleDoubleClick(page)}
+                                >
+                                    {editingPageId === page.id ? (
+                                        <input
+                                            type="text"
+                                            value={editingName}
+                                            onChange={(e) => setEditingName(e.target.value)}
+                                            onBlur={() => handleRenameSubmit(page.id)}
+                                            onKeyDown={(e) => handleKeyDown(e, page.id)}
+                                            autoFocus
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: '#fff',
+                                                fontSize: '18px',
+                                                fontWeight: '600',
+                                                outline: 'none',
+                                                width: `${editingName.length * 9.5}px`,
+                                                minWidth: `${page.name.length * 9.5}px`,
+                                                padding: 0,
+                                                margin: 0,
+                                                height: '1em',
+                                                lineHeight: '1',
+                                                fontFamily: 'inherit',
+                                                boxSizing: 'content-box',
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    ) : (
+                                        <span style={{ whiteSpace: 'nowrap', lineHeight: '1' }}>{page.name}</span>
+                                    )}
+                                </div>
+
+                                {/* Delete button - only show if more than one page and not read-only */}
+                                {pages.length > 1 && !readOnly && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm(`Delete page "${page.name}"? All boxes on this page will be deleted.`)) {
+                                                onPageDelete(page.id);
+                                            }
+                                        }}
+                                        style={{
+                                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                                            border: 'none',
+                                            borderRadius: '0',
+                                            borderLeft: '1px solid #444',
+                                            color: '#aaa',
+                                            cursor: 'pointer',
+                                            padding: '0 10px',
+                                            opacity: 0.7,
+                                            fontSize: '18px',
+                                            lineHeight: '1',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'background-color 0.2s ease, opacity 0.2s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.opacity = '1';
+                                            e.currentTarget.style.color = '#fff';
+                                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.opacity = '0.7';
+                                            e.currentTarget.style.color = '#aaa';
+                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
+                                        }}
+                                        title="Delete page"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                </div>
+            )}
 
             {/* Add page button - only show if not read-only */}
             {!readOnly && (
@@ -182,7 +200,6 @@ export function PageTabs({
                         backgroundColor: '#3a3a3a',
                         color: '#fff',
                         padding: '8px 12px',
-                        borderRadius: '6px',
                         border: '1px solid #555',
                         fontSize: '18px',
                         fontWeight: '600',
@@ -192,6 +209,7 @@ export function PageTabs({
                         flexShrink: 0,
                         width: 'auto',
                         minWidth: 'auto',
+                        borderRadius: '0'
                     }}
                     onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = '#4a4a4a';

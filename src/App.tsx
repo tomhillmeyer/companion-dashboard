@@ -1824,13 +1824,15 @@ export default function App() {
                             margin: '0 0 20px 0',
                             fontSize: '28px',
                             fontWeight: '700',
-                            letterSpacing: '0.5px'
+                            letterSpacing: '0.5px',
+                            textTransform: 'uppercase'
                         }}>Connection Lost</h2>
                         <p style={{
                             color: '#61BAFA',
                             margin: 0,
                             fontSize: '14px',
-                            opacity: 0.8
+                            opacity: 0.8,
+                            textTransform: 'uppercase'
                         }}>
                             Attempting to reconnect...
                         </p>

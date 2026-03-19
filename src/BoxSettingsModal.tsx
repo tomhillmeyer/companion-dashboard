@@ -1379,6 +1379,30 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="setting-group">
                 <div className='setting-container box-settings-container'>
                     <h3 className="section-heading">Position & Size</h3>
+                    {pages.length > 1 && (
+                        <div className='box-settings-row'>
+                            <div className="setting-label box-settings-item">
+                                <span className="setting-header">Page</span>
+                                <select
+                                    value={formData.pageId}
+                                    onChange={(e) => updateField('pageId', e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        backgroundColor: '#1a1a1a',
+                                        color: 'white',
+                                        border: '1px solid #61BAFA',
+                                        borderRadius: '4px',
+                                        fontSize: '14px'
+                                    }}
+                                >
+                                    {pages.sort((a, b) => a.order - b.order).map(page => (
+                                        <option key={page.id} value={page.id}>{page.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                     <div className='box-settings-row'>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">X-Position</span>
@@ -1445,30 +1469,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </select>
                         </div>
                     </div>
-                    {pages.length > 0 && (
-                        <div className='box-settings-row'>
-                            <div className="setting-label box-settings-item">
-                                <span className="setting-header">Page</span>
-                                <select
-                                    value={formData.pageId}
-                                    onChange={(e) => updateField('pageId', e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        backgroundColor: '#1a1a1a',
-                                        color: 'white',
-                                        border: '1px solid #61BAFA',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    {pages.sort((a, b) => a.order - b.order).map(page => (
-                                        <option key={page.id} value={page.id}>{page.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    )}
+
                     <div className='box-settings-row'>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">Width</span>
