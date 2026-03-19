@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
 import FindReplaceModal from './FindReplaceModal.tsx';
+import LicensingModal from './LicensingModal.tsx';
 import { PageTabs } from './PageTabs.tsx';
 import './App.css';
 import defaultBoxes from './defaultBoxes.json';
@@ -283,6 +284,7 @@ export default function App() {
     const [selectedBoxIds, setSelectedBoxIds] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [findReplaceModalOpen, setFindReplaceModalOpen] = useState<boolean>(false);
+    const [licensingModalOpen, setLicensingModalOpen] = useState<boolean>(false);
     const [isConnected, setIsConnected] = useState<boolean>(true);
     const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
@@ -336,6 +338,14 @@ export default function App() {
                 clearTimeout(mouseTimeoutRef.current);
             }
         };
+    }, []);
+
+    // Show licensing modal on app launch (Electron only)
+    useEffect(() => {
+        const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
+        if (isElectron) {
+            setLicensingModalOpen(true);
+        }
     }, []);
 
     // Track dragging state globally for WebSocket sync
@@ -1903,6 +1913,12 @@ export default function App() {
                 selectedBoxIds={selectedBoxIds}
                 onReplace={handleFindReplace}
             />
+
+            {licensingModalOpen && (
+                <LicensingModal
+                    onClose={() => setLicensingModalOpen(false)}
+                />
+            )}
 
             <SettingsMenu
                 ref={settingsMenuRef}

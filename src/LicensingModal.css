@@ -1,0 +1,164 @@
+.licensing-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10002;
+    /* Higher than all other modals */
+}
+
+.licensing-modal-content {
+    background: #262626;
+    border-radius: 8px;
+    border: 2px solid #61BAFA;
+    width: 90%;
+    max-width: 600px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
+    -webkit-box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
+    -moz-box-shadow: 0px 0px 65px 20px rgba(0, 0, 0, 0.5);
+    font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+.licensing-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.licensing-modal-content h1 {
+    color: #ffffff;
+    font-size: 28px;
+    margin: 0;
+    text-align: center;
+}
+
+.licensing-wordmark {
+    height: 32px;
+    width: auto;
+}
+
+.licensing-message {
+    color: #dddddd;
+    font-size: 16px;
+    line-height: 1.6;
+    text-align: center;
+    margin: 0 0 30px 0;
+}
+
+.licensing-key-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 2px solid #444444;
+    border-radius: 4px;
+    background: #1a1a1a;
+    color: #ffffff;
+    font-family: inherit;
+    transition: border-color 0.3s ease;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+.licensing-key-input:focus {
+    outline: none;
+    border-color: #61BAFA;
+}
+
+.licensing-key-input::placeholder {
+    color: #666666;
+}
+
+.licensing-buttons {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+    margin-bottom: 30px;
+}
+
+.licensing-button {
+    flex: 1;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.licensing-button.activate-button {
+    background: #61BAFA;
+    color: #ffffff;
+}
+
+.licensing-button.activate-button:hover {
+    background: #4da3e0;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(97, 186, 250, 0.3);
+}
+
+.licensing-button.activate-button:active {
+    transform: translateY(0);
+}
+
+.licensing-button.personal-button.waiting {
+    background: #444444;
+    color: #888888;
+    cursor: not-allowed;
+    font-size: 24px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.licensing-button.personal-button.ready {
+    background: #61BAFA;
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.licensing-button.personal-button.ready:hover {
+    background: #4da3e0;
+}
+
+.licensing-button.personal-button.ready:active {
+    background: #4da3e0;
+}
+
+.licensing-footer {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    justify-content: center;
+}
+
+.licensing-thanks {
+    color: #61BAFA;
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.licensing-signature {
+    display: flex;
+    align-items: center;
+}
+
+.licensing-signature img {
+    width: 100px;
+    height: auto;
+    display: block;
+}

@@ -19,7 +19,7 @@ import { Capacitor } from '@capacitor/core';
 
 import './SettingsMenu.css';
 // Import the image directly - this is the most reliable approach
-import dashboardIcon from './assets/dashboard.png'; // Adjust path to where your image is located
+import dashboardWordmark from './assets/dashboard-wordmark.png';
 // Import version from package.json
 import packageJson from '../package.json';
 
@@ -1309,8 +1309,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             <div className={isActive ? 'menu menu-open' : 'menu'}>
                 <div className='menu-content'>
                     <div className='logo-box'>
-                        <img src={dashboardIcon} style={{ height: '100px' }} alt="Dashboard" />
-                        <span className='wordmark'>COMPANION<b style={{ fontSize: '1.3em' }}>DASHBOARD</b></span>
+                        <img src={dashboardWordmark} className='wordmark-image' alt="Companion Dashboard" />
                     </div>
                     <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('companionConnection'); }}>
                         <span className='section-label'>Companion Connection</span>
@@ -2101,22 +2100,19 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             {showConfigDialog && (
                 <div className="config-dialog-overlay">
                     <div className="config-dialog">
-                        <h3>Load Configuration</h3>
-                        <p>How would you like to load this configuration?</p>
+                        <h3>LOAD CONFIGURATION FROM FILE</h3>
                         <div className="config-dialog-buttons">
                             <button
                                 className="config-dialog-button add-boxes"
                                 onClick={handleAddBoxesOnly}
                             >
-                                Add Boxes Only
-                                <span className="button-description">Keep current settings</span>
+                                ADD BOXES ONLY
                             </button>
                             <button
                                 className="config-dialog-button replace-all"
                                 onClick={handleReplaceEntireConfig}
                             >
-                                Replace Everything
-                                <span className="button-description">Replace all settings</span>
+                                REPLACE EVERYTHING
                             </button>
                         </div>
                         <button
@@ -2126,7 +2122,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                 setPendingConfig(null);
                             }}
                         >
-                            Cancel
+                            CANCEL
                         </button>
                     </div>
                 </div>
