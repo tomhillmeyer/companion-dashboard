@@ -1326,8 +1326,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                             type="number"
                                             min="50"
                                             max="10000"
-                                            value={refreshRateMs || 100}
-                                            onChange={(e) => onRefreshRateMsChange?.(parseInt(e.target.value) || 100)}
+                                            value={refreshRateMs || 500}
+                                            onChange={(e) => onRefreshRateMsChange?.(parseInt(e.target.value) || 500)}
                                             className="canvas-color-text"
                                             style={{ marginLeft: '15px', textAlign: 'center' }}
                                         />
