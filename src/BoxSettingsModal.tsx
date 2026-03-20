@@ -415,152 +415,156 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const renderBackgroundSettings = () => (
         <div className="settings-section">
             <div className="setting-title">Background & Border</div>
-            <div className="setting-group">
-                <div className='setting-container'>
-                    <h3 className="section-heading">Background Video</h3>
-                    <div className="setting-row">
-                        <div className="setting-label">
-                            <span className="setting-header">Video Input</span>
-                            {/* Line 1: Video select + Refresh button */}
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
-                                <select
-                                    value={formData.backgroundVideoDeviceId || ''}
-                                    onChange={(e) => {
-                                        const newDeviceId = e.target.value || undefined;
-                                        console.log('Video device selected:', {
-                                            rawValue: e.target.value,
-                                            newDeviceId,
-                                            currentValue: formData.backgroundVideoDeviceId
-                                        });
-                                        updateField('backgroundVideoDeviceId', newDeviceId);
-                                        // Clear ROI when changing video device
-                                        if (newDeviceId !== formData.backgroundVideoDeviceId) {
-                                            updateField('backgroundVideoROI', undefined);
-                                        }
-                                    }}
-                                    style={{
-                                        width: '50%',
-                                        padding: '8px',
-                                        backgroundColor: '#1a1a1a',
-                                        color: 'white',
-                                        border: '1px solid #61BAFA',
-                                        borderRadius: '4px',
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    <option value="">No Video</option>
-                                    {videoDevices.map(device => (
-                                        <option key={device.deviceId} value={device.deviceId}>
-                                            {device.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        refreshVideoDevices();
-                                        // Force video stream refresh by toggling the deviceId
-                                        if (formData.backgroundVideoDeviceId) {
-                                            const currentId = formData.backgroundVideoDeviceId;
-                                            updateField('backgroundVideoDeviceId', undefined);
-                                            setTimeout(() => {
-                                                updateField('backgroundVideoDeviceId', currentId);
-                                            }, 100);
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '8px 16px',
-                                        backgroundColor: '#444',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        cursor: 'pointer',
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '1px',
-                                        whiteSpace: 'nowrap',
-                                        height: '39px'
-                                    }}
-                                >
-                                    Refresh
-                                </button>
-                            </div>
-                            {formData.backgroundVideoDeviceId && (
-                                <>
-                                    {/* Line 2: ROI buttons + Video Size dropdown */}
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'flex-end' }}>
-                                        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <span className="setting-header">Video Region of Interest</span>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowROIModal(true)}
+            {videoDevices.length > 0 && (
+                <div className="setting-group">
+                    <div className='setting-container'>
+                        <h3 className="section-heading">Background Video</h3>
+                        <div className="setting-row">
+                            <div className="setting-label">
+                                <span className="setting-header">Video Input</span>
+                                {/* Line 1: Video select + Refresh button */}
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '5px' }}>
+                                    <select
+                                        value={formData.backgroundVideoDeviceId || ''}
+                                        onChange={(e) => {
+                                            const newDeviceId = e.target.value || undefined;
+                                            console.log('Video device selected:', {
+                                                rawValue: e.target.value,
+                                                newDeviceId,
+                                                currentValue: formData.backgroundVideoDeviceId
+                                            });
+                                            updateField('backgroundVideoDeviceId', newDeviceId);
+                                            // Clear ROI when changing video device
+                                            if (newDeviceId !== formData.backgroundVideoDeviceId) {
+                                                updateField('backgroundVideoROI', undefined);
+                                            }
+                                        }}
+                                        style={{
+                                            width: '50%',
+                                            padding: '8px',
+                                            backgroundColor: '#1a1a1a',
+                                            color: 'white',
+                                            border: '1px solid #61BAFA',
+                                            borderRadius: '4px',
+                                            fontSize: '14px'
+                                        }}
+                                    >
+                                        <option value="">No Video</option>
+                                        {videoDevices.map(device => (
+                                            <option key={device.deviceId} value={device.deviceId}>
+                                                {device.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            refreshVideoDevices();
+                                            // Force video stream refresh by toggling the deviceId
+                                            if (formData.backgroundVideoDeviceId) {
+                                                const currentId = formData.backgroundVideoDeviceId;
+                                                updateField('backgroundVideoDeviceId', undefined);
+                                                setTimeout(() => {
+                                                    updateField('backgroundVideoDeviceId', currentId);
+                                                }, 100);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            backgroundColor: '#444',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '12px',
+                                            fontWeight: '600',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px',
+                                            whiteSpace: 'nowrap',
+                                            height: '39px'
+                                        }}
+                                    >
+                                        Refresh
+                                    </button>
+                                </div>
+                                {formData.backgroundVideoDeviceId && (
+                                    <>
+                                        {/* Line 2: ROI buttons + Video Size dropdown */}
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'flex-end' }}>
+                                            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <span className="setting-header">Video Region of Interest</span>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowROIModal(true)}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '8px 16px',
+                                                            backgroundColor: formData.backgroundVideoROI ? '#61BAFA' : '#444',
+                                                            color: 'white',
+                                                            border: formData.backgroundVideoROI ? '2px solid #4da3e0' : 'none',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '1px'
+                                                        }}
+                                                    >
+                                                        {formData.backgroundVideoROI ? '✓ SET REGION OF INTEREST' : 'SET REGION OF INTEREST'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateField('backgroundVideoROI', undefined)}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '8px 16px',
+                                                            backgroundColor: '#333',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '1px',
+                                                            opacity: formData.backgroundVideoROI ? 1 : 0.5,
+                                                            pointerEvents: formData.backgroundVideoROI ? 'auto' : 'none'
+                                                        }}
+                                                    >
+                                                        CLEAR REGION OF INTEREST
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                                <span className="setting-header">Background Video Size</span>
+                                                <select
+                                                    id="background-video-size"
+                                                    value={formData.backgroundVideoSize || 'cover'}
+                                                    onChange={(e) => updateField('backgroundVideoSize', e.target.value as 'cover' | 'contain')}
                                                     style={{
-                                                        flex: 1,
                                                         padding: '8px 16px',
-                                                        backgroundColor: formData.backgroundVideoROI ? '#61BAFA' : '#444',
+                                                        backgroundColor: '#1a1a1a',
                                                         color: 'white',
-                                                        border: formData.backgroundVideoROI ? '2px solid #4da3e0' : 'none',
+                                                        border: '1px solid #61BAFA',
                                                         borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px',
-                                                        fontWeight: '600',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '1px'
+                                                        fontSize: '14px'
                                                     }}
                                                 >
-                                                    {formData.backgroundVideoROI ? '✓ SET REGION OF INTEREST' : 'SET REGION OF INTEREST'}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateField('backgroundVideoROI', undefined)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '8px 16px',
-                                                        backgroundColor: '#333',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px',
-                                                        fontWeight: '600',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '1px',
-                                                        opacity: formData.backgroundVideoROI ? 1 : 0.5,
-                                                        pointerEvents: formData.backgroundVideoROI ? 'auto' : 'none'
-                                                    }}
-                                                >
-                                                    CLEAR REGION OF INTEREST
-                                                </button>
+                                                    <option value="cover">Cover</option>
+                                                    <option value="contain">Contain</option>
+                                                </select>
                                             </div>
                                         </div>
-                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                                            <span className="setting-header">Background Video Size</span>
-                                            <select
-                                                id="background-video-size"
-                                                value={formData.backgroundVideoSize || 'cover'}
-                                                onChange={(e) => updateField('backgroundVideoSize', e.target.value as 'cover' | 'contain')}
-                                                style={{
-                                                    padding: '8px 16px',
-                                                    backgroundColor: '#1a1a1a',
-                                                    color: 'white',
-                                                    border: '1px solid #61BAFA',
-                                                    borderRadius: '4px',
-                                                    fontSize: '14px'
-                                                }}
-                                            >
-                                                <option value="cover">Cover</option>
-                                                <option value="contain">Contain</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
+            )}
 
+            <div className="setting-group">
                 <div className='setting-container'>
                     <h3 className="section-heading">Background Color / Image</h3>
                     <div className="setting-row default-color-row">
