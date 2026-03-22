@@ -714,11 +714,12 @@ export default function Box({
             display: boxData.headerLabelVisible ? 'flex' : 'none',
             alignItems: 'center' as const,
             justifyContent: justifyMap[align],
+            borderRadius: `${boxData.borderRadius ?? 15}px ${boxData.borderRadius ?? 15}px 0 0`,
         };
     }, [
         boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
         boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, variableValues
+        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, boxData.borderRadius, variableValues
     ]);
 
     const leftStyle = useMemo(() => {
