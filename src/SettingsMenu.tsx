@@ -188,6 +188,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [webServerStatus, setWebServerStatus] = useState<string>('Stopped');
     const [webServerEndpoints, setWebServerEndpoints] = useState<any[]>([]);
     const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
+    const [webServerMdnsConflict, setWebServerMdnsConflict] = useState<boolean>(false);
 
     // Section collapse state
     const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({
@@ -281,10 +282,16 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 setWebServerRunning(status.isRunning);
                 setWebServerStatus(status.isRunning ? `Running on port ${status.port}` : 'Stopped');
                 setWebServerEndpoints(status.endpoints || []);
+                setWebServerMdnsConflict(status.mdnsConflict || false);
 
-                // Sync the port from server state only on initial load or when explicitly requested
+                // Sync the port and hostname from server state only on initial load or when explicitly requested
                 if (syncPort && status.isRunning) {
                     setWebServerPort(status.port);
+                    if (status.hostname) {
+                        setWebServerHostname(status.hostname);
+                        // Also save to localStorage so it persists
+                        localStorage.setItem(`window_${windowId}_web_server_hostname`, status.hostname);
+                    }
                 }
             }
         } catch (error) {
@@ -328,6 +335,17 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             return () => clearInterval(interval);
         }
     }, [showWebServer]);
+
+    // Listen for mDNS status changes from main process
+    useEffect(() => {
+        if (showWebServer && isDesktop) {
+            // @ts-ignore - electronAPI is available via preload script
+            window.electronAPI?.onMDNSStatusChanged(() => {
+                console.log('mDNS status changed, refetching endpoints...');
+                checkWebServerStatus();
+            });
+        }
+    }, [showWebServer, isDesktop]);
 
     // Re-check web server status when pages change (to update page endpoints)
     useEffect(() => {
@@ -1790,6 +1808,20 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                                 <div className="web-server-status">
                                                     Status: {webServerStatus}
                                                 </div>
+                                                {webServerMdnsConflict && webServerRunning && (
+                                                    <div style={{
+                                                        marginTop: '10px',
+                                                        padding: '10px',
+                                                        backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                                                        border: '1px solid rgba(255, 193, 7, 0.4)',
+                                                        borderRadius: '4px',
+                                                        color: '#ffc107',
+                                                        fontSize: '12px',
+                                                        lineHeight: '1.5'
+                                                    }}>
+                                                        ⚠️ Hostname "{webServerHostname}.local" is already in use on the network.<br />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

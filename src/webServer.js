@@ -21,6 +21,9 @@ class DashboardWebServer {
         this.electronWindow = electronWindow; // Reference to Electron window for WebRTC signaling
         this.bonjour = null;
         this.bonjourService = null;
+        this.mdnsConflict = false; // Track mDNS hostname conflicts
+        this.mdnsPublished = false; // Track if mDNS was successfully published
+        this.systemFonts = null; // Cache system fonts
         this.currentState = {
             boxes: [],
             pages: [],
@@ -53,24 +56,39 @@ class DashboardWebServer {
         this.app.get('/api/image/:filename', (req, res) => {
             const filename = req.params.filename;
             const imageData = this.currentState.imageData[filename];
-            
+
             if (!imageData) {
                 return res.status(404).json({ error: 'Image not found' });
             }
-            
+
             // Extract base64 data and mime type
             const matches = imageData.match(/^data:([^;]+);base64,(.+)$/);
             if (!matches) {
                 return res.status(400).json({ error: 'Invalid image data' });
             }
-            
+
             const mimeType = matches[1];
             const base64Data = matches[2];
             const buffer = Buffer.from(base64Data, 'base64');
-            
+
             res.setHeader('Content-Type', mimeType);
             res.setHeader('Cache-Control', 'public, max-age=3600');
             res.send(buffer);
+        });
+
+        // API endpoint to get system fonts from Electron host
+        this.app.get('/api/fonts', async (req, res) => {
+            try {
+                // Cache fonts to avoid repeated font-list calls
+                if (!this.systemFonts) {
+                    const fontList = await import('font-list');
+                    this.systemFonts = await fontList.getFonts2({ disableQuoting: true });
+                }
+                res.json(this.systemFonts);
+            } catch (error) {
+                console.error('Failed to get system fonts:', error);
+                res.status(500).json({ error: 'Failed to get system fonts' });
+            }
         });
         
         const distPath = path.join(__dirname, '../dist');
@@ -102,24 +120,9 @@ class DashboardWebServer {
             console.log(`Dashboard web server running on http://localhost:${port}`);
             this.isRunning = true;
 
-            // Publish mDNS service
+            // Publish mDNS service with automatic conflict resolution
             if (this.hostname) {
-                try {
-                    this.bonjour = new Bonjour();
-                    this.bonjourService = this.bonjour.publish({
-                        name: this.hostname,
-                        type: 'http',
-                        port: this.port,
-                        host: `${this.hostname}.local`,
-                        txt: {
-                            service: 'Companion Dashboard'
-                        }
-                    });
-                    const portSuffix = this.port === 80 ? '' : `:${this.port}`;
-                    console.log(`mDNS service published: ${this.hostname}.local${portSuffix}`);
-                } catch (error) {
-                    console.error('Failed to publish mDNS service:', error);
-                }
+                this.publishMDNSWithRetry(this.hostname);
             }
         });
 
@@ -199,7 +202,121 @@ class DashboardWebServer {
             }
         });
     }
-    
+
+    // Publish mDNS service with graceful conflict handling
+    publishMDNSWithRetry(baseHostname) {
+        // Wrap entire mDNS setup in try-catch to prevent any errors from crashing the server
+        try {
+            // Create Bonjour instance if not exists
+            if (!this.bonjour) {
+                this.bonjour = new Bonjour();
+            }
+
+            // Assume no conflict initially
+            this.mdnsConflict = false;
+
+            try {
+                // Publish the service
+                this.bonjourService = this.bonjour.publish({
+                    name: baseHostname,
+                    type: 'http',
+                    port: this.port,
+                    host: `${baseHostname}.local`,
+                    txt: {
+                        service: 'Companion Dashboard'
+                    }
+                });
+
+                // Attach error handler immediately - this catches async errors
+                this.bonjourService.on('error', (error) => {
+                    // Wrap error handler to prevent errors from propagating
+                    try {
+                        if (error.message && error.message.includes('already in use')) {
+                            console.warn(`⚠️  mDNS hostname "${baseHostname}.local" is already in use on the network`);
+                            console.warn(`⚠️  Web server is running but won't be accessible via ${baseHostname}.local`);
+                            console.warn(`⚠️  Use IP address endpoints below instead, or choose a different hostname`);
+                            this.mdnsConflict = true;
+                        } else {
+                            console.error('mDNS service error:', error);
+                            this.mdnsConflict = true;
+                        }
+                    } catch (innerError) {
+                        console.error('Error in mDNS error handler:', innerError);
+                        this.mdnsConflict = true;
+                    }
+                });
+
+                const portSuffix = this.port === 80 ? '' : `:${this.port}`;
+                console.log(`mDNS service published: ${baseHostname}.local${portSuffix}`);
+
+                // The error might be thrown asynchronously - check service status after it has time to publish
+                // Wait 1000ms to give the service time to publish successfully
+                // Only mark as published if confirmed successful
+                setTimeout(() => {
+                    try {
+                        console.log('🔍 Checking mDNS status after 1000ms:');
+                        console.log('  - bonjourService exists:', !!this.bonjourService);
+                        console.log('  - bonjourService.published:', this.bonjourService?.published);
+                        console.log('  - bonjourService.activated:', this.bonjourService?.activated);
+                        console.log('  - bonjourService.destroyed:', this.bonjourService?.destroyed);
+                        console.log('  - current mdnsConflict:', this.mdnsConflict);
+
+                        // Check if service successfully published
+                        const isPublished = this.bonjourService && this.bonjourService.published === true;
+                        const isDestroyed = !this.bonjourService || this.bonjourService.destroyed;
+
+                        if (isPublished && !isDestroyed) {
+                            // Successfully published!
+                            console.log(`✅ mDNS hostname "${baseHostname}.local" successfully published`);
+                            this.mdnsPublished = true;
+                            this.mdnsConflict = false;
+
+                            // Notify renderer to refetch endpoints now that mDNS is confirmed
+                            if (this.electronWindow && !this.electronWindow.isDestroyed()) {
+                                this.electronWindow.webContents.send('mdns-status-changed');
+                            }
+                        } else if (!isPublished && !this.mdnsConflict) {
+                            // Failed to publish - likely a conflict
+                            console.warn(`⚠️  mDNS hostname "${baseHostname}.local" is already in use on the network`);
+                            console.warn(`⚠️  Web server is running but won't be accessible via ${baseHostname}.local`);
+                            console.warn(`⚠️  Use IP address endpoints below instead, or choose a different hostname`);
+                            this.mdnsConflict = true;
+                            this.mdnsPublished = false;
+
+                            // Notify renderer to refetch endpoints
+                            if (this.electronWindow && !this.electronWindow.isDestroyed()) {
+                                this.electronWindow.webContents.send('mdns-status-changed');
+                            }
+                        }
+                    } catch (checkError) {
+                        console.error('Error checking mDNS service status:', checkError);
+                        this.mdnsConflict = true;
+                        this.mdnsPublished = false;
+                    }
+                }, 1000);
+
+            } catch (error) {
+                // Synchronous errors during publish
+                console.warn(`⚠️  mDNS hostname "${baseHostname}.local" is already in use on the network`);
+                console.warn(`⚠️  Web server is running but won't be accessible via ${baseHostname}.local`);
+                console.warn(`⚠️  Use IP address endpoints below instead, or choose a different hostname`);
+                this.mdnsConflict = true;
+                this.bonjourService = null;
+            }
+        } catch (outerError) {
+            // Catch any errors from the entire mDNS setup process
+            console.error('Fatal error in mDNS setup (server will continue without mDNS):', outerError);
+            this.mdnsConflict = true;
+            this.bonjourService = null;
+            this.bonjour = null;
+        }
+    }
+
+    // Get mDNS conflict status
+    hasMDNSConflict() {
+        return this.mdnsConflict === true;
+    }
+
     stop() {
         if (!this.isRunning) {
             return;
@@ -249,6 +366,8 @@ class DashboardWebServer {
             this.server.close(() => {
                 console.log('Dashboard web server stopped');
                 this.isRunning = false;
+                this.mdnsConflict = false; // Reset conflict flag when server stops
+                this.mdnsPublished = false; // Reset published flag when server stops
             });
         }
     }
@@ -313,7 +432,11 @@ class DashboardWebServer {
     getPort() {
         return this.port;
     }
-    
+
+    getHostname() {
+        return this.hostname || 'dashboard';
+    }
+
     getNetworkInterfaces() {
         const interfaces = os.networkInterfaces();
         const addresses = [];
@@ -438,8 +561,8 @@ class DashboardWebServer {
         const baseUrls = this.getNetworkInterfaces();
         const endpoints = [];
 
-        // Add .local mDNS endpoint if hostname is set
-        if (this.hostname) {
+        // Add .local mDNS endpoint ONLY if successfully published (confirmed working)
+        if (this.hostname && this.mdnsPublished && !this.mdnsConflict) {
             const portSuffix = this.port === 80 ? '' : `:${this.port}`;
             const localUrl = `http://${this.hostname}.local${portSuffix}`;
             endpoints.push({

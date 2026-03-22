@@ -54,18 +54,19 @@
 .font-picker-search {
     width: 100% !important;
     margin: 0;
-    padding: 12px 16px;
+    padding: 16px;
     border: none;
     border-bottom: 1px solid #444;
     background: #2a2a2a;
     color: white;
-    font-size: 14px !important;
+    font-size: 16px !important;
     outline: none;
     box-sizing: border-box;
     text-align: left !important;
     direction: ltr;
     font-family: "Work Sans", system-ui, Avenir, Helvetica, Arial, sans-serif;
-    height: auto !important;
+    height: 52px !important;
+    min-height: 52px;
 }
 
 .font-picker-search::placeholder {

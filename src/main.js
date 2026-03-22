@@ -7,6 +7,28 @@ import DashboardWebServer from './webServer.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV === 'development';
 
+// Catch uncaught errors from Bonjour mDNS service conflicts
+// The bonjour-service library throws errors from callbacks which aren't caught by try/catch
+process.on('uncaughtException', (error) => {
+    if (error.message && error.message.includes('Service name is already in use')) {
+        // This is expected when multiple dashboard instances use the same hostname
+        console.warn('⚠️  mDNS hostname conflict detected (service name already in use on network)');
+
+        // Mark all running web servers as having mDNS conflicts
+        windowWebServers.forEach((webServer, windowId) => {
+            if (webServer.isServerRunning()) {
+                webServer.mdnsConflict = true;
+                console.warn('⚠️  Marked webServer for window', windowId, 'as having mDNS conflict');
+            }
+        });
+        return;
+    }
+    // For other errors, log and potentially re-throw
+    console.error('Uncaught exception:', error);
+    // Uncomment the next line if you want the app to crash on other uncaught exceptions
+    // throw error;
+});
+
 // Path to store window states
 const windowStateFile = path.join(app.getPath('userData'), 'window-states.json');
 
@@ -58,7 +80,8 @@ function saveWindowStates() {
                     alwaysOnTop: windowAlwaysOnTopStates.get(window.windowId) || false,
                     webServer: webServer ? {
                         isRunning: webServer.isServerRunning(),
-                        port: webServer.getPort()
+                        port: webServer.getPort(),
+                        hostname: webServer.getHostname()
                     } : null
                 };
                 console.log('Saving window state:', state);
@@ -196,9 +219,11 @@ function createWindow(windowState = null) {
                 const webServer = windowWebServers.get(windowId);
                 if (webServer) {
                     setTimeout(() => {
-                        console.log('Starting restored web server on port', windowState.webServer.port);
+                        const port = windowState.webServer.port;
+                        const hostname = windowState.webServer.hostname || 'dashboard';
+                        console.log('Starting restored web server on port', port, 'with hostname', hostname);
                         try {
-                            webServer.start(windowState.webServer.port);
+                            webServer.start(port, hostname);
                             console.log('Web server restoration completed');
                         } catch (error) {
                             console.error('Failed to start restored web server:', error);
@@ -462,13 +487,17 @@ ipcMain.handle('web-server-status', async (event, pages) => {
         return {
             isRunning: webServer.isServerRunning(),
             port: webServer.getPort(),
-            endpoints: webServer.isServerRunning() ? webServer.getEndpoints(pages) : []
+            hostname: webServer.getHostname(),
+            endpoints: webServer.isServerRunning() ? webServer.getEndpoints(pages) : [],
+            mdnsConflict: webServer.hasMDNSConflict()
         };
     } catch (error) {
         return {
             isRunning: false,
             port: null,
-            endpoints: []
+            hostname: null,
+            endpoints: [],
+            mdnsConflict: false
         };
     }
 });

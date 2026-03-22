@@ -54,7 +54,7 @@ const categorizeSystemFont = (font: FontInfo): 'serif' | 'sans-serif' | 'monospa
     return 'sans-serif';
 };
 
-// Get system fonts using font-list via Electron IPC
+// Get system fonts using font-list via Electron IPC or web server API
 const getSystemFonts = async (): Promise<FontInfo[]> => {
     try {
         // Check if running in Electron
@@ -65,8 +65,20 @@ const getSystemFonts = async (): Promise<FontInfo[]> => {
             const fonts = await (window as any).electronAPI.getSystemFonts();
             return fonts || [];
         } else {
-            // Fallback to empty array for web environments
-            return [];
+            // In web client mode, fetch fonts from the web server API
+            try {
+                const response = await fetch('/api/fonts');
+                if (response.ok) {
+                    const fonts = await response.json();
+                    return fonts || [];
+                } else {
+                    console.error('Failed to fetch fonts from server:', response.status);
+                    return [];
+                }
+            } catch (fetchError) {
+                console.error('Error fetching fonts from server:', fetchError);
+                return [];
+            }
         }
     } catch (error) {
         console.error('Error loading system fonts:', error);

@@ -221,6 +221,7 @@ export interface WebServerStatus {
     port: number;
     hostname?: string;
     endpoints: WebServerEndpoint[];
+    mdnsConflict?: boolean;
 }
 
 // ============================================================================
@@ -256,6 +257,7 @@ declare global {
             };
             onSyncStateFromBrowser: (callback: (data: any) => void) => void;
             onWebRTCSignaling: (callback: (data: WebRTCSignalData) => void) => void;
+            onMDNSStatusChanged: (callback: () => void) => void;
             openExternal: (url: string) => Promise<any>;
             getSystemFonts: () => Promise<FontInfo[]>;
         };
