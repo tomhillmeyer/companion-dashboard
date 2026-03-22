@@ -82,9 +82,10 @@ export const useVariableFetcher = (
     isDragging: boolean = false, // Pause updates during drag operations
     preFetchedRawValues?: { [key: string]: string } // Pre-fetched raw variable values (for web clients)
 ) => {
-    // Track consecutive fetch failures to stop retrying - use ref for immediate effect
-    const isStoppedRef = useRef<boolean>(false);
+    // Track consecutive fetch failures for exponential backoff
+    const consecutiveFailuresRef = useRef<number>(0);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const currentIntervalTimeRef = useRef<number>(refreshRateMs);
 
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
@@ -147,15 +148,12 @@ export const useVariableFetcher = (
 
     useEffect(() => {
         // Reset failure tracking when baseUrl changes
-        isStoppedRef.current = false;
-    }, [baseUrl]);
+        consecutiveFailuresRef.current = 0;
+        currentIntervalTimeRef.current = refreshRateMs;
+    }, [baseUrl, refreshRateMs]);
 
     useEffect(() => {
         const fetchVariables = async () => {
-            // If stopped due to failures, don't try again
-            if (isStoppedRef.current) {
-                return;
-            }
 
             // If pre-fetched values are provided, use local processing only (no fetch)
             const usePreFetched = preFetchedRawValues && Object.keys(preFetchedRawValues).length > 0;
@@ -254,14 +252,45 @@ export const useVariableFetcher = (
                 newHtmlValues[sourceKey] = parseMarkdown(processedString);
             }
 
-            // Stop retrying on first fetch error
+            // Handle fetch errors with exponential backoff (don't permanently stop)
             if (hasAnyFetchError && !usePreFetched) {
-                console.warn('Connection failed, stopping further retries');
-                isStoppedRef.current = true;
-                // Immediately clear the interval to stop further attempts
-                if (intervalRef.current) {
-                    clearInterval(intervalRef.current);
-                    intervalRef.current = null;
+                consecutiveFailuresRef.current += 1;
+                // Exponential backoff: 100ms → 1s → 5s → 30s (max)
+                const backoffDelays = [100, 1000, 5000, 30000];
+                const newInterval = backoffDelays[Math.min(consecutiveFailuresRef.current - 1, backoffDelays.length - 1)];
+
+                if (currentIntervalTimeRef.current !== newInterval) {
+                    currentIntervalTimeRef.current = newInterval;
+                    console.warn(`Connection failed (${consecutiveFailuresRef.current} times), backing off to ${newInterval}ms`);
+
+                    // Restart interval with new backoff delay
+                    if (intervalRef.current) {
+                        clearInterval(intervalRef.current);
+                        intervalRef.current = setInterval(() => {
+                            if (!isDragging) {
+                                fetchVariables();
+                            }
+                        }, newInterval);
+                    }
+                }
+            } else if (!hasAnyFetchError && consecutiveFailuresRef.current > 0) {
+                // Connection recovered - reset to normal interval
+                consecutiveFailuresRef.current = 0;
+                const normalInterval = baseUrl ? refreshRateMs : 5000;
+
+                if (currentIntervalTimeRef.current !== normalInterval) {
+                    currentIntervalTimeRef.current = normalInterval;
+                    console.log('Connection recovered, resuming normal refresh rate');
+
+                    // Restart interval with normal refresh rate
+                    if (intervalRef.current) {
+                        clearInterval(intervalRef.current);
+                        intervalRef.current = setInterval(() => {
+                            if (!isDragging) {
+                                fetchVariables();
+                            }
+                        }, normalInterval);
+                    }
                 }
             }
 
