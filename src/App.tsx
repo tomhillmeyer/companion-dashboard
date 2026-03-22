@@ -801,6 +801,10 @@ export default function App() {
             if (box.leftLabelColorText) allVariables[box.leftLabelColorText] = box.leftLabelColorText;
             if (box.rightLabelColorText) allVariables[box.rightLabelColorText] = box.rightLabelColorText;
 
+            // Add opacity and overlay size sources
+            if (box.opacitySource) allVariables[box.opacitySource] = box.opacitySource;
+            if (box.overlaySizeSource) allVariables[box.overlaySizeSource] = box.overlaySizeSource;
+
             // Add variable color variables
             [
                 box.backgroundVariableColors,
@@ -818,6 +822,24 @@ export default function App() {
                     });
                 }
             });
+
+            // Add variable opacity variables
+            if (box.opacityVariableValues && Array.isArray(box.opacityVariableValues)) {
+                box.opacityVariableValues.forEach(varOpacity => {
+                    if (varOpacity.variable) {
+                        allVariables[varOpacity.variable] = varOpacity.variable;
+                    }
+                });
+            }
+
+            // Add variable overlay size variables
+            if (box.overlaySizeVariableValues && Array.isArray(box.overlaySizeVariableValues)) {
+                box.overlaySizeVariableValues.forEach(varSize => {
+                    if (varSize.variable) {
+                        allVariables[varSize.variable] = varSize.variable;
+                    }
+                });
+            }
         });
 
         return allVariables;
@@ -842,6 +864,7 @@ export default function App() {
     // Use either fetched (Electron) or received (web client) variables
     const allVariableValues = isWebClient ? receivedVariableValues : fetchedVariables.values;
     const allHtmlVariableValues = isWebClient ? receivedVariableHtmlValues : fetchedVariables.htmlValues;
+    const allRawVariableValues = isWebClient ? receivedVariableValues : fetchedVariables.rawValues;
 
     // Broadcast variable updates to web clients (Electron only)
     useEffect(() => {
@@ -853,7 +876,8 @@ export default function App() {
 
             try {
                 // @ts-ignore - electronAPI is available via preload script
-                await window.electronAPI?.webServer.updateVariables(allVariableValues, allHtmlVariableValues);
+                // Broadcast raw values so web clients can process markdown themselves
+                await window.electronAPI?.webServer.updateVariables(allRawVariableValues, allHtmlVariableValues);
             } catch (error) {
                 // Silently fail if web server is not available or not running
                 console.debug('Variable broadcast failed:', error);
@@ -861,7 +885,7 @@ export default function App() {
         };
 
         broadcastVariables();
-    }, [allVariableValues, allHtmlVariableValues]);
+    }, [allRawVariableValues, allHtmlVariableValues]);
 
     // Update web server state when dashboard state changes
     useEffect(() => {

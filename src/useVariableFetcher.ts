@@ -123,6 +123,24 @@ export const useVariableFetcher = (
         return initialHtmlValues;
     });
 
+    const [rawValues, setRawValues] = useState<{ [key: string]: string }>(() => {
+        const initialRawValues: { [key: string]: string } = {};
+        Object.entries(sources).forEach(([key, value]) => {
+            if (!value) {
+                initialRawValues[key] = '';
+            } else {
+                // Always process variables immediately to show surrounding text
+                const variables = parseVariables(value);
+                let processed = value;
+                variables.forEach(({ fullMatch }) => {
+                    processed = processed.replace(fullMatch, '');
+                });
+                initialRawValues[key] = processed;
+            }
+        });
+        return initialRawValues;
+    });
+
     // Create stable references for complex objects to prevent unnecessary re-renders
     const sourcesRef = useMemo(() => sources, [JSON.stringify(sources)]);
     const connectionsRef = useMemo(() => connections, [JSON.stringify(connections)]);
@@ -144,34 +162,38 @@ export const useVariableFetcher = (
 
             const newValues: { [key: string]: string } = {};
             const newHtmlValues: { [key: string]: string } = {};
+            const newRawValues: { [key: string]: string } = {};
             let hasAnyFetchError = false;
 
             for (const [sourceKey, sourceValue] of Object.entries(sourcesRef)) {
                 if (!sourceValue) {
                     newValues[sourceKey] = '';
                     newHtmlValues[sourceKey] = '';
+                    newRawValues[sourceKey] = '';
+                    continue;
+                }
+
+                // If using pre-fetched values (web client mode), look up by source key directly
+                if (usePreFetched && preFetchedRawValues) {
+                    const preFetchedValue = preFetchedRawValues[sourceValue];
+
+                    if (preFetchedValue !== undefined && preFetchedValue !== null) {
+                        newValues[sourceKey] = preFetchedValue;
+                        newRawValues[sourceKey] = preFetchedValue;
+                        newHtmlValues[sourceKey] = parseMarkdown(preFetchedValue);
+                    } else {
+                        newValues[sourceKey] = '';
+                        newRawValues[sourceKey] = '';
+                        newHtmlValues[sourceKey] = '';
+                    }
                     continue;
                 }
 
                 const variables = parseVariables(sourceValue);
                 let processedString = sourceValue;
 
-                // Replace each variable with its fetched or pre-fetched value
+                // Replace each variable with its fetched value (Electron mode - fetch from Companion)
                 for (const { variable, connectionIndex, isEscaped, fullMatch } of variables) {
-                    // If using pre-fetched values (web client mode)
-                    if (usePreFetched && preFetchedRawValues) {
-                        // Look up the variable in pre-fetched values
-                        const varKey = fullMatch; // Use the full match as key (e.g., "$(internal:time_hms_12)")
-                        const data = preFetchedRawValues[varKey] || preFetchedRawValues[variable];
-
-                        if (data && data !== variable) {
-                            const replacementValue = isEscaped ? escapeMarkdown(data) : data;
-                            processedString = processedString.replace(fullMatch, replacementValue);
-                        } else {
-                            processedString = processedString.replace(fullMatch, '');
-                        }
-                        continue;
-                    }
 
                     // Otherwise, fetch from Companion (Electron mode)
                     // If no base URL is configured, just replace variables with empty strings
@@ -228,6 +250,7 @@ export const useVariableFetcher = (
                 }
 
                 newValues[sourceKey] = processedString;
+                newRawValues[sourceKey] = processedString; // Store raw value before markdown processing
                 newHtmlValues[sourceKey] = parseMarkdown(processedString);
             }
 
@@ -251,6 +274,10 @@ export const useVariableFetcher = (
                 const hasChanged = JSON.stringify(prevHtmlValues) !== JSON.stringify(newHtmlValues);
                 return hasChanged ? newHtmlValues : prevHtmlValues;
             });
+            setRawValues(prevRawValues => {
+                const hasChanged = JSON.stringify(prevRawValues) !== JSON.stringify(newRawValues);
+                return hasChanged ? newRawValues : prevRawValues;
+            });
         };
 
         // Initial fetch
@@ -273,5 +300,5 @@ export const useVariableFetcher = (
         };
     }, [baseUrl, sourcesRef, connectionsRef, refreshRateMs, isDragging, preFetchedRawValues]); // Re-run when baseUrl, sources, connections, refresh rate, drag state, or pre-fetched values change
 
-    return { values, htmlValues };
+    return { values, htmlValues, rawValues };
 };
