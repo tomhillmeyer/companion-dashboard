@@ -10,6 +10,7 @@ const isKioskMode = process.argv.includes('--kiosk-mode');
 contextBridge.exposeInMainWorld('electronAPI', {
     windowId: windowId,
     isKioskMode: isKioskMode,
+    platform: process.platform, // 'darwin', 'win32', 'linux', etc.
     webServer: {
         start: (port, hostname) => ipcRenderer.invoke('web-server-start', port, hostname),
         stop: () => ipcRenderer.invoke('web-server-stop'),

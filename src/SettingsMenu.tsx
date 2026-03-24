@@ -22,6 +22,8 @@ import './SettingsMenu.css';
 import dashboardWordmark from './assets/dashboard-wordmark.png';
 // Import version from package.json
 import packageJson from '../package.json';
+// Import license utilities
+import { hasStoredLicense } from './utils/licenseManager';
 
 // Get window ID for isolated storage
 const windowId = (window as any).electronAPI?.windowId || '1';
@@ -145,6 +147,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     };
     const [mainConnectionStopped, setMainConnectionStopped] = useState<boolean>(false);
     const [connectionsStopped, setConnectionsStopped] = useState<boolean>(false);
+
+    // License state
+    const [hasLicense, setHasLicense] = useState<boolean>(hasStoredLicense());
+
     const handleCopyUrl = (url: string, e: React.MouseEvent) => {
         navigator.clipboard.writeText(url);
         const target = e.currentTarget as HTMLElement;
@@ -153,6 +159,39 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             target.style.transform = 'scale(1)';
         }, 200);
     };
+
+    // License handlers
+    const handlePurchaseLicense = () => {
+        const purchaseUrl = 'https://creativelandapps.gumroad.com/l/dashboard-v1-pro';
+        if (isElectron && (window as any).electronAPI?.openExternal) {
+            // Open in default browser, not Electron window
+            (window as any).electronAPI.openExternal(purchaseUrl);
+        } else {
+            // Fallback for web mode
+            window.open(purchaseUrl, '_blank');
+        }
+    };
+
+    const handleApplyLicense = () => {
+        // Trigger the licensing modal by dispatching a custom event
+        window.dispatchEvent(new CustomEvent('openLicenseModal'));
+    };
+
+    // Listen for license changes
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setHasLicense(hasStoredLicense());
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        // Also listen for custom license update event
+        window.addEventListener('licenseUpdated', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('licenseUpdated', handleStorageChange);
+        };
+    }, []);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isActive, setIsActive] = useState(false);
@@ -1352,6 +1391,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     </div>
                                 </div>
                             </div>
+
                             <div className="menu-section-column" style={{ marginTop: '15px' }}>
                                 <div className="settings-subsection">
                                     <div className="connection-item">
@@ -1401,15 +1441,19 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                             </div>
                                         </div>
                                     ))}
-
+                                    <div className="connection-help-note">
+                                        Having issues? Make sure you can access the Companion GUI using the same address in a browser.
+                                    </div>
                                     <button
                                         className="add-connection-button"
                                         onClick={addConnection}
                                     >
                                         ADD CONNECTION
                                     </button>
+
                                 </div>
                             </div>
+
                         </>
                     )}
                     <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('font'); }}>
@@ -2128,7 +2172,29 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         onChange={handleBackgroundImageChange}
                         style={{ display: 'none' }}
                     />
-                    <span className='footer'>v{packageJson.version}<br />Created by Tom Hillmeyer</span>
+                    <div className='footer'>
+                        <div className='license-status'>
+                            {hasLicense ? (
+                                <div className='license-active'>
+                                    <span className='license-text-active'>Pro License Active</span>
+                                </div>
+                            ) : (
+                                <div className='license-inactive'>
+                                    <span className='license-badge personal'>Personal-use only</span>
+                                    <div className='license-actions'>
+                                        <button className='license-btn purchase' onClick={handlePurchaseLicense}>
+                                            Purchase License
+                                        </button>
+                                        <button className='license-btn apply' onClick={handleApplyLicense}>
+                                            Apply License
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <span className='version-info'>v{packageJson.version}<br /><br />Companion Dashboard is created by Tom Hillmeyer / Creativeland, LLC and
+                            is independent from Bitfocus and Bitfocus Companion.</span>
+                    </div>
                 </div>
             </div>
 

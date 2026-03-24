@@ -13,5 +13,9 @@
     <!-- Network access -->
     <key>com.apple.security.network.client</key>
     <true/>
+
+    <!-- Camera access for video input -->
+    <key>com.apple.security.device.camera</key>
+    <true/>
 </dict>
 </plist>

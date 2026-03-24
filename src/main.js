@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, shell, session } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -372,6 +372,17 @@ function createMenu() {
 }
 
 app.whenReady().then(() => {
+    // Set up permission handler for camera and microphone access
+    // This is required for Windows and provides explicit permission control
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+        // Allow camera and microphone permissions for getUserMedia
+        if (permission === 'media') {
+            callback(true);
+        } else {
+            callback(false);
+        }
+    });
+
     createMenu();
 
     // Restore saved windows or create a default one

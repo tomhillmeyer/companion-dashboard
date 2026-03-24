@@ -19,6 +19,8 @@
 .wordmark-image {
     width: 200px;
     height: auto;
+    margin-top: 50px;
+    margin-bottom: 25px;
 }
 
 .menu {
@@ -68,14 +70,12 @@
     cursor: pointer;
     z-index: 3003;
     opacity: .5;
-    transition: transform .2s ease-in-out;
     padding: 5px 5px 2px 5px;
     line-height: 1;
 }
 
 .menu-icon:hover {
     opacity: 1;
-    transform: scale(1.1);
 }
 
 .lock-icon {
@@ -85,7 +85,6 @@
     bottom: 23px;
     z-index: 3003;
     opacity: .5;
-    transition: transform .2s ease-in-out, opacity .5s ease;
     padding: 5px;
     line-height: 1;
     color: #61BAFA;
@@ -93,7 +92,6 @@
 
 .lock-icon:hover {
     opacity: 1;
-    transform: scale(1.1);
 }
 
 .menu-section {
@@ -119,7 +117,6 @@
     margin-top: 50px;
     margin-bottom: 10px;
     border-bottom: .5px solid #61BAFA;
-    transition: opacity 0.2s ease;
     user-select: none;
 }
 
@@ -162,6 +159,18 @@ button {
     margin: 5px;
     width: 100%;
     color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    background-color: #4E82C3;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #4da3e0;
 }
 
 .clear-boxes {
@@ -170,13 +179,91 @@ button {
 }
 
 .clear-boxes:hover {
-    border-color: #19325c;
+    background-color: #a33329;
+    border-color: #C63E37;
 }
 
 .footer {
     margin-top: 50px;
     color: white;
     text-align: right;
+    margin-bottom: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.license-status {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.license-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #61BAFA;
+    color: white;
+    cursor: default;
+    user-select: none;
+}
+
+.license-badge.personal {
+    background: #444444;
+    color: #FFFFFF;
+    cursor: default;
+    text-transform: uppercase;
+}
+
+.license-text-active {
+    color: #61BAFA;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.license-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    justify-content: flex-end;
+}
+
+.license-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.license-btn.purchase {
+    background: #4E82C3;
+    color: white;
+}
+
+.license-btn.purchase:hover {
+    background: #4da3e0;
+}
+
+.license-btn.apply {
+    background: transparent;
+    color: #61BAFA;
+    border: 1px solid #61BAFA;
+}
+
+.license-btn.apply:hover {
+    background: rgba(97, 186, 250, 0.1);
+}
+
+.version-info {
+    font-size: 14px;
+    opacity: 0.7;
     margin-bottom: 50px;
 }
 
@@ -316,7 +403,6 @@ a {
     color: white;
     border: none;
     cursor: pointer;
-    transition: background-color 0.2s ease;
     width: 40px !important;
     min-width: 40px !important;
     height: 40px !important;
@@ -349,7 +435,6 @@ a {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
-    transition: all 0.2s;
     box-sizing: border-box;
 }
 
@@ -378,7 +463,6 @@ a {
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 1px;
-    transition: background-color 0.2s ease;
     flex: 1;
 }
 
@@ -398,7 +482,6 @@ a {
     cursor: pointer;
     text-transform: uppercase;
     letter-spacing: 1px;
-    transition: background-color 0.2s ease;
     flex: 1;
 }
 
@@ -558,7 +641,6 @@ a {
     cursor: pointer;
     font-size: 12px;
     white-space: nowrap;
-    transition: background-color 0.2s;
 }
 
 .scaling-width-row button:hover {
@@ -656,6 +738,15 @@ a {
     border-color: #777;
 }
 
+/* Connection help note */
+.connection-help-note {
+    font-size: 11px;
+    color: #888888;
+    text-align: center;
+    font-style: italic;
+    line-height: 1.4;
+}
+
 /* Connection management styles */
 .connection-item {
     display: flex;
@@ -701,7 +792,6 @@ a {
     border: 1px solid #444;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
 }
 
 .connection-controls button:hover {
@@ -715,7 +805,6 @@ a {
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
     width: 40px !important;
     min-width: 40px !important;
     height: 40px !important;
@@ -747,7 +836,6 @@ a {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
-    transition: all 0.2s;
     box-sizing: border-box;
 }
 
@@ -810,21 +898,21 @@ a {
 }
 
 .web-server-start {
-    background-color: #61BAFA !important;
+    background-color: #4E82C3 !important;
     color: white;
 }
 
 .web-server-start:hover {
-    background-color: #61BAFA !important;
+    background-color: #4da3e0 !important;
 }
 
 .web-server-stop {
-    background-color: #333 !important;
+    background-color: #C63E37 !important;
     color: white;
 }
 
 .web-server-stop:hover {
-    background-color: #333 !important;
+    background-color: #a33329 !important;
 }
 
 .web-server-status {

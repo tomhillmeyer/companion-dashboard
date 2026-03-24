@@ -1,0 +1,115 @@
+COMPANION DASHBOARD - PERSONAL USE LICENSE
+
+Copyright (c) 2026 Tom Hillmeyer / Creativeland, LLC
+All rights reserved.
+
+This license agreement ("Agreement") governs your use of Companion Dashboard 
+(the "Software").
+
+Companion Dashboard is created by Tom Hillmeyer / Creativeland, LLC and 
+is independent from Bitfocus and Bitfocus Companion.
+
+1. GRANT OF LICENSE
+
+Subject to the terms of this Agreement, you are granted a limited, non-exclusive, 
+non-transferable, revocable license to use the Software solely for personal, 
+non-commercial purposes.
+
+2. PERMITTED USE
+
+"Personal use" means use by an individual for their own private, non-commercial 
+purposes, including:
+  • Personal projects and hobby use
+  • Educational and learning purposes
+  • Personal research and experimentation
+
+3. RESTRICTIONS
+
+You may NOT:
+  • Use the Software for any commercial purpose, including but not limited to:
+    - Use in any business, enterprise, or for-profit organization
+    - Use that generates revenue, directly or indirectly
+    - Use in connection with any commercial product or service
+    - Use by freelancers, contractors, or consultants in client work
+  • Modify, adapt, translate, reverse engineer, decompile, or disassemble the 
+    Software
+  • Distribute, sublicense, rent, lease, or lend the Software to any third party
+  • Share, redistribute, or make the Software available to others
+  • Remove or alter any copyright, trademark, or other proprietary notices
+  • Use the Software in any manner that violates applicable laws or regulations
+
+4. COMMERCIAL USE
+
+If you wish to use the Software for commercial purposes, you must purchase a 
+Commercial License from Creativeland, LLC. Contact information for licensing 
+inquiries will be provided with the Software.
+
+5. OWNERSHIP
+
+The Software is licensed, not sold. Creativeland, LLC retains all right, title, 
+and interest in and to the Software, including all intellectual property rights. 
+This Agreement does not grant you any rights to patents, copyrights, trade 
+secrets, trademarks, or any other rights in respect to the Software.
+
+6. SOURCE CODE
+
+While the source code of the Software may be made available for viewing, this 
+does not grant you any additional rights beyond those explicitly stated in this 
+Agreement. Viewing the source code does not permit modification, redistribution, 
+or any use beyond personal, non-commercial purposes.
+
+Licensor may modify the Software for the purpose of contributing improvements back 
+to the project.
+
+7. TERMINATION
+
+This license is effective until terminated. Your rights under this license will 
+terminate automatically without notice if you fail to comply with any term of 
+this Agreement. Upon termination, you must cease all use of the Software and 
+destroy all copies in your possession.
+
+8. WARRANTY DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS 
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. CREATIVELAND, LLC DOES NOT 
+WARRANT THAT THE SOFTWARE WILL MEET YOUR REQUIREMENTS OR THAT THE OPERATION OF 
+THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE.
+
+9. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL TOM HILLMEYER OR CREATIVELAND, LLC BE LIABLE FOR ANY SPECIAL, 
+INCIDENTAL, INDIRECT, OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT 
+LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF 
+BUSINESS INFORMATION, OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE OF OR 
+INABILITY TO USE THE SOFTWARE, EVEN IF CREATIVELAND, LLC HAS BEEN ADVISED OF THE 
+POSSIBILITY OF SUCH DAMAGES.
+
+SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF INCIDENTAL OR 
+CONSEQUENTIAL DAMAGES, SO THE ABOVE LIMITATION OR EXCLUSION MAY NOT APPLY TO YOU.
+
+10. GOVERNING LAW
+
+This Agreement shall be governed by and construed in accordance with the laws of 
+the United States and the state in which Creativeland, LLC is registered, 
+without regard to its conflict of law provisions.
+
+11. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between you and Creativeland, LLC 
+regarding the Software and supersedes all prior or contemporaneous understandings 
+and agreements, whether written or oral, regarding the Software.
+
+12. SEVERABILITY
+
+If any provision of this Agreement is held to be unenforceable or invalid, such 
+provision will be changed and interpreted to accomplish the objectives of such 
+provision to the greatest extent possible under applicable law, and the remaining 
+provisions will continue in full force and effect.
+
+---
+
+By using the Software, you acknowledge that you have read this Agreement, 
+understand it, and agree to be bound by its terms and conditions.
+
+For commercial licensing inquiries, please contact Creativeland, LLC.

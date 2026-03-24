@@ -92,7 +92,10 @@
       "entitlementsInherit": "entitlements.plist",
       "gatekeeperAssess": false,
       "identity": "Creativeland, LLC (22SGVMMH49)",
-      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "NSCameraUsageDescription": "Companion Dashboard needs access to your camera to display video inputs in boxes and canvas backgrounds."
+      }
     },
     "afterSign": "./notarize.js",
     "win": {

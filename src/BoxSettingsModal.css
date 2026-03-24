@@ -65,9 +65,18 @@
     color: white;
 }
 
+.modal-cancel-button:hover {
+    background-color: #494e57;
+    color: white;
+}
+
 .modal-delete-button {
     background-color: #ef4444;
     color: white;
+}
+
+.modal-delete-button:hover {
+    background-color: #ce3b3b;
 }
 
 .modal-duplicate-button {
@@ -181,7 +190,6 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     color: #ffffff;
-    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -191,7 +199,6 @@
     height: 32px;
     width: auto;
     flex-shrink: 0;
-    transition: all 0.2s ease;
 }
 
 .nav-label {
@@ -428,7 +435,6 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
-    transition: all 0.2s;
     box-sizing: border-box;
 }
 
@@ -478,7 +484,7 @@
 }
 
 .opacity-value-input {
-    width: 80px;
+    width: 150px !important;
     height: 40px;
     padding: 0 12px;
     border: 1px solid #444;
@@ -537,7 +543,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease;
     box-sizing: border-box;
     font-size: 16px;
     padding: 0;
@@ -566,7 +571,6 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1px;
-    transition: background-color 0.2s ease;
 }
 
 .browse-image-button:hover {
@@ -624,7 +628,7 @@
 }
 
 .opacity-input {
-    width: 80px;
+    width: 150px;
     height: 40px;
     padding: 0 12px;
     border: 1px solid #444;
@@ -714,7 +718,7 @@
 
     .variable-input,
     .value-input {
-        min-width: 70px;
+        min-width: 100px;
         max-width: 100px;
     }
 }

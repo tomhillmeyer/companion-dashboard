@@ -56,6 +56,16 @@
     margin: 0 0 30px 0;
 }
 
+.licensing-purchase-link {
+    color: #61BAFA;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.licensing-purchase-link:hover {
+    color: #4da3e0;
+}
+
 .licensing-key-input {
     width: 100%;
     padding: 12px 16px;
@@ -65,7 +75,6 @@
     background: #1a1a1a;
     color: #ffffff;
     font-family: inherit;
-    transition: border-color 0.3s ease;
     margin-bottom: 20px;
     box-sizing: border-box;
 }
@@ -77,6 +86,18 @@
 
 .licensing-key-input::placeholder {
     color: #666666;
+}
+
+.licensing-key-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.licensing-error {
+    color: #ff6b6b;
+    font-size: 14px;
+    margin: 10px 0 10px 0;
+    text-align: center;
 }
 
 .licensing-buttons {
@@ -95,6 +116,9 @@
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .licensing-button.activate-button {
@@ -104,12 +128,12 @@
 
 .licensing-button.activate-button:hover {
     background: #4da3e0;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(97, 186, 250, 0.3);
 }
 
-.licensing-button.activate-button:active {
-    transform: translateY(0);
+.licensing-button.activate-button:disabled {
+    background: #444444;
+    color: #888888;
+    cursor: not-allowed;
 }
 
 .licensing-button.personal-button.waiting {

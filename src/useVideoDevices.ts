@@ -16,8 +16,17 @@ export function useVideoDevices(): { devices: VideoDevice[]; refresh: () => Prom
                 return;
             }
 
-            // Request permission to access media devices
-            await navigator.mediaDevices.getUserMedia({ video: true });
+            // Request permission to access media devices with minimal constraints
+            // Using more lenient constraints prevents timeout issues on Windows
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            });
+
+            // Stop the stream immediately after getting permission
+            stream.getTracks().forEach(track => track.stop());
 
             // Enumerate devices
             const deviceInfos = await navigator.mediaDevices.enumerateDevices();

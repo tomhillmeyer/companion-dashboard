@@ -235,9 +235,17 @@ export default function App() {
 
     // Page management handlers
     const handlePageAdd = () => {
+        // Find the next available page number to avoid duplicates
+        let pageNumber = pages.length + 1;
+        const existingNames = new Set(pages.map(p => p.name.toLowerCase()));
+
+        while (existingNames.has(`page ${pageNumber}`.toLowerCase())) {
+            pageNumber++;
+        }
+
         const newPage: PageData = {
             id: uuid(),
-            name: `Page ${pages.length + 1}`,
+            name: `Page ${pageNumber}`,
             order: pages.length
         };
         setPages(prev => [...prev, newPage]);
@@ -256,6 +264,16 @@ export default function App() {
     };
 
     const handlePageRename = (pageId: string, newName: string) => {
+        // Check if another page already has this name (case-insensitive)
+        const nameExists = pages.some(
+            page => page.id !== pageId && page.name.toLowerCase() === newName.toLowerCase()
+        );
+
+        if (nameExists) {
+            alert(`A page named "${newName}" already exists. Please choose a different name.`);
+            return;
+        }
+
         setPages(prev => prev.map(page =>
             page.id === pageId ? { ...page, name: newName } : page
         ));
@@ -285,6 +303,7 @@ export default function App() {
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [findReplaceModalOpen, setFindReplaceModalOpen] = useState<boolean>(false);
     const [licensingModalOpen, setLicensingModalOpen] = useState<boolean>(false);
+    const [licensingModalSkipCountdown, setLicensingModalSkipCountdown] = useState<boolean>(false);
     const [isConnected, setIsConnected] = useState<boolean>(true);
     const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
@@ -340,12 +359,33 @@ export default function App() {
         };
     }, []);
 
-    // Show licensing modal on app launch (Electron only) - DISABLED FOR NOW
+    // Show licensing modal on app launch (Electron only, Windows/Mac only, if no license stored)
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
-        if (isElectron) {
-            // setLicensingModalOpen(true); // TODO: Re-enable when licensing is ready
+        const platform = (window as any).electronAPI?.platform;
+        const isLinux = platform === 'linux';
+
+        // Only show licensing on Electron Windows/Mac (exclude Linux server installs)
+        if (isElectron && !isLinux) {
+            // Check if there's a stored license
+            const hasLicense = localStorage.getItem('global_license_key');
+            if (!hasLicense) {
+                setLicensingModalSkipCountdown(false); // Show countdown on launch
+                setLicensingModalOpen(true);
+            }
         }
+
+        // Listen for event to open licensing modal from settings menu
+        const handleOpenLicenseModal = () => {
+            setLicensingModalSkipCountdown(true); // Skip countdown when opened from settings
+            setLicensingModalOpen(true);
+        };
+
+        window.addEventListener('openLicenseModal', handleOpenLicenseModal);
+
+        return () => {
+            window.removeEventListener('openLicenseModal', handleOpenLicenseModal);
+        };
     }, []);
 
     // Track dragging state globally for WebSocket sync
@@ -990,6 +1030,11 @@ export default function App() {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateData.boxes));
                 }
 
+                if (stateData.pages) {
+                    setPages(stateData.pages);
+                    localStorage.setItem(PAGES_STORAGE_KEY, JSON.stringify(stateData.pages));
+                }
+
                 if (stateData.canvasSettings) {
                     const cs = stateData.canvasSettings;
                     if (cs.canvasBackgroundColor !== undefined) setCanvasBackgroundColor(cs.canvasBackgroundColor);
@@ -1270,6 +1315,7 @@ export default function App() {
             if (ws.readyState === WebSocket.OPEN) {
                 const stateData = {
                     boxes,
+                    pages,
                     canvasSettings: {
                         canvasBackgroundColor,
                         canvasBackgroundColorText,
@@ -1295,7 +1341,7 @@ export default function App() {
                 }));
             }
         }
-    }, [boxes, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, isDragging]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, isDragging]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -1941,6 +1987,7 @@ export default function App() {
             {licensingModalOpen && (
                 <LicensingModal
                     onClose={() => setLicensingModalOpen(false)}
+                    skipCountdown={licensingModalSkipCountdown}
                 />
             )}
 
