@@ -7,6 +7,7 @@ It is a display of boxes you can resize and move. Each of those boxes has an opt
 
 ### App documentation can be found [here](https://wearecreativeland.com/tools/dashboard/companion-dashboard-documentation)!
 
+---
 
 ## Installation & Getting Started
 Read about getting started in the app docs [here](https://apps.wearecreativeland.com/dashboard/docs/installation-getting-started)
@@ -32,6 +33,7 @@ Requires a reboot after installation:
 
 There is a TestFlight beta test for iPad. To be added to the beta, contact me at [tom@tomhillmeyer.com](mailto:tom@tomhillmeyer.com).
 
+---
 
 ## Example Layouts
 
