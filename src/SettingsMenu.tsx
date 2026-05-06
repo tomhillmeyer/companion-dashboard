@@ -232,6 +232,9 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
     const [webServerMdnsConflict, setWebServerMdnsConflict] = useState<boolean>(false);
 
+    const [latestVersion, setLatestVersion] = useState<string | null>(null);
+    const [versionCheckDone, setVersionCheckDone] = useState(false);
+
     // Section collapse state
     const [collapsedSections, setCollapsedSections] = useState<{ [key: string]: boolean }>({
         companionConnection: false,
@@ -407,6 +410,18 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     useEffect(() => {
         connectionsRef.current = connections;
     }, [connections]);
+
+    useEffect(() => {
+        fetch('https://api.github.com/repos/tomhillmeyer/companion-dashboard/releases/latest')
+            .then(res => res.ok ? res.json() : Promise.reject())
+            .then(data => {
+                if (data?.tag_name) {
+                    setLatestVersion(data.tag_name.replace(/^v/, ''));
+                }
+            })
+            .catch(() => {})
+            .finally(() => setVersionCheckDone(true));
+    }, []);
 
     // Sync connections from localStorage when they change externally
     useEffect(() => {
@@ -2195,7 +2210,28 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                 </div>
                             )}
                         </div>
-                        <span className='version-info'>v{packageJson.version}<br /><br />Companion Dashboard is created by Tom Hillmeyer / Creativeland, LLC and
+                        <div className='version-update-row'>
+                            <span className='version-info-number'>v{packageJson.version}</span>
+                            {versionCheckDone && latestVersion && latestVersion === packageJson.version && (
+                                <span className='license-text-active'>✓ Up to date</span>
+                            )}
+                            {versionCheckDone && latestVersion && latestVersion !== packageJson.version && (
+                                <span
+                                    className='license-text-active'
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => {
+                                        if (isElectron && (window as any).electronAPI?.openExternal) {
+                                            (window as any).electronAPI.openExternal(
+                                                'https://github.com/tomhillmeyer/companion-dashboard/releases'
+                                            );
+                                        } else {
+                                            window.open('https://github.com/tomhillmeyer/companion-dashboard/releases', '_blank');
+                                        }
+                                    }}
+                                >Update available (v{latestVersion})</span>
+                            )}
+                        </div>
+                        <span className='version-info'>Companion Dashboard is created by Tom Hillmeyer / Creativeland, LLC and
                             is independent from Bitfocus and Bitfocus Companion.</span>
                     </div>
                 </div>
