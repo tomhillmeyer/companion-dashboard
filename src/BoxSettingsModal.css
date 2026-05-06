@@ -141,10 +141,14 @@
     letter-spacing: 1px;
     cursor: pointer;
     position: absolute;
-    top: 0;
+    top: 10px;
     left: 20px;
     right: 20px;
     z-index: 10;
+}
+
+.setting-title-toggle {
+    display: none !important;
 }
 
 .modal-nav-dropdown:focus {
@@ -170,11 +174,27 @@
 
     .modal-nav {
         display: none !important;
+        width: 150px;
+    }
+
+    .nav-item {
+        padding: 12px 15px;
+        font-size: 12px;
+        gap: 8px;
+    }
+
+    .nav-icon {
+        height: 24px;
+        width: auto;
+    }
+
+    .setting-title-toggle {
+        display: inline-block !important;
     }
 }
 
 .modal-nav {
-    width: 200px;
+    width: 240px;
     border-right: 1px solid #61BAFA;
     background-color: rgba(0, 0, 0, .1);
     flex-shrink: 0;
@@ -221,6 +241,50 @@
 
 .nav-item.active .nav-icon {
     opacity: 1;
+}
+
+.nav-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.nav-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.nav-toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #444;
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.nav-toggle-track::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 4px;
+    top: 4px;
+    background: #fff;
+    border-radius: 3px;
+    transition: transform 0.2s;
+}
+
+.nav-toggle input:checked + .nav-toggle-track {
+    background: #61BAFA;
+}
+
+.nav-toggle input:checked + .nav-toggle-track::before {
+    transform: translateX(18px);
 }
 
 .modal-content-area {
@@ -681,21 +745,6 @@
     .modal-content {
         width: 95%;
         height: 85vh;
-    }
-
-    .modal-nav {
-        width: 150px;
-    }
-
-    .nav-item {
-        padding: 12px 15px;
-        font-size: 12px;
-        gap: 8px;
-    }
-
-    .nav-icon {
-        height: 24px;
-        width: auto;
     }
 
     .modal-content-area {

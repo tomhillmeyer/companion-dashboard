@@ -894,15 +894,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         <div className="settings-section">
             <div className="setting-title">
                 Header
-                <div className="checkbox-container">
-                    <input
-                        type="checkbox"
-                        id="header-visible"
-                        checked={formData.headerLabelVisible}
-                        onChange={(e) => updateField('headerLabelVisible', e.target.checked)}
-                    />
-                    <label htmlFor="header-visible">Visible</label>
-                </div>
+                <label className="nav-toggle setting-title-toggle">
+                    <input type="checkbox" checked={formData.headerLabelVisible} onChange={e => updateField('headerLabelVisible', e.target.checked)} />
+                    <span className="nav-toggle-track" />
+                </label>
             </div>
             <div className="setting-group">
                 <div className="setting-row">
@@ -1055,15 +1050,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         <div className="settings-section">
             <div className="setting-title">
                 Left
-                <div className="checkbox-container">
-                    <input
-                        type="checkbox"
-                        id="left-visible"
-                        checked={formData.leftVisible}
-                        onChange={(e) => updateField('leftVisible', e.target.checked)}
-                    />
-                    <label htmlFor="left-visible">Visible</label>
-                </div>
+                <label className="nav-toggle setting-title-toggle">
+                    <input type="checkbox" checked={formData.leftVisible} onChange={e => updateField('leftVisible', e.target.checked)} />
+                    <span className="nav-toggle-track" />
+                </label>
             </div>
             <div className="setting-group">
                 <div className="setting-row">
@@ -1216,15 +1206,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         <div className="settings-section">
             <div className="setting-title">
                 Right
-                <div className="checkbox-container">
-                    <input
-                        type="checkbox"
-                        id="right-visible"
-                        checked={formData.rightVisible}
-                        onChange={(e) => updateField('rightVisible', e.target.checked)}
-                    />
-                    <label htmlFor="right-visible">Visible</label>
-                </div>
+                <label className="nav-toggle setting-title-toggle">
+                    <input type="checkbox" checked={formData.rightVisible} onChange={e => updateField('rightVisible', e.target.checked)} />
+                    <span className="nav-toggle-track" />
+                </label>
             </div>
             <div className="setting-group">
                 <div className="setting-row">
@@ -1716,6 +1701,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         <option value="right">Right</option>
                     </select>
 
+
                     <div className="modal-nav">
                         <div
                             className={`nav-item ${activeSection === 'full' ? 'active' : ''}`}
@@ -1737,6 +1723,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         >
                             <img src={headerIcon} alt="Header" className="nav-icon" />
                             <span className="nav-label">Header</span>
+                            <label className="nav-toggle" onClick={e => e.stopPropagation()}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.headerLabelVisible}
+                                    onChange={e => updateField('headerLabelVisible', e.target.checked)}
+                                />
+                                <span className="nav-toggle-track" />
+                            </label>
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'left' ? 'active' : ''}`}
@@ -1744,6 +1738,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         >
                             <img src={leftIcon} alt="Left" className="nav-icon" />
                             <span className="nav-label">Left</span>
+                            <label className="nav-toggle" onClick={e => e.stopPropagation()}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.leftVisible}
+                                    onChange={e => updateField('leftVisible', e.target.checked)}
+                                />
+                                <span className="nav-toggle-track" />
+                            </label>
                         </div>
                         <div
                             className={`nav-item ${activeSection === 'right' ? 'active' : ''}`}
@@ -1751,6 +1753,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         >
                             <img src={rightIcon} alt="Right" className="nav-icon" />
                             <span className="nav-label">Right</span>
+                            <label className="nav-toggle" onClick={e => e.stopPropagation()}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.rightVisible}
+                                    onChange={e => updateField('rightVisible', e.target.checked)}
+                                />
+                                <span className="nav-toggle-track" />
+                            </label>
                         </div>
                     </div>
 
