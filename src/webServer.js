@@ -4,6 +4,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import fs from 'fs';
 import { Bonjour } from 'bonjour-service';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,7 @@ class DashboardWebServer {
         this.mdnsConflict = false; // Track mDNS hostname conflicts
         this.mdnsPublished = false; // Track if mDNS was successfully published
         this.systemFonts = null; // Cache system fonts
+        this.fontIndex = null; // Map<familyName, filePath>, built lazily
         this.currentState = {
             boxes: [],
             pages: [],
@@ -34,6 +36,39 @@ class DashboardWebServer {
             variableHtmlValues: {},  // HTML-processed variable values
             isLicensed: false
         };
+    }
+
+    // Pick the best variant from font-finder results (regular weight, .ttf/.otf preferred over .ttc)
+    _getVariantPriority(variant) {
+        let score = 0;
+        if (variant.style === 'regular') score -= 100;
+        else if (variant.style && variant.style.toLowerCase().includes('italic')) score += 100;
+        else if (variant.style === 'bold') score += 10;
+        const weightDiff = Math.abs((variant.weight || 400) - 400);
+        score += weightDiff / 10;
+        const ext = path.extname(variant.path || '').toLowerCase();
+        if (ext === '.ttf' || ext === '.otf') score -= 20;
+        if (ext === '.ttc') score += 20;
+        return score;
+    }
+
+    // Build family name → best file path index using font-finder
+    async _buildFontIndex() {
+        if (this.fontIndex) return this.fontIndex;
+        const index = new Map();
+        try {
+            const fontFinder = await import('font-finder');
+            const fontsByFamily = await fontFinder.default.list({ concurrency: 8 });
+            for (const [familyName, variants] of Object.entries(fontsByFamily)) {
+                if (!variants || variants.length === 0) continue;
+                const best = variants.sort((a, b) => this._getVariantPriority(a) - this._getVariantPriority(b))[0];
+                if (best?.path) index.set(familyName, best.path);
+            }
+        } catch (error) {
+            console.error('[WebServer] Failed to build font index:', error);
+        }
+        this.fontIndex = index;
+        return index;
     }
 
     start(port = 80, hostname = 'dashboard') {
@@ -91,7 +126,38 @@ class DashboardWebServer {
                 res.status(500).json({ error: 'Failed to get system fonts' });
             }
         });
-        
+
+        // Serve a system font file by family name so web clients can load fonts not installed on their machine
+        this.app.get('/api/fonts/file', async (req, res) => {
+            const family = req.query.family;
+            if (!family || typeof family !== 'string') {
+                return res.status(400).json({ error: 'family parameter required' });
+            }
+
+            const index = await this._buildFontIndex();
+            const filePath = index.get(family);
+            if (!filePath) {
+                return res.status(404).json({ error: 'Font not found' });
+            }
+
+            // Security: resolved path must have a font extension and exist on disk
+            const resolved = path.resolve(filePath);
+            const FONT_EXTS = new Set(['.ttf', '.otf', '.woff', '.woff2', '.ttc']);
+            if (!FONT_EXTS.has(path.extname(resolved).toLowerCase()) || !fs.existsSync(resolved)) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            const ext = path.extname(resolved).toLowerCase();
+            const mimeTypes = {
+                '.ttf': 'font/truetype', '.ttc': 'font/truetype',
+                '.otf': 'font/opentype',
+                '.woff': 'font/woff', '.woff2': 'font/woff2'
+            };
+            res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            res.sendFile(resolved);
+        });
+
         const distPath = path.join(__dirname, '../dist');
 
         // Serve static assets from dist (CSS, JS, images, etc.)

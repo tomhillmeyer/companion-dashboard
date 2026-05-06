@@ -44,6 +44,19 @@ const DESIGN_WIDTH_KEY = `window_${windowId}_design_width`;
 
 
 
+// Inject a @font-face rule so web clients can load fonts served by the Electron host
+function injectWebClientFontFace(fontFamily: string) {
+    const styleId = 'dynamic-font-face';
+    let style = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!style) {
+        style = document.createElement('style');
+        style.id = styleId;
+        document.head.appendChild(style);
+    }
+    const escaped = fontFamily.replace(/"/g, '\\"');
+    style.textContent = `@font-face { font-family: "${escaped}"; src: url('/api/fonts/file?family=${encodeURIComponent(fontFamily)}'); font-display: swap; }`;
+}
+
 export default function App() {
     // Helper function to add default operator to variable conditions
     const migrateVariableConditions = (conditions: any[] | undefined) => {
@@ -1224,6 +1237,7 @@ export default function App() {
                             if (data.fontFamily !== undefined) {
                                 setFontFamily(data.fontFamily);
                                 document.documentElement.style.setProperty('--box-font-family', `"${data.fontFamily}", system-ui, Avenir, Helvetica, Arial, sans-serif`);
+                                injectWebClientFontFace(data.fontFamily);
                             }
 
                             // Store image data in IndexedDB
