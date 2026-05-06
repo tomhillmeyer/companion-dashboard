@@ -118,6 +118,7 @@ export default function Box({
 
     const targetRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const currentStreamRef = useRef<MediaStream | null>(null);
     const [frame, setFrame] = useState(boxData.frame);
     const [showModal, setShowModal] = useState(false);
     const [loadedBackgroundImage, setLoadedBackgroundImage] = useState<string>('');
@@ -158,6 +159,7 @@ export default function Box({
                 console.log(`[Web Client] Requesting video stream for device: ${currentDeviceId}, box: ${boxData.id}`);
                 videoRelayManager.requestVideoStream(currentDeviceId, boxData.id, (stream) => {
                     console.log(`[Web Client] Received video stream for device: ${currentDeviceId}, box: ${boxData.id}`);
+                    currentStreamRef.current = stream;
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
                     }
@@ -179,6 +181,7 @@ export default function Box({
                 const stream = videoRelayManager.getLocalStream(currentDeviceId);
 
                 if (stream && videoRef.current) {
+                    currentStreamRef.current = stream;
                     videoRef.current.srcObject = stream;
                     console.log(`[Electron Host] Set video stream for box: ${boxData.id}`);
                 } else {
@@ -191,6 +194,7 @@ export default function Box({
 
         // Cleanup function - uses captured currentDeviceId, not boxData.backgroundVideoDeviceId
         return () => {
+            currentStreamRef.current = null;
             // Clear video element
             if (videoRef.current) {
                 videoRef.current.srcObject = null;
@@ -208,6 +212,14 @@ export default function Box({
             }
         };
     }, [boxData.backgroundVideoDeviceId, videoRelayManager, boxData.id]); // Only re-run when device changes, not ROI (videoRelayManager is stable ref)
+
+    // When ROI is toggled on/off, React recreates the <video> element (different JSX structure).
+    // The new element loses its srcObject — reassign the saved stream if it has none.
+    useEffect(() => {
+        if (videoRef.current && currentStreamRef.current && !videoRef.current.srcObject) {
+            videoRef.current.srcObject = currentStreamRef.current;
+        }
+    }, [boxData.backgroundVideoROI]);
 
     const getGridLines = (gridSize: number) => {
         const viewportWidth = window.innerWidth;
