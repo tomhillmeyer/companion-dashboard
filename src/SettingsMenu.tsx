@@ -73,6 +73,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     designWidth?: number;
     onDesignWidthChange?: (width: number) => void;
     pages?: PageData[];
+    isLicensed?: boolean;
 }>(({
     onNewBox,
     connectionUrl,
@@ -114,7 +115,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onScaleEnabledChange,
     designWidth = 1920,
     onDesignWidthChange,
-    pages = []
+    pages = [],
+    isLicensed
 }, ref) => {
     const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
@@ -150,6 +152,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
     // License state
     const [hasLicense, setHasLicense] = useState<boolean>(hasStoredLicense());
+    const effectiveHasLicense = isElectron ? hasLicense : (isLicensed ?? false);
 
     const handleCopyUrl = (url: string, e: React.MouseEvent) => {
         navigator.clipboard.writeText(url);
@@ -2174,7 +2177,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                     />
                     <div className='footer'>
                         <div className='license-status'>
-                            {hasLicense ? (
+                            {effectiveHasLicense ? (
                                 <div className='license-active'>
                                     <span className='license-text-active'>Pro License Active</span>
                                 </div>

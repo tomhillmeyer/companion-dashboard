@@ -19,6 +19,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
         updateVariables: (variableValues, variableHtmlValues) => ipcRenderer.invoke('web-server-update-variables', variableValues, variableHtmlValues),
         sendWebRTCSignal: (data) => ipcRenderer.invoke('web-server-send-webrtc-signal', data)
     },
+    license: {
+        save:  (key) => ipcRenderer.invoke('license-save', key),
+        load:  ()    => ipcRenderer.invoke('license-load'),
+        clear: ()    => ipcRenderer.invoke('license-clear'),
+    },
     onSyncStateFromBrowser: (callback) => {
         ipcRenderer.on('sync-state-from-browser', (event, stateData) => callback(stateData));
     },

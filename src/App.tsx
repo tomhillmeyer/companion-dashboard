@@ -15,6 +15,7 @@ import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor, PageData } from './types';
 import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
+import { hasStoredLicense } from './utils/licenseManager';
 
 
 // Get window ID for isolated storage
@@ -304,8 +305,9 @@ export default function App() {
     const [findReplaceModalOpen, setFindReplaceModalOpen] = useState<boolean>(false);
     const [licensingModalOpen, setLicensingModalOpen] = useState<boolean>(false);
     const [licensingModalSkipCountdown, setLicensingModalSkipCountdown] = useState<boolean>(false);
+    const [isLicensed, setIsLicensed] = useState<boolean>(false);
     const [isConnected, setIsConnected] = useState<boolean>(true);
-    const reconnectIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const reconnectIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const webSocketRef = useRef<WebSocket | null>(null);
     const hasReceivedInitialStateRef = useRef<boolean>(false);
     const videoRelayManagerRef = useRef<VideoRelayManager | null>(null);
@@ -314,7 +316,7 @@ export default function App() {
 
     // Mouse movement tracking for auto-hide page tabs
     const [showPageTabs, setShowPageTabs] = useState<boolean>(false);
-    const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const mouseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Grid lines for snapping (same as Box component)
     const getGridLines = (gridSize: number) => {
@@ -367,12 +369,34 @@ export default function App() {
 
         // Only show licensing on Electron Windows/Mac (exclude Linux server installs)
         if (isElectron && !isLinux) {
-            // Check if there's a stored license
-            const hasLicense = localStorage.getItem('global_license_key');
-            if (!hasLicense) {
-                setLicensingModalSkipCountdown(false); // Show countdown on launch
-                setLicensingModalOpen(true);
-            }
+            (async () => {
+                const electronAPI = (window as any).electronAPI;
+                let licensed = false;
+
+                if (electronAPI?.license) {
+                    const result = await electronAPI.license.load();
+                    if (result?.key) {
+                        // File has a key — sync to localStorage and use it
+                        localStorage.setItem('global_license_key', result.key);
+                        licensed = true;
+                    } else {
+                        // File missing — check localStorage for one-time migration
+                        const localKey = localStorage.getItem('global_license_key');
+                        if (localKey) {
+                            await electronAPI.license.save(localKey);
+                            licensed = true;
+                        }
+                    }
+                } else {
+                    licensed = !!localStorage.getItem('global_license_key');
+                }
+
+                setIsLicensed(licensed);
+                if (!licensed) {
+                    setLicensingModalSkipCountdown(false);
+                    setLicensingModalOpen(true);
+                }
+            })();
         }
 
         // Listen for event to open licensing modal from settings menu
@@ -380,11 +404,15 @@ export default function App() {
             setLicensingModalSkipCountdown(true); // Skip countdown when opened from settings
             setLicensingModalOpen(true);
         };
+        // Keep isLicensed state in sync when a license is activated mid-session
+        const handleLicenseUpdated = () => setIsLicensed(hasStoredLicense());
 
         window.addEventListener('openLicenseModal', handleOpenLicenseModal);
+        window.addEventListener('licenseUpdated', handleLicenseUpdated);
 
         return () => {
             window.removeEventListener('openLicenseModal', handleOpenLicenseModal);
+            window.removeEventListener('licenseUpdated', handleLicenseUpdated);
         };
     }, []);
 
@@ -992,7 +1020,8 @@ export default function App() {
                     scaleEnabled,
                     designWidth,
                     mainConnectionValid,
-                    additionalConnectionValidities
+                    additionalConnectionValidities,
+                    isLicensed
                 };
 
                 // @ts-ignore - electronAPI is available via preload script
@@ -1004,7 +1033,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, isLicensed]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -1231,6 +1260,11 @@ export default function App() {
                             }
                             if (data.additionalConnectionValidities) {
                                 setAdditionalConnectionValidities(data.additionalConnectionValidities);
+                            }
+
+                            // Update license state (web clients are read-only views — do not write to localStorage)
+                            if (data.isLicensed !== undefined) {
+                                setIsLicensed(data.isLicensed);
                             }
 
                             // Clear the receiving flag after a short delay to ensure all state updates are processed
@@ -2033,6 +2067,7 @@ export default function App() {
                 designWidth={designWidth}
                 onDesignWidthChange={setDesignWidth}
                 pages={pages}
+                isLicensed={isLicensed}
             />
             <div style={{
                 transform: `scale(${scale})`,

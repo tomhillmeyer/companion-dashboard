@@ -31,6 +31,26 @@ process.on('uncaughtException', (error) => {
 
 // Path to store window states
 const windowStateFile = path.join(app.getPath('userData'), 'window-states.json');
+const licenseFile = path.join(app.getPath('userData'), 'license.json');
+
+function loadStoredLicense() {
+    try {
+        const data = fs.readFileSync(licenseFile, 'utf8');
+        return JSON.parse(data).licenseKey || null;
+    } catch { return null; }
+}
+
+function saveStoredLicense(key) {
+    try {
+        fs.writeFileSync(licenseFile, JSON.stringify({ licenseKey: key }, null, 2));
+    } catch (error) { console.error('Failed to save license:', error); }
+}
+
+function clearStoredLicense() {
+    try {
+        if (fs.existsSync(licenseFile)) fs.unlinkSync(licenseFile);
+    } catch (error) { console.error('Failed to clear license:', error); }
+}
 
 const isMac = process.platform === 'darwin';
 
@@ -573,6 +593,21 @@ ipcMain.handle('get-system-fonts', async () => {
         console.error('Failed to get system fonts:', error);
         return [];
     }
+});
+
+// License IPC handlers
+ipcMain.handle('license-save', async (_event, key) => {
+    saveStoredLicense(key);
+    return { success: true };
+});
+
+ipcMain.handle('license-load', async () => {
+    return { key: loadStoredLicense() };
+});
+
+ipcMain.handle('license-clear', async () => {
+    clearStoredLicense();
+    return { success: true };
 });
 
 // Clean up on app quit

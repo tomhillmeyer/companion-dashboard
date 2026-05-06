@@ -31,7 +31,8 @@ class DashboardWebServer {
             connections: [],
             imageData: {},
             variableValues: {},  // Raw variable values
-            variableHtmlValues: {}  // HTML-processed variable values
+            variableHtmlValues: {},  // HTML-processed variable values
+            isLicensed: false
         };
     }
 

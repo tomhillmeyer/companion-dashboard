@@ -116,10 +116,14 @@ export async function validateLicense(licenseKey: string): Promise<LicenseValida
 }
 
 /**
- * Store a validated license key in localStorage
+ * Store a validated license key in localStorage and Electron main process (if available)
  */
 export function storeLicense(licenseKey: string): void {
-    localStorage.setItem(LICENSE_STORAGE_KEY, licenseKey.trim());
+    const trimmed = licenseKey.trim();
+    localStorage.setItem(LICENSE_STORAGE_KEY, trimmed);
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.license) {
+        (window as any).electronAPI.license.save(trimmed);
+    }
 }
 
 /**
@@ -130,10 +134,13 @@ export function getStoredLicense(): string | null {
 }
 
 /**
- * Remove the stored license key
+ * Remove the stored license key from localStorage and Electron main process (if available)
  */
 export function clearLicense(): void {
     localStorage.removeItem(LICENSE_STORAGE_KEY);
+    if (typeof window !== 'undefined' && (window as any).electronAPI?.license) {
+        (window as any).electronAPI.license.clear();
+    }
 }
 
 /**
