@@ -351,9 +351,15 @@
     border-bottom: 1px solid #444;
     text-transform: uppercase;
     letter-spacing: 1px;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
     flex-basis: 100%;
+}
+
+.section-heading .setting-title-toggle {
+    display: inline-block !important;
 }
 
 .variable-header-container {

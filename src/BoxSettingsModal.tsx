@@ -845,7 +845,13 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
 
                 <div className='setting-container'>
-                    <h3 className="section-heading">Border</h3>
+                    <h3 className="section-heading">
+                        Border
+                        <label className="nav-toggle setting-title-toggle">
+                            <input type="checkbox" checked={!formData.noBorder} onChange={e => updateField('noBorder', !e.target.checked)} />
+                            <span className="nav-toggle-track" />
+                        </label>
+                    </h3>
                     <div className="setting-row default-color-row">
                         <div className="setting-label">
                             <span className="setting-header">Default Border Color</span>
@@ -860,15 +866,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     onChange={(e) => updateField('borderColorText', e.target.value)}
                                     placeholder="Variable or HEX"
                                 />
-                            </div>
-                            <div className="checkbox-container" style={{ marginLeft: '0px', }}>
-                                <input
-                                    type="checkbox"
-                                    id="border"
-                                    checked={!formData.noBorder}
-                                    onChange={(e) => updateField('noBorder', !e.target.checked)}
-                                />
-                                <label htmlFor="border">Border</label>
                             </div>
                             <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span className="setting-header">Border Radius (px)</span>
