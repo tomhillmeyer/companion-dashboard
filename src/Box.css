@@ -106,8 +106,8 @@
 
 /* Header border radius to match parent box - accounting for border width */
 .box.with-border .header {
-    border-top-left-radius: 9px;
-    border-top-right-radius: 9px;
+    border-top-left-radius: 7px;
+    border-top-right-radius: 7px;
 }
 
 .box.no-border .header {

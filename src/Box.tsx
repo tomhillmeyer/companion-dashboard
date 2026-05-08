@@ -731,12 +731,16 @@ export default function Box({
             display: boxData.headerLabelVisible ? 'flex' : 'none',
             alignItems: 'center' as const,
             justifyContent: justifyMap[align],
-            borderRadius: `${boxData.borderRadius ?? 15}px ${boxData.borderRadius ?? 15}px 0 0`,
+            borderRadius: (() => {
+                const r = boxData.borderRadius ?? 15;
+                const inset = boxData.noBorder ? 0 : 5;
+                return `${Math.max(0, r - inset)}px ${Math.max(0, r - inset)}px 0 0`;
+            })(),
         };
     }, [
         boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
         boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, boxData.borderRadius, variableValues
+        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, boxData.borderRadius, boxData.noBorder, variableValues
     ]);
 
     const leftStyle = useMemo(() => {

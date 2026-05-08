@@ -161,7 +161,7 @@ export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps)
         textAlign: (boxData.headerLabelAlign || 'center') as 'left' | 'center' | 'right',
         display: boxData.headerLabelVisible ? 'flex' : 'none',
         justifyContent: justifyMap[boxData.headerLabelAlign || 'center'],
-        borderRadius: `${borderRadius}px ${borderRadius}px 0 0`,
+        borderRadius: `${Math.max(0, borderRadius - (boxData.noBorder ? 0 : 5))}px ${Math.max(0, borderRadius - (boxData.noBorder ? 0 : 5))}px 0 0`,
     };
 
     const leftStyle: React.CSSProperties = {
