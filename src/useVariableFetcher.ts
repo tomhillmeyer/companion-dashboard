@@ -84,7 +84,7 @@ export const useVariableFetcher = (
 ) => {
     // Track consecutive fetch failures for exponential backoff
     const consecutiveFailuresRef = useRef<number>(0);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentIntervalTimeRef = useRef<number>(refreshRateMs);
 
     // Initialize state with processed values - remove variables immediately to show surrounding text

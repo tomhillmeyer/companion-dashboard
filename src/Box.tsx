@@ -492,7 +492,7 @@ export default function Box({
     };
 
     // Utility function to resolve color with priority: variable colors > colorText > fallback color
-    const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any) => {
+    const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any, sourceKey?: string) => {
         // 1. Check variable colors first - find first matching variable that evaluates to true
         if (variableColors && Array.isArray(variableColors)) {
             for (const varColor of variableColors) {
@@ -507,7 +507,12 @@ export default function Box({
 
         // 2. If no variable colors match, check if colorText has a value
         if (colorText && colorText.trim()) {
-            return variableValues[colorText] || colorText;
+            // Use the fetcher's resolved value (sourceKey) so Companion variables resolve correctly;
+            // fall back to colorText directly for plain hex codes
+            if (sourceKey) {
+                return variableValues[sourceKey] || colorText;
+            }
+            return colorText;
         }
 
         // 3. Fall back to the picker color
@@ -718,8 +723,8 @@ export default function Box({
         };
 
         return {
-            backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues),
-            color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues),
+            backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues, 'headerColorTextSource'),
+            color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues, 'headerLabelColorTextSource'),
             fontSize: `${boxData.headerLabelSize}px`,
             fontFamily: boxData.headerLabelFont || undefined,
             textAlign: align as 'left' | 'center' | 'right',
@@ -759,7 +764,7 @@ export default function Box({
         };
 
         return {
-            color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues),
+            color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues, 'leftLabelColorTextSource'),
             fontSize: `${boxData.leftLabelSize}px`,
             fontFamily: boxData.leftLabelFont || undefined,
             display: boxData.leftVisible ? 'flex' : 'none',
@@ -799,7 +804,7 @@ export default function Box({
         };
 
         return {
-            color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues),
+            color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues, 'rightLabelColorTextSource'),
             fontSize: `${boxData.rightLabelSize}px`,
             fontFamily: boxData.rightLabelFont || undefined,
             display: boxData.rightVisible ? 'flex' : 'none',
@@ -891,7 +896,7 @@ export default function Box({
                             width: `${frame.width}px`,
                             height: `${frame.height}px`,
                             ...getBackgroundStyle(),
-                            border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues)}`,
+                            border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues, 'borderColorTextSource')}`,
                             borderRadius: `${boxData.borderRadius ?? 15}px`,
                             WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
