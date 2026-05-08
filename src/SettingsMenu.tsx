@@ -155,7 +155,24 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const effectiveHasLicense = isElectron ? hasLicense : (isLicensed ?? false);
 
     const handleCopyUrl = (url: string, e: React.MouseEvent) => {
-        navigator.clipboard.writeText(url);
+        const copyText = () => {
+            // Fallback for non-secure contexts (HTTP) and Electron
+            const el = document.createElement('textarea');
+            el.value = url;
+            el.style.position = 'fixed';
+            el.style.opacity = '0';
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).catch(copyText);
+        } else {
+            copyText();
+        }
+
         const target = e.currentTarget as HTMLElement;
         target.style.transform = 'scale(0.8)';
         setTimeout(() => {
