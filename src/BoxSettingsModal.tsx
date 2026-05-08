@@ -7,6 +7,7 @@ import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
 import ROIModal from './ROIModal';
+import BoxPreview from './BoxPreview';
 
 import { FaX } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
@@ -26,11 +27,12 @@ interface BoxSettingsModalProps {
     onDuplicate: (boxData: BoxData) => void;
     connections?: CompanionConnection[];
     pages?: PageData[];
+    variableValues?: { [key: string]: string };
 }
 
 type SettingSection = 'full' | 'background' | 'header' | 'left' | 'right';
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [] }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], variableValues }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -1675,6 +1677,12 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     return createPortal(
         <div className="modal-overlay" onClick={onCancel}>
+            <div
+                style={{ width: '40vw', flexShrink: 0 }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <BoxPreview boxData={formData} variableValues={variableValues} />
+            </div>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <div className="modal-buttons">
