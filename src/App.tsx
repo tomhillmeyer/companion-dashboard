@@ -15,7 +15,7 @@ import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor, PageData } from './types';
 import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
-import { hasStoredLicense } from './utils/licenseManager';
+import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 
 
 // Get window ID for isolated storage
@@ -410,6 +410,15 @@ export default function App() {
                     setLicensingModalOpen(true);
                 }
             })();
+        }
+
+        // Listen for license activated from a web client (Electron host only)
+        if ((window as any).electronAPI?.license?.onLicenseActivated) {
+            (window as any).electronAPI.license.onLicenseActivated((key: string) => {
+                storeLicense(key);
+                setIsLicensed(true);
+                window.dispatchEvent(new Event('licenseUpdated'));
+            });
         }
 
         // Listen for event to open licensing modal from settings menu

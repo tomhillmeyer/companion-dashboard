@@ -165,7 +165,13 @@ function createWindow(windowState = null) {
 
         // Send the state data to the renderer process to update localStorage
         window.webContents.send('sync-state-from-browser', stateData);
-    }, window); // Pass window reference for WebRTC signaling
+    }, window, (key) => {
+        // When a web client activates a license, persist it and notify the Electron renderer
+        saveStoredLicense(key);
+        if (!window.isDestroyed()) {
+            window.webContents.send('license-activated-from-web', key);
+        }
+    }); // Pass window reference for WebRTC signaling
     windowWebServers.set(windowId, webServer);
 
     // Restore maximized state

@@ -10,7 +10,7 @@ import { Bonjour } from 'bonjour-service';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class DashboardWebServer {
-    constructor(onStateChange, electronWindow) {
+    constructor(onStateChange, electronWindow, onLicenseActivated = null) {
         this.app = express();
         this.server = null;
         this.wss = null;
@@ -20,6 +20,7 @@ class DashboardWebServer {
         this.fullAppClients = new Set(); // Separate tracking for full app clients
         this.onStateChange = onStateChange; // Callback for bidirectional sync from full app
         this.electronWindow = electronWindow; // Reference to Electron window for WebRTC signaling
+        this.onLicenseActivated = onLicenseActivated; // Callback when web client activates a license
         this.bonjour = null;
         this.bonjourService = null;
         this.mdnsConflict = false; // Track mDNS hostname conflicts
@@ -156,6 +157,18 @@ class DashboardWebServer {
             res.setHeader('Content-Type', mimeTypes[ext] || 'application/octet-stream');
             res.setHeader('Cache-Control', 'public, max-age=86400');
             res.sendFile(resolved);
+        });
+
+        // Receive license key activation from web client and forward to Electron host
+        this.app.post('/api/license', express.json(), async (req, res) => {
+            const { licenseKey } = req.body || {};
+            if (!licenseKey || typeof licenseKey !== 'string') {
+                return res.status(400).json({ error: 'licenseKey required' });
+            }
+            if (this.onLicenseActivated) {
+                await this.onLicenseActivated(licenseKey.trim());
+            }
+            res.json({ success: true });
         });
 
         const distPath = path.join(__dirname, '../dist');

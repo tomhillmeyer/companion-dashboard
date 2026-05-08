@@ -54,6 +54,18 @@ export default function LicensingModal({ onClose, skipCountdown = false }: Licen
                 storeLicense(licenseKey);
                 // Dispatch event to notify other components
                 window.dispatchEvent(new CustomEvent('licenseUpdated'));
+                // Notify Electron host if running as a web client
+                if (!(window as any).electronAPI) {
+                    try {
+                        await fetch('/api/license', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ licenseKey: licenseKey.trim() }),
+                        });
+                    } catch (e) {
+                        console.warn('[License] Failed to notify server:', e);
+                    }
+                }
                 // Close the modal
                 onClose();
             } else {
