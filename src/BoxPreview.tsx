@@ -1,6 +1,7 @@
-import { useRef, useLayoutEffect, useState } from 'react';
+import { useRef, useLayoutEffect, useState, useEffect } from 'react';
 import type { BoxData } from './types';
 import { evaluateComparison } from './variableComparison';
+import { FaVideoSlash } from 'react-icons/fa6';
 import './Box.css';
 import './BoxPreview.css';
 
@@ -47,12 +48,80 @@ function resolveColor(
 export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(() => window.innerWidth * 0.4);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const currentStreamRef = useRef<MediaStream | null>(null);
+    const [videoError, setVideoError] = useState(false);
+    const [videoNaturalSize, setVideoNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
     useLayoutEffect(() => {
         if (containerRef.current) {
             setContainerWidth(containerRef.current.clientWidth);
         }
     }, []);
+
+    // Effect 1: Stream setup and cleanup
+    useEffect(() => {
+        const deviceId = boxData.backgroundVideoDeviceId;
+        setVideoError(false);
+        setVideoNaturalSize(null);
+
+        if (!deviceId) {
+            if (videoRef.current) videoRef.current.srcObject = null;
+            currentStreamRef.current = null;
+            return;
+        }
+
+        let cancelled = false;
+        let acquiredStream: MediaStream | null = null;
+
+        const setup = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: deviceId } },
+                    audio: false,
+                });
+                if (cancelled) { stream.getTracks().forEach(t => t.stop()); return; }
+                acquiredStream = stream;
+                currentStreamRef.current = stream;
+                if (videoRef.current) videoRef.current.srcObject = stream;
+            } catch (err) {
+                if (!cancelled) {
+                    console.warn('[BoxPreview] Video device unavailable:', err);
+                    setVideoError(true);
+                }
+            }
+        };
+
+        setup();
+
+        return () => {
+            cancelled = true;
+            currentStreamRef.current = null;
+            if (videoRef.current) videoRef.current.srcObject = null;
+            if (acquiredStream) acquiredStream.getTracks().forEach(t => t.stop());
+        };
+    }, [boxData.backgroundVideoDeviceId]);
+
+    // Effect 2: Reassign stream after ROI toggle recreates the <video> element
+    useEffect(() => {
+        if (videoRef.current && currentStreamRef.current && !videoRef.current.srcObject) {
+            videoRef.current.srcObject = currentStreamRef.current;
+        }
+    }, [boxData.backgroundVideoROI]);
+
+    // Effect 3: Track video natural dimensions for correct ROI aspect ratio
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        const onMetadata = () => {
+            setVideoNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+        };
+        video.addEventListener('loadedmetadata', onMetadata);
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            setVideoNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+        }
+        return () => video.removeEventListener('loadedmetadata', onMetadata);
+    }, [boxData.backgroundVideoROI, boxData.backgroundVideoDeviceId]);
 
     const { width, height } = boxData.frame;
     const scale = Math.min(containerWidth / width, MAX_PREVIEW_HEIGHT() / height);
@@ -153,6 +222,89 @@ export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps)
                             borderRadius: `${borderRadius}px`,
                         }} />
                     )}
+
+                    {/* Video background layer */}
+                    {boxData.backgroundVideoDeviceId && (() => {
+                        if (videoError) {
+                            return (
+                                <div style={{
+                                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                                    backgroundColor: '#111',
+                                    display: 'flex', flexDirection: 'column',
+                                    alignItems: 'center', justifyContent: 'center',
+                                    pointerEvents: 'none', borderRadius: `${borderRadius}px`,
+                                    zIndex: 0, gap: '0.4em', color: '#888',
+                                }}>
+                                    <FaVideoSlash style={{ fontSize: '2em' }} />
+                                    <span style={{ fontSize: '0.6em', textAlign: 'center' }}>
+                                        Video preview unavailable
+                                    </span>
+                                </div>
+                            );
+                        }
+
+                        const roi = boxData.backgroundVideoROI;
+
+                        if (!roi) {
+                            return (
+                                <video
+                                    key="preview-video-no-roi"
+                                    ref={videoRef}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    style={{
+                                        position: 'absolute', top: 0, left: 0,
+                                        width: '100%', height: '100%',
+                                        objectFit: boxData.backgroundVideoSize || 'cover',
+                                        pointerEvents: 'none',
+                                        borderRadius: `${borderRadius}px`,
+                                        zIndex: 0,
+                                    }}
+                                />
+                            );
+                        }
+
+                        // With ROI — mirrors Box.tsx:976-1026
+                        const videoWidth = videoNaturalSize?.width ?? 1920;
+                        const videoHeight = videoNaturalSize?.height ?? 1080;
+                        const roiAspectRatio = (videoWidth * roi.width / 100) / (videoHeight * roi.height / 100);
+
+                        return (
+                            <div style={{
+                                position: 'absolute', top: 0, left: 0,
+                                width: '100%', height: '100%',
+                                pointerEvents: 'none', zIndex: 0,
+                            }}>
+                                <div style={{
+                                    position: 'absolute', top: '50%', left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    aspectRatio: `${roiAspectRatio}`,
+                                    ...(boxData.backgroundVideoSize === 'contain'
+                                        ? { maxWidth: '100%', maxHeight: '100%', width: 'auto', height: '100%' }
+                                        : { minWidth: '100%', minHeight: '100%' }),
+                                    overflow: 'hidden',
+                                }}>
+                                    <video
+                                        key="preview-video-roi"
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        style={{
+                                            position: 'absolute',
+                                            width: `${100 / roi.width * 100}%`,
+                                            height: `${100 / roi.height * 100}%`,
+                                            left: `${-roi.x / roi.width * 100}%`,
+                                            top: `${-roi.y / roi.height * 100}%`,
+                                            objectFit: 'fill',
+                                            pointerEvents: 'none',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Overlay */}
                     <div style={{
