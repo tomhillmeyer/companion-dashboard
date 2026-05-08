@@ -731,16 +731,11 @@ export default function Box({
             display: boxData.headerLabelVisible ? 'flex' : 'none',
             alignItems: 'center' as const,
             justifyContent: justifyMap[align],
-            borderRadius: (() => {
-                const r = boxData.borderRadius ?? 15;
-                const inset = boxData.noBorder ? 0 : 5;
-                return `${Math.max(0, r - inset)}px ${Math.max(0, r - inset)}px 0 0`;
-            })(),
         };
     }, [
         boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
         boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, boxData.borderRadius, boxData.noBorder, variableValues
+        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, variableValues
     ]);
 
     const leftStyle = useMemo(() => {
@@ -899,9 +894,10 @@ export default function Box({
                         style={{
                             width: `${frame.width}px`,
                             height: `${frame.height}px`,
-                            ...getBackgroundStyle(),
+                            backgroundColor: 'transparent',
                             border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues, 'borderColorTextSource')}`,
                             borderRadius: `${boxData.borderRadius ?? 15}px`,
+                            clipPath: `inset(0 round ${boxData.borderRadius ?? 15}px)`,
                             WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             zIndex: boxData.zIndex,
@@ -909,6 +905,15 @@ export default function Box({
                             pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
                         }}
                     >
+                        {/* Background color layer - child div so overflow:hidden clips it,
+                            avoiding double anti-aliasing at corners from box's own background */}
+                        <div style={{
+                            position: 'absolute',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            ...getBackgroundStyle(),
+                            pointerEvents: 'none',
+                        }} />
+
                         {/* Background image layer */}
                         {(() => {
                             const bgImageInfo = getBackgroundImageInfo();

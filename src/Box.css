@@ -104,27 +104,6 @@
     flex-shrink: 0;
 }
 
-/* Header border radius to match parent box - accounting for border width */
-.box.with-border .header {
-    border-top-left-radius: 7px;
-    border-top-right-radius: 7px;
-}
-
-.box.no-border .header {
-    border-top-left-radius: 9px;
-    border-top-right-radius: 9px;
-}
-
-/* Content container border radius for bottom - accounting for border width */
-.box.with-border .content-container {
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
-
-.box.no-border .content-container {
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-}
 
 .content-container {
     display: flex;

@@ -161,7 +161,6 @@ export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps)
         textAlign: (boxData.headerLabelAlign || 'center') as 'left' | 'center' | 'right',
         display: boxData.headerLabelVisible ? 'flex' : 'none',
         justifyContent: justifyMap[boxData.headerLabelAlign || 'center'],
-        borderRadius: `${Math.max(0, borderRadius - (boxData.noBorder ? 0 : 5))}px ${Math.max(0, borderRadius - (boxData.noBorder ? 0 : 5))}px 0 0`,
     };
 
     const leftStyle: React.CSSProperties = {
@@ -199,15 +198,24 @@ export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps)
                     style={{
                         width: `${width}px`,
                         height: `${height}px`,
-                        backgroundColor: bgColor || '#262626',
+                        backgroundColor: 'transparent',
                         border: boxData.noBorder ? 'none' : `5px solid ${borderColor || '#61BAFA'}`,
                         borderRadius: `${borderRadius}px`,
+                        clipPath: `inset(0 round ${borderRadius}px)`,
                         opacity: boxData.opacity / 100,
                         transform: `scale(${scale})`,
                         transformOrigin: 'top left',
                         cursor: 'default',
                     }}
                 >
+                    {/* Background color layer - child div so overflow:hidden clips it */}
+                    <div style={{
+                        position: 'absolute',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: bgColor || '#262626',
+                        pointerEvents: 'none',
+                    }} />
+
                     {/* Background image */}
                     {boxData.backgroundImage && (
                         <div style={{
