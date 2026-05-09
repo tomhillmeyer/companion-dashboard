@@ -283,11 +283,11 @@
     transition: transform 0.2s;
 }
 
-.nav-toggle input:checked + .nav-toggle-track {
+.nav-toggle input:checked+.nav-toggle-track {
     background: #61BAFA;
 }
 
-.nav-toggle input:checked + .nav-toggle-track::before {
+.nav-toggle input:checked+.nav-toggle-track::before {
     transform: translateX(18px);
 }
 

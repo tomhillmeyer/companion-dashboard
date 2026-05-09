@@ -639,6 +639,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     max="100"
                                     value={formData.backgroundImageOpacity || 100}
                                     onChange={(e) => updateField('backgroundImageOpacity', parseInt(e.target.value) || 100)}
+                                    style={{ width: '100%' }}
                                     className="opacity-input"
                                 />
                             </div>
