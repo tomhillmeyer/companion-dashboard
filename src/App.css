@@ -1,3 +1,9 @@
+/* Allow clicks to pass through the group Moveable control box when modifier keys are held */
+.moveable-control-box.pointer-passthrough,
+.moveable-control-box.pointer-passthrough * {
+    pointer-events: none !important;
+}
+
 /* Canvas background image with opacity support */
 .canvas-container {
     position: relative;

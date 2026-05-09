@@ -314,6 +314,7 @@ export default function App() {
 
 
     const [selectedBoxIds, setSelectedBoxIds] = useState<string[]>([]);
+    const [isModifierHeld, setIsModifierHeld] = useState<boolean>(false);
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [findReplaceModalOpen, setFindReplaceModalOpen] = useState<boolean>(false);
     const [licensingModalOpen, setLicensingModalOpen] = useState<boolean>(false);
@@ -1871,6 +1872,21 @@ export default function App() {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, [selectedBoxIds, findReplaceModalOpen, boxes]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey) setIsModifierHeld(true);
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (!e.metaKey && !e.ctrlKey && !e.shiftKey) setIsModifierHeld(false);
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        };
+    }, []);
+
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
 
@@ -2190,6 +2206,7 @@ export default function App() {
                 {/* Group Moveable for multi-select */}
                 {!boxesLocked && selectedBoxIds.length > 1 && (
                     <Moveable
+                        className={isModifierHeld ? 'pointer-passthrough' : ''}
                         target={selectedBoxIds
                             .map(id => boxRefsMap.current[id])
                             .filter((el): el is HTMLDivElement => el !== null)}

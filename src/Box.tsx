@@ -827,7 +827,7 @@ export default function Box({
                             (targetRef as any).current = el;
                             if (boxRef) boxRef(el);
                         }}
-                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'}`}
+                        className={`box ${boxData.noBorder ? 'no-border' : 'with-border'}${isSelected && !boxesLocked ? ' box-selected' : ''}`}
                         onClick={(e) => {
                             if (boxesLocked) {
                                 // When locked, allow clicks to pass through to content
