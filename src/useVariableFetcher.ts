@@ -37,7 +37,7 @@ const escapeMarkdown = (text: string): string => {
 };
 
 // Simple markdown parser for basic formatting
-const parseMarkdown = (text: string): string => {
+export const parseMarkdown = (text: string): string => {
     // First, store escaped characters with unique placeholders
     const escapedChars: { [key: string]: string } = {};
     let placeholderIndex = 0;

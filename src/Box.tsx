@@ -1217,6 +1217,7 @@ export default function Box({
                     connections={connections}
                     pages={pages}
                     variableValues={variableValues}
+                    variableHtmlValues={variableHtmlValues}
                 />
             )}
         </div>

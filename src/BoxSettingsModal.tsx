@@ -28,11 +28,12 @@ interface BoxSettingsModalProps {
     connections?: CompanionConnection[];
     pages?: PageData[];
     variableValues?: { [key: string]: string };
+    variableHtmlValues?: { [key: string]: string };
 }
 
 type SettingSection = 'full' | 'background' | 'header' | 'left' | 'right';
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], variableValues }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], variableValues, variableHtmlValues }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -1681,7 +1682,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 style={{ width: '40vw', flexShrink: 0 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <BoxPreview boxData={formData} variableValues={variableValues} />
+                <BoxPreview boxData={formData} variableValues={variableValues} variableHtmlValues={variableHtmlValues} />
             </div>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">

@@ -1,6 +1,7 @@
 import { useRef, useLayoutEffect, useState, useEffect } from 'react';
 import type { BoxData } from './types';
 import { evaluateComparison } from './variableComparison';
+import { parseMarkdown } from './useVariableFetcher';
 import { FaVideoSlash } from 'react-icons/fa6';
 import './Box.css';
 import './BoxPreview.css';
@@ -8,6 +9,11 @@ import './BoxPreview.css';
 interface BoxPreviewProps {
     boxData: BoxData;
     variableValues?: { [key: string]: string };
+    variableHtmlValues?: { [key: string]: string };
+}
+
+function isTextOnly(html: string): boolean {
+    return !/<img|<iframe|<video|!\[.*?\]\(.*?\)/i.test(html);
 }
 
 const MAX_PREVIEW_HEIGHT = () => window.innerHeight * 0.4;
@@ -45,7 +51,7 @@ function resolveColor(
     return fallback;
 }
 
-export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps) {
+export default function BoxPreview({ boxData, variableValues, variableHtmlValues }: BoxPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(() => window.innerWidth * 0.4);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -124,13 +130,20 @@ export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps)
     }, [boxData.backgroundVideoROI, boxData.backgroundVideoDeviceId]);
 
     const { width, height } = boxData.frame;
-    const scale = Math.min(containerWidth / width, MAX_PREVIEW_HEIGHT() / height);
+    const scale = Math.min(1, containerWidth / width, MAX_PREVIEW_HEIGHT() / height);
     const scaledWidth = Math.round(width * scale);
     const scaledHeight = Math.round(height * scale);
 
-    const headerText = variableValues?.headerLabelSource ?? boxData.headerLabelSource;
-    const leftText = variableValues?.leftLabelSource ?? boxData.leftLabelSource;
-    const rightText = variableValues?.rightLabelSource ?? boxData.rightLabelSource;
+    const resolveLabel = (source: string, htmlValue?: string): string => {
+        if (source && /\$\([^)]+\)/.test(source)) {
+            return htmlValue ?? source;
+        }
+        return parseMarkdown(source ?? '');
+    };
+
+    const headerHtml = resolveLabel(boxData.headerLabelSource, variableHtmlValues?.headerLabelSource);
+    const leftHtml = resolveLabel(boxData.leftLabelSource, variableHtmlValues?.leftLabelSource);
+    const rightHtml = resolveLabel(boxData.rightLabelSource, variableHtmlValues?.rightLabelSource);
 
     const ratio = boxData.leftRightRatio ?? 50;
     let leftWidth: number;
@@ -342,16 +355,25 @@ export default function BoxPreview({ boxData, variableValues }: BoxPreviewProps)
                         position: 'relative',
                         zIndex: 2,
                     }}>
-                        <div className="header" style={headerStyle}>
-                            <span className="text-only-content">{headerText}</span>
-                        </div>
+                        <div className="header" style={headerStyle}
+                            dangerouslySetInnerHTML={{ __html: isTextOnly(headerHtml)
+                                ? `<span class="text-only-content">${headerHtml}</span>`
+                                : headerHtml
+                            }}
+                        />
                         <div className="content-container">
-                            <div className="content" style={leftStyle}>
-                                <span className="text-only-content">{leftText}</span>
-                            </div>
-                            <div className="content" style={rightStyle}>
-                                <span className="text-only-content">{rightText}</span>
-                            </div>
+                            <div className="content" style={leftStyle}
+                                dangerouslySetInnerHTML={{ __html: isTextOnly(leftHtml)
+                                    ? `<span class="text-only-content">${leftHtml}</span>`
+                                    : leftHtml
+                                }}
+                            />
+                            <div className="content" style={rightStyle}
+                                dangerouslySetInnerHTML={{ __html: isTextOnly(rightHtml)
+                                    ? `<span class="text-only-content">${rightHtml}</span>`
+                                    : rightHtml
+                                }}
+                            />
                         </div>
                     </div>
                 </div>

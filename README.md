@@ -21,7 +21,7 @@ Install a Debian Linux installation such as Raspberry Pi OS, Ubuntu Server, or C
 
 Dashboard will launch full screen upon boot. It is the full version of the app, but also auto-starts the web server for remote configuration.
 
-NOTE: Currently does not support Raspberry Pi 5.
+_NOTE: Currently does not support Raspberry Pi 5._
 
 Run this script to install, either directly on the device or over SSH:
 
