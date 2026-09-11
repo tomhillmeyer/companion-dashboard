@@ -16,6 +16,7 @@ import type { BoxData, CompanionConnection, VariableColor, PageData, AnimationSe
 import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
+import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
 
 
 // Get window ID for isolated storage
@@ -99,31 +100,11 @@ export default function App() {
         if (savedBoxes) {
             try {
                 const parsed = JSON.parse(savedBoxes);
-                // Ensure all boxes have required fields (migration for older boxes)
-                return parsed.map((box: BoxData) => ({
-                    ...box,
-                    pageId: box.pageId ?? defaultPageId, // Migrate old boxes to first page
-                    anchorPoint: box.anchorPoint ?? 'top-left',
-                    leftRightRatio: box.leftRightRatio ?? 50,
-                    leftVisible: box.leftVisible ?? true,
-                    rightVisible: box.rightVisible ?? true,
-                    opacity: box.opacity ?? 100,
-                    opacitySource: box.opacitySource ?? "",
-                    opacityVariableValues: migrateVariableConditions(box.opacityVariableValues),
-                    overlayColor: box.overlayColor ?? "#00000000",
-                    overlayColorText: box.overlayColorText ?? "",
-                    overlayVariableColors: migrateVariableConditions(box.overlayVariableColors),
-                    overlayDirection: box.overlayDirection ?? 'bottom',
-                    overlaySize: box.overlaySize ?? 100,
-                    overlaySizeSource: box.overlaySizeSource ?? "",
-                    overlaySizeVariableValues: migrateVariableConditions(box.overlaySizeVariableValues),
-                    backgroundVariableColors: migrateVariableConditions(box.backgroundVariableColors),
-                    borderVariableColors: migrateVariableConditions(box.borderVariableColors),
-                    headerVariableColors: migrateVariableConditions(box.headerVariableColors),
-                    headerLabelVariableColors: migrateVariableConditions(box.headerLabelVariableColors),
-                    leftLabelVariableColors: migrateVariableConditions(box.leftLabelVariableColors),
-                    rightLabelVariableColors: migrateVariableConditions(box.rightLabelVariableColors)
-                }));
+                // Migrate legacy flat boxes to the layered schema (idempotent for already-layered boxes)
+                return parsed.map((box: any) => {
+                    const migrated = migrateBoxData(box);
+                    return { ...migrated, pageId: migrated.pageId || defaultPageId }; // Migrate old boxes to first page
+                });
             } catch (error) {
                 console.error('Failed to parse saved boxes:', error);
                 return defaultBoxes.map(box => ({ ...box, pageId: defaultPageId }));
@@ -137,21 +118,12 @@ export default function App() {
 
 
     const handleConfigRestore = (newBoxes: BoxData[], newConnectionUrl: string, canvasSettings?: any, importedPages?: PageData[]) => {
-        // Migrate boxes during restore
+        // Migrate boxes during restore (legacy flat boxes -> layered schema)
         const defaultPageId = pages[0]?.id || '';
-        const migratedBoxes = newBoxes.map((box: BoxData) => ({
-            ...box,
-            pageId: box.pageId ?? defaultPageId, // Assign to first page if no pageId
-            opacityVariableValues: migrateVariableConditions(box.opacityVariableValues),
-            overlayVariableColors: migrateVariableConditions(box.overlayVariableColors),
-            overlaySizeVariableValues: migrateVariableConditions(box.overlaySizeVariableValues),
-            backgroundVariableColors: migrateVariableConditions(box.backgroundVariableColors),
-            borderVariableColors: migrateVariableConditions(box.borderVariableColors),
-            headerVariableColors: migrateVariableConditions(box.headerVariableColors),
-            headerLabelVariableColors: migrateVariableConditions(box.headerLabelVariableColors),
-            leftLabelVariableColors: migrateVariableConditions(box.leftLabelVariableColors),
-            rightLabelVariableColors: migrateVariableConditions(box.rightLabelVariableColors)
-        }));
+        const migratedBoxes = newBoxes.map((box: any) => {
+            const migrated = migrateBoxData(box);
+            return { ...migrated, pageId: migrated.pageId || defaultPageId }; // Assign to first page if no pageId
+        });
 
         setBoxes(migratedBoxes);
         setCompanionBaseUrl(newConnectionUrl);
@@ -242,8 +214,8 @@ export default function App() {
                 ...originalBoxData.frame,
                 translate: newInternalPos
             },
-            // Ensure leftRightRatio has a valid value
-            leftRightRatio: originalBoxData.leftRightRatio ?? 50
+            // Duplicate layers with fresh IDs so each box owns its layers
+            layers: duplicateLayers(originalBoxData.layers || []),
         };
         setBoxes((prev) => [...prev, duplicatedBox]);
     };
@@ -924,40 +896,28 @@ export default function App() {
 
         // Add box variable names
         boxes.forEach(box => {
-            // Add label sources
-            if (box.headerLabelSource) allVariables[box.headerLabelSource] = box.headerLabelSource;
-            if (box.leftLabelSource) allVariables[box.leftLabelSource] = box.leftLabelSource;
-            if (box.rightLabelSource) allVariables[box.rightLabelSource] = box.rightLabelSource;
-
-            // Add color text sources
-            if (box.backgroundColorText) allVariables[box.backgroundColorText] = box.backgroundColorText;
-            if (box.borderColorText) allVariables[box.borderColorText] = box.borderColorText;
-            if (box.headerColorText) allVariables[box.headerColorText] = box.headerColorText;
-            if (box.headerLabelColorText) allVariables[box.headerLabelColorText] = box.headerLabelColorText;
-            if (box.leftLabelColorText) allVariables[box.leftLabelColorText] = box.leftLabelColorText;
-            if (box.rightLabelColorText) allVariables[box.rightLabelColorText] = box.rightLabelColorText;
-
-            // Add opacity and overlay size sources
-            if (box.opacitySource) allVariables[box.opacitySource] = box.opacitySource;
-            if (box.overlaySizeSource) allVariables[box.overlaySizeSource] = box.overlaySizeSource;
-
-            // Add variable color variables
-            [
-                box.backgroundVariableColors,
-                box.borderVariableColors,
-                box.headerVariableColors,
-                box.headerLabelVariableColors,
-                box.leftLabelVariableColors,
-                box.rightLabelVariableColors
-            ].forEach(varColors => {
-                if (varColors && Array.isArray(varColors)) {
-                    varColors.forEach(varColor => {
-                        if (varColor.variable) {
-                            allVariables[varColor.variable] = varColor.variable;
-                        }
-                    });
+            // Add layer-based sources
+            (box.layers || []).forEach(layer => {
+                if (layer.type === 'text') {
+                    if (layer.source) allVariables[layer.source] = layer.source;
+                    if (layer.colorText) allVariables[layer.colorText] = layer.colorText;
+                    (layer.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
+                } else if (layer.type === 'color') {
+                    if (layer.colorText) allVariables[layer.colorText] = layer.colorText;
+                    (layer.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
+                } else if (layer.type === 'image' || layer.type === 'video') {
+                    const overlay = layer.overlay || ({} as any);
+                    if (layer.type === 'image' && layer.imageSrc) allVariables[layer.imageSrc] = layer.imageSrc;
+                    if (overlay.colorText) allVariables[overlay.colorText] = overlay.colorText;
+                    if (overlay.sizeSource) allVariables[overlay.sizeSource] = overlay.sizeSource;
+                    (overlay.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
+                    (overlay.sizeVariableValues || []).forEach(vs => { if (vs.variable) allVariables[vs.variable] = vs.variable; });
                 }
             });
+
+            // Add opacity and border sources
+            if (box.opacitySource) allVariables[box.opacitySource] = box.opacitySource;
+            if (box.borderColorText) allVariables[box.borderColorText] = box.borderColorText;
 
             // Add variable opacity variables
             if (box.opacityVariableValues && Array.isArray(box.opacityVariableValues)) {
@@ -968,11 +928,11 @@ export default function App() {
                 });
             }
 
-            // Add variable overlay size variables
-            if (box.overlaySizeVariableValues && Array.isArray(box.overlaySizeVariableValues)) {
-                box.overlaySizeVariableValues.forEach(varSize => {
-                    if (varSize.variable) {
-                        allVariables[varSize.variable] = varSize.variable;
+            // Add variable border color variables
+            if (box.borderVariableColors && Array.isArray(box.borderVariableColors)) {
+                box.borderVariableColors.forEach(varColor => {
+                    if (varColor.variable) {
+                        allVariables[varColor.variable] = varColor.variable;
                     }
                 });
             }
@@ -1054,16 +1014,14 @@ export default function App() {
                     imageRefs.add(filename);
                 }
 
-                // Check all boxes for background images
+                // Check all boxes for background images (image layers)
                 boxes.forEach(box => {
-                    if (box.backgroundImage && box.backgroundImage.startsWith('./src/assets/')) {
-                        const filename = box.backgroundImage.replace('./src/assets/', '');
-                        imageRefs.add(filename);
-                    }
-                    if (box.backgroundColorText && box.backgroundColorText.startsWith('./src/assets/')) {
-                        const filename = box.backgroundColorText.replace('./src/assets/', '');
-                        imageRefs.add(filename);
-                    }
+                    (box.layers || []).forEach(layer => {
+                        if (layer.type === 'image' && layer.imageSrc && layer.imageSrc.startsWith('./src/assets/')) {
+                            const filename = layer.imageSrc.replace('./src/assets/', '');
+                            imageRefs.add(filename);
+                        }
+                    });
                 });
 
                 // Load image data for all referenced images
@@ -1687,49 +1645,12 @@ export default function App() {
             opacity: 100,
             opacitySource: "",
             opacityVariableValues: [],
-            backgroundColor: "#262626",
-            backgroundColorText: "",
-            backgroundVariableColors: [],
-            overlayColor: "#00000000",
-            overlayColorText: "",
-            overlayVariableColors: [],
-            overlayDirection: 'left',
-            overlaySize: 100,
-            overlaySizeSource: "",
-            overlaySizeVariableValues: [],
+            layers: createDefaultBoxLayers(),
             borderColor: "#61BAFA",
             borderColorText: "",
             borderVariableColors: [],
             noBorder: true,
             borderRadius: 15,
-            headerColor: '#19325c',
-            headerColorText: "",
-            headerVariableColors: [],
-            headerLabelSource: 'Time of Day',
-            headerLabel: 'NO CONNECTION',
-            headerLabelSize: 16,
-            headerLabelColor: '#ffffff',
-            headerLabelColorText: "",
-            headerLabelVariableColors: [],
-            headerLabelVisible: true,
-            headerLabelAlign: 'center',
-            leftLabelSource: 'Time',
-            leftLabel: '',
-            leftLabelSize: 14,
-            leftLabelColor: '#FFFFFF',
-            leftLabelColorText: "",
-            leftLabelVariableColors: [],
-            leftVisible: true,
-            leftLabelAlign: 'left',
-            rightLabelSource: '$(internal:time_hms_12)',
-            rightLabel: '',
-            rightLabelSize: 20,
-            rightLabelColor: '#FFFFFF',
-            rightLabelColorText: "",
-            rightLabelVariableColors: [],
-            rightVisible: true,
-            rightLabelAlign: 'right',
-            leftRightRatio: 50,
             companionButtonLocation: '',
         };
         setBoxes((prev) => [...prev, newBox]);
@@ -1750,102 +1671,50 @@ export default function App() {
                 return str.split(findText).join(replaceText);
             };
 
-            // Replace in all text fields (excluding button press text)
-            // Header text
-            updatedBox.headerLabel = replaceInString(updatedBox.headerLabel);
-            updatedBox.headerLabelSource = replaceInString(updatedBox.headerLabelSource);
+            const replaceConditions = (arr?: any[]) =>
+                (arr || []).map((c: any) => ({
+                    ...c,
+                    variable: replaceInString(c.variable),
+                    value: replaceInString(c.value)
+                }));
 
-            // Left text
-            updatedBox.leftLabel = replaceInString(updatedBox.leftLabel);
-            updatedBox.leftLabelSource = replaceInString(updatedBox.leftLabelSource);
+            // Replace in all layers
+            updatedBox.layers = (box.layers || []).map(layer => {
+                if (layer.type === 'text') {
+                    return {
+                        ...layer,
+                        source: replaceInString(layer.source),
+                        colorText: replaceInString(layer.colorText),
+                        variableColors: replaceConditions(layer.variableColors),
+                    };
+                }
+                if (layer.type === 'color') {
+                    return {
+                        ...layer,
+                        colorText: replaceInString(layer.colorText),
+                        variableColors: replaceConditions(layer.variableColors),
+                    };
+                }
+                // Image and video layers (overlay-based)
+                const overlay = layer.overlay;
+                return {
+                    ...layer,
+                    ...(layer.type === 'image' ? { imageSrc: replaceInString(layer.imageSrc) } : {}),
+                    overlay: {
+                        ...overlay,
+                        colorText: replaceInString(overlay.colorText),
+                        sizeSource: replaceInString(overlay.sizeSource),
+                        variableColors: replaceConditions(overlay.variableColors),
+                        sizeVariableValues: replaceConditions(overlay.sizeVariableValues),
+                    },
+                };
+            });
 
-            // Right text
-            updatedBox.rightLabel = replaceInString(updatedBox.rightLabel);
-            updatedBox.rightLabelSource = replaceInString(updatedBox.rightLabelSource);
-
-            // Color text fields
-            updatedBox.backgroundColorText = replaceInString(updatedBox.backgroundColorText);
-            updatedBox.headerColorText = replaceInString(updatedBox.headerColorText);
-            updatedBox.headerLabelColorText = replaceInString(updatedBox.headerLabelColorText);
-            updatedBox.leftLabelColorText = replaceInString(updatedBox.leftLabelColorText);
-            updatedBox.rightLabelColorText = replaceInString(updatedBox.rightLabelColorText);
-            updatedBox.borderColorText = replaceInString(updatedBox.borderColorText);
-            updatedBox.overlayColorText = replaceInString(updatedBox.overlayColorText);
-
-            // Opacity source
-            updatedBox.opacitySource = replaceInString(updatedBox.opacitySource);
-
-            // Overlay size source
-            updatedBox.overlaySizeSource = replaceInString(updatedBox.overlaySizeSource);
-
-            // Replace in variable color arrays
-            if (updatedBox.backgroundVariableColors) {
-                updatedBox.backgroundVariableColors = updatedBox.backgroundVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-            if (updatedBox.headerVariableColors) {
-                updatedBox.headerVariableColors = updatedBox.headerVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-            if (updatedBox.headerLabelVariableColors) {
-                updatedBox.headerLabelVariableColors = updatedBox.headerLabelVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-            if (updatedBox.leftLabelVariableColors) {
-                updatedBox.leftLabelVariableColors = updatedBox.leftLabelVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-            if (updatedBox.rightLabelVariableColors) {
-                updatedBox.rightLabelVariableColors = updatedBox.rightLabelVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-            if (updatedBox.borderVariableColors) {
-                updatedBox.borderVariableColors = updatedBox.borderVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-            if (updatedBox.overlayVariableColors) {
-                updatedBox.overlayVariableColors = updatedBox.overlayVariableColors.map(vc => ({
-                    ...vc,
-                    variable: replaceInString(vc.variable),
-                    value: replaceInString(vc.value)
-                }));
-            }
-
-            // Replace in opacity variable values
-            if (updatedBox.opacityVariableValues) {
-                updatedBox.opacityVariableValues = updatedBox.opacityVariableValues.map(ov => ({
-                    ...ov,
-                    variable: replaceInString(ov.variable),
-                    value: replaceInString(ov.value)
-                }));
-            }
-
-            // Replace in overlay size variable values
-            if (updatedBox.overlaySizeVariableValues) {
-                updatedBox.overlaySizeVariableValues = updatedBox.overlaySizeVariableValues.map(osv => ({
-                    ...osv,
-                    variable: replaceInString(osv.variable),
-                    value: replaceInString(osv.value)
-                }));
-            }
+            // Box-level sources
+            updatedBox.opacitySource = replaceInString(box.opacitySource);
+            updatedBox.borderColorText = replaceInString(box.borderColorText);
+            updatedBox.borderVariableColors = replaceConditions(box.borderVariableColors);
+            updatedBox.opacityVariableValues = replaceConditions(box.opacityVariableValues);
 
             return updatedBox;
         }));
@@ -1908,7 +1777,7 @@ export default function App() {
                             ...box.frame,
                             translate: newInternalPos
                         },
-                        leftRightRatio: box.leftRightRatio ?? 50
+                        layers: duplicateLayers(box.layers || [])
                     };
                 });
                 // Add duplicated boxes to the boxes array

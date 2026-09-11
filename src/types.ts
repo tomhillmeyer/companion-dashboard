@@ -46,6 +46,85 @@ export interface VariableOverlaySize {
 }
 
 // ============================================================================
+// Layer Types (Layered Box Elements)
+// ============================================================================
+
+export type LayerType = 'video' | 'color' | 'image' | 'text';
+
+export interface BaseLayer {
+    id: string;
+    type: LayerType;
+    offsetX: number;
+    offsetY: number;
+}
+
+export interface LayerOverlay {
+    color: string;
+    colorText: string;
+    variableColors: VariableColor[];
+    direction: 'left' | 'right' | 'top' | 'bottom';
+    size: number;
+    sizeSource: string;
+    sizeVariableValues: VariableOverlaySize[];
+}
+
+export interface LayerMask {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+}
+
+export interface LayerRadius {
+    topLeft: number;
+    topRight: number;
+    bottomLeft: number;
+    bottomRight: number;
+}
+
+export interface ColorLayer extends BaseLayer {
+    type: 'color';
+    color: string;
+    colorText: string;
+    variableColors: VariableColor[];
+    mask: LayerMask;
+    radius?: LayerRadius;
+}
+
+export interface ImageLayer extends BaseLayer {
+    type: 'image';
+    imageSrc: string;
+    imageSize: 'cover' | 'contain';
+    imageOpacity: number;
+    overlay: LayerOverlay;
+    radius?: LayerRadius;
+}
+
+export interface VideoLayer extends BaseLayer {
+    type: 'video';
+    deviceId: string;
+    videoSize: 'cover' | 'contain';
+    roi?: { x: number; y: number; width: number; height: number };
+    overlay: LayerOverlay;
+    radius?: LayerRadius;
+}
+
+export interface TextLayer extends BaseLayer {
+    type: 'text';
+    source: string;
+    size: number;
+    align: 'left' | 'center' | 'right';
+    alignVertical: 'top' | 'middle' | 'bottom';
+    font: string; // '' = use global font
+    color: string;
+    colorText: string;
+    variableColors: VariableColor[];
+    visible: boolean;
+}
+
+export type BoxLayer = ColorLayer | ImageLayer | VideoLayer | TextLayer;
+
+// ============================================================================
 // Box Data Type
 // ============================================================================
 
@@ -66,25 +145,8 @@ export interface BoxData {
     opacitySource: string;
     opacityVariableValues: VariableOpacity[];
 
-    // Background
-    backgroundColor: string;
-    backgroundColorText: string;
-    backgroundVariableColors: VariableColor[];
-    backgroundImage?: string;
-    backgroundImageSize?: 'cover' | 'contain';
-    backgroundImageOpacity?: number;
-    backgroundVideoDeviceId?: string;
-    backgroundVideoSize?: 'cover' | 'contain';
-    backgroundVideoROI?: { x: number; y: number; width: number; height: number };
-
-    // Overlay
-    overlayColor: string;
-    overlayColorText: string;
-    overlayVariableColors: VariableColor[];
-    overlayDirection: 'left' | 'right' | 'top' | 'bottom';
-    overlaySize: number;
-    overlaySizeSource: string;
-    overlaySizeVariableValues: VariableOverlaySize[];
+    // Layers (list order = top-first: index 0 paints on top)
+    layers: BoxLayer[];
 
     // Border
     borderColor: string;
@@ -92,45 +154,6 @@ export interface BoxData {
     borderVariableColors: VariableColor[];
     noBorder: boolean;
     borderRadius: number;
-
-    // Header Section
-    headerColor: string;
-    headerColorText: string;
-    headerVariableColors: VariableColor[];
-    headerLabelSource: string;
-    headerLabel: string;
-    headerLabelSize: number;
-    headerLabelColor: string;
-    headerLabelColorText: string;
-    headerLabelVariableColors: VariableColor[];
-    headerLabelVisible: boolean;
-    headerLabelAlign?: 'left' | 'center' | 'right';
-    headerLabelFont?: string;
-
-    // Left Section
-    leftLabelSource: string;
-    leftLabel: string;
-    leftLabelSize: number;
-    leftLabelColor: string;
-    leftLabelColorText: string;
-    leftLabelVariableColors: VariableColor[];
-    leftVisible: boolean;
-    leftLabelAlign?: 'left' | 'center' | 'right';
-    leftLabelFont?: string;
-
-    // Right Section
-    rightLabelSource: string;
-    rightLabel: string;
-    rightLabelSize: number;
-    rightLabelColor: string;
-    rightLabelColorText: string;
-    rightLabelVariableColors: VariableColor[];
-    rightVisible: boolean;
-    rightLabelAlign?: 'left' | 'center' | 'right';
-    rightLabelFont?: string;
-
-    // Layout Ratio
-    leftRightRatio: number; // Percentage for left side (0-100), right will be 100 - this value
 
     // Companion Integration
     companionButtonLocation?: string; // Format: "page/row/column"

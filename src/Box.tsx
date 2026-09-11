@@ -5,14 +5,18 @@ const windowId = (window as any).electronAPI?.windowId || '1';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
-import type { BoxData, CompanionConnection, PageData, AnimationSettings } from './types';
+import type { AnimationSettings, BoxData, ColorLayer, CompanionConnection, ImageLayer, LayerOverlay, PageData, TextLayer, VideoLayer } from './types';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
 import { evaluateComparison } from './variableComparison';
+import { isImageUrl, duplicateLayers } from './boxMigration';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, getImageFromDB } from './layerUtils';
 
+// ============================================================================
 // Component for rendering markdown content
+// ============================================================================
 const MarkdownContent = React.memo(({
     content,
     style,
@@ -75,6 +79,559 @@ const MarkdownContent = React.memo(({
            JSON.stringify(prevProps.style) === JSON.stringify(nextProps.style);
 });
 
+// ============================================================================
+// Layer sub-components (each layer is an absolutely-positioned, full-bleed view)
+// ============================================================================
+
+// ---- Color layer -----------------------------------------------------------
+const ColorLayerView = React.memo(({
+    layer,
+    variableValues,
+    colorAnimation,
+    animationDuration,
+    borderRadius,
+}: {
+    layer: ColorLayer;
+    variableValues: { [key: string]: string };
+    colorAnimation: AnimationSettings['colorAnimation'];
+    animationDuration: number;
+    borderRadius: number;
+}) => {
+    const resolvedColor = resolveLayerColor(layer.variableColors, layer.colorText, layer.color || '#262626', variableValues, `${layer.id}_colorText`);
+
+    // Legacy boxes could point a color layer's text at an image URL; those become
+    // separate image layers during migration, but guard here to be safe.
+    const backgroundColor = isImageUrl(resolvedColor) || !resolvedColor ? 'transparent' : resolvedColor;
+
+    const mask = layer.mask;
+    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
+    const radius = resolveLayerRadius(layer.radius, borderRadius);
+    const needsClip = hasMask || !!layer.radius;
+    const offsetX = layer.offsetX ?? 0;
+    const offsetY = layer.offsetY ?? 0;
+
+    return (
+        <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor,
+            pointerEvents: 'none',
+            ...(needsClip
+                ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                : {}),
+            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+            ...(colorAnimation === 'fade' ? { transition: `background-color ${animationDuration}ms ease` } : {}),
+        }} />
+    );
+});
+
+// ---- Image layer -----------------------------------------------------------
+const ImageLayerView = React.memo(({
+    layer,
+    boxId,
+    variableValues,
+    backgroundImageAnimation,
+    colorAnimation,
+    animationDuration,
+    borderRadius,
+}: {
+    layer: ImageLayer;
+    boxId: string;
+    variableValues: { [key: string]: string };
+    backgroundImageAnimation: AnimationSettings['backgroundImageAnimation'];
+    colorAnimation: AnimationSettings['colorAnimation'];
+    animationDuration: number;
+    borderRadius: number;
+}) => {
+    const [loadedImage, setLoadedImage] = useState<string>('');
+
+    // Resolve the layer source (supports Companion variables that evaluate to image URLs)
+    const resolvedSource = (variableValues[`${layer.id}_imageSrc`] || '').trim();
+    const effectiveSrc = isImageUrl(resolvedSource) ? resolvedSource : layer.imageSrc || '';
+
+    // Load image from storage when the source changes
+    useEffect(() => {
+        const loadImage = async () => {
+            if (!effectiveSrc) {
+                setLoadedImage('');
+                return;
+            }
+
+            try {
+                // If it's already a data URL or HTTP URL, use it directly
+                if (isImageUrl(effectiveSrc) && !effectiveSrc.startsWith('./src/assets/')) {
+                    setLoadedImage(effectiveSrc);
+                    return;
+                }
+
+                // If it's a cached image path, load from storage
+                if (effectiveSrc.startsWith('./src/assets/')) {
+                    const filename = effectiveSrc.split('/').pop();
+                    if (filename) {
+                        try {
+                            // Try IndexedDB first
+                            const imageData = await getImageFromDB(filename);
+                            if (imageData) {
+                                setLoadedImage(imageData);
+                                return;
+                            }
+
+                            // Fallback to localStorage
+                            const cachedData = localStorage.getItem(`window_${windowId}_cached_bg_${filename}`);
+                            if (cachedData) {
+                                setLoadedImage(cachedData);
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('Failed to load background image:', error);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error in loadImage:', error);
+            }
+
+            setLoadedImage('');
+        };
+
+        loadImage();
+    }, [effectiveSrc]);
+
+    // Change-detection for the image URL (same animation pattern as text layers).
+    // Starts at null (not yet seeded): first non-empty value is the baseline without animation.
+    const prevRef = useRef<string | null>(null);
+    const [animating, setAnimating] = useState(false);
+    const currentUrl = loadedImage || '';
+    const prev = prevRef.current;
+    const didChange = prev !== null && prev !== currentUrl && !!currentUrl;
+    prevRef.current = (prev !== null || !!currentUrl) ? currentUrl : null;
+
+    const shouldAnimate = didChange && backgroundImageAnimation !== 'none' && !!currentUrl;
+    useLayoutEffect(() => {
+        if (shouldAnimate) setAnimating(true);
+    }, [shouldAnimate]);
+
+    const handleEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.animationName?.startsWith('box-')) {
+            setAnimating(false);
+        }
+    };
+
+    const animate = animating && backgroundImageAnimation !== 'none';
+
+    if (!currentUrl) return null;
+
+    const radius = resolveLayerRadius(layer.radius, borderRadius);
+    const offsetX = layer.offsetX ?? 0;
+    const offsetY = layer.offsetY ?? 0;
+
+    return (
+        <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            pointerEvents: 'none',
+            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+        }}>
+            <div
+                className={animate ? `anim-${backgroundImageAnimation}` : undefined}
+                onAnimationEnd={handleEnd}
+                style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundImage: `url("${currentUrl}")`,
+                    backgroundSize: layer.imageSize,
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    opacity: (layer.imageOpacity ?? 100) / 100,
+                    pointerEvents: 'none',
+                    ...(layer.radius
+                        ? { clipPath: `inset(0 round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                        : {}),
+                    ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
+                }}
+            />
+            <LayerOverlayView
+                overlay={layer.overlay}
+                layerId={layer.id}
+                boxId={boxId}
+                variableValues={variableValues}
+                colorAnimation={colorAnimation}
+                animationDuration={animationDuration}
+            />
+        </div>
+    );
+});
+
+// ---- Video layer -----------------------------------------------------------
+const VideoLayerView = React.memo(({
+    layer,
+    boxId,
+    videoRelayManager,
+    variableValues,
+    colorAnimation,
+    animationDuration,
+    borderRadius,
+}: {
+    layer: VideoLayer;
+    boxId: string;
+    videoRelayManager?: VideoRelayManager | null;
+    variableValues: { [key: string]: string };
+    colorAnimation: AnimationSettings['colorAnimation'];
+    animationDuration: number;
+    borderRadius: number;
+}) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const currentStreamRef = useRef<MediaStream | null>(null);
+
+    // Unique stream ID per layer so multiple video layers in one box don't collide
+    const streamId = `${boxId}_${layer.id}`;
+    const radius = resolveLayerRadius(layer.radius, borderRadius);
+    const videoRadius = layer.radius
+        ? `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px`
+        : undefined;
+    const offsetX = layer.offsetX ?? 0;
+    const offsetY = layer.offsetY ?? 0;
+
+    // Handle video stream setup and cleanup
+    useEffect(() => {
+        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const currentDeviceId = layer.deviceId;
+
+        const setupVideoStream = async () => {
+            // If no device ID is set, clean up and stop here
+            if (!currentDeviceId) {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = null;
+                }
+                return;
+            }
+
+            // Clean up any existing stream first (just clear the reference, don't stop tracks)
+            if (videoRef.current && videoRef.current.srcObject) {
+                videoRef.current.srcObject = null;
+            }
+
+            // Web client: Request video stream via WebRTC
+            if (isWebClient) {
+                if (!videoRelayManager) {
+                    return;
+                }
+                console.log(`[Web Client] Requesting video stream for device: ${currentDeviceId}, layer: ${layer.id}, box: ${boxId}`);
+                videoRelayManager.requestVideoStream(currentDeviceId, streamId, (stream) => {
+                    console.log(`[Web Client] Received video stream for device: ${currentDeviceId}, layer: ${layer.id}, box: ${boxId}`);
+                    currentStreamRef.current = stream;
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                });
+                return;
+            }
+
+            // Electron host: Get stream from VideoRelayManager
+            if (videoRelayManager) {
+                console.log(`[Electron Host] Requesting stream for device: ${currentDeviceId}, layer: ${layer.id}, box: ${boxId}`);
+
+                videoRelayManager.incrementDeviceRef(currentDeviceId);
+
+                await videoRelayManager.startBroadcasting(currentDeviceId);
+
+                const stream = videoRelayManager.getLocalStream(currentDeviceId);
+
+                if (stream && videoRef.current) {
+                    currentStreamRef.current = stream;
+                    videoRef.current.srcObject = stream;
+                    console.log(`[Electron Host] Set video stream for box: ${boxId}, layer: ${layer.id}`);
+                } else {
+                    console.error(`[Electron Host] Failed to get stream for device: ${currentDeviceId}`);
+                }
+            }
+        };
+
+        setupVideoStream();
+
+        // Cleanup - uses captured currentDeviceId
+        return () => {
+            currentStreamRef.current = null;
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
+            }
+
+            if (videoRelayManager && currentDeviceId) {
+                if (isWebClient) {
+                    console.log(`[Web Client] Closing peer connection for device: ${currentDeviceId}, layer: ${layer.id}`);
+                    videoRelayManager.closePeerConnection(currentDeviceId, streamId);
+                } else {
+                    console.log(`[Electron Host] Decrementing ref count for device: ${currentDeviceId}, layer: ${layer.id}`);
+                    videoRelayManager.decrementDeviceRef(currentDeviceId);
+                }
+            }
+        };
+    }, [layer.deviceId, videoRelayManager, boxId, layer.id, streamId]);
+
+    // When ROI is toggled on/off, React recreates the <video> element (different JSX structure).
+    // The new element loses its srcObject — reassign the saved stream if it has none.
+    useEffect(() => {
+        if (videoRef.current && currentStreamRef.current && !videoRef.current.srcObject) {
+            videoRef.current.srcObject = currentStreamRef.current;
+        }
+    }, [layer.roi, layer.deviceId]);
+
+    if (!layer.deviceId) return null;
+
+    const roi = layer.roi;
+
+    const videoContent = (() => {
+        if (!roi) {
+            // No ROI - simple case, use objectFit directly
+            return (
+                <video
+                    key={`video-${boxId}-${layer.id}-no-roi`}
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: layer.videoSize || 'cover',
+                        pointerEvents: 'none',
+                        zIndex: 0,
+                        ...(videoRadius ? { borderRadius: videoRadius } : {})
+                    }}
+                />
+            );
+        }
+
+        // With ROI: create a "cropped container" with the ROI's aspect ratio, then scale
+        // the actual video so only the ROI region shows.
+        const videoWidth = videoRef.current?.videoWidth || 1920;
+        const videoHeight = videoRef.current?.videoHeight || 1080;
+
+        const roiPixelWidth = videoWidth * (roi.width / 100);
+        const roiPixelHeight = videoHeight * (roi.height / 100);
+        const roiAspectRatio = roiPixelWidth / roiPixelHeight;
+
+        return (
+            <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 0
+            }}>
+                <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    aspectRatio: `${roiAspectRatio}`,
+                    ...(layer.videoSize === 'contain' ? {
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        width: 'auto',
+                        height: '100%'
+                    } : {
+                        minWidth: '100%',
+                        minHeight: '100%'
+                    }),
+                    overflow: 'hidden',
+                    ...(videoRadius ? { borderRadius: videoRadius } : {})
+                }}>
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        style={{
+                            position: 'absolute',
+                            width: `${100 / roi.width * 100}%`,
+                            height: `${100 / roi.height * 100}%`,
+                            left: `${-roi.x / roi.width * 100}%`,
+                            top: `${-roi.y / roi.height * 100}%`,
+                            objectFit: 'fill',
+                            pointerEvents: 'none'
+                        }}
+                    />
+                </div>
+            </div>
+        );
+    })();
+
+    return (
+        <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            pointerEvents: 'none',
+            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+        }}>
+            {videoContent}
+            <LayerOverlayView
+                overlay={layer.overlay}
+                layerId={layer.id}
+                boxId={boxId}
+                variableValues={variableValues}
+                colorAnimation={colorAnimation}
+                animationDuration={animationDuration}
+            />
+        </div>
+    );
+});
+
+// ---- Text layer ------------------------------------------------------------
+const TextLayerView = React.memo(({
+    layer,
+    boxId,
+    variableValues,
+    variableHtmlValues,
+    textAnimation,
+    colorAnimation,
+    animationDuration,
+    boxesLocked,
+}: {
+    layer: TextLayer;
+    boxId: string;
+    variableValues: { [key: string]: string };
+    variableHtmlValues: { [key: string]: string };
+    textAnimation: AnimationSettings['textAnimation'];
+    colorAnimation: AnimationSettings['colorAnimation'];
+    animationDuration: number;
+    boxesLocked: boolean;
+}) => {
+    const current = (variableHtmlValues[`${layer.id}_label`] || '').trim();
+
+    // Change-detection for animations (see comment in Box for the seeding pattern)
+    const prevRef = useRef<string | null>(null);
+    const [animating, setAnimating] = useState(false);
+    const prev = prevRef.current;
+    const didChange = prev !== null && prev !== current && !!current;
+    prevRef.current = (prev !== null || !!current) ? current : null;
+
+    const shouldAnimate = didChange && textAnimation !== 'none' && !!current;
+    useLayoutEffect(() => {
+        if (shouldAnimate) setAnimating(true);
+    }, [shouldAnimate]);
+
+    const handleEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.animationName?.startsWith('box-')) {
+            setAnimating(false);
+        }
+    };
+
+    const animate = animating && textAnimation !== 'none' && !!current;
+
+    const align = layer.align || 'center';
+    const alignVertical = layer.alignVertical || 'middle';
+    const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
+        left: 'flex-start',
+        center: 'center',
+        right: 'flex-end'
+    };
+    const verticalJustifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
+        top: 'flex-start',
+        middle: 'center',
+        bottom: 'flex-end'
+    };
+
+    const color = resolveLayerColor(layer.variableColors, layer.colorText, layer.color || '#ffffff', variableValues, `${layer.id}_colorText`);
+
+    const offsetX = layer.offsetX ?? 0;
+    const offsetY = layer.offsetY ?? 0;
+
+    return (
+        <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: layer.visible ? 'flex' : 'none',
+            alignItems: verticalJustifyMap[alignVertical],
+            justifyContent: justifyMap[align],
+            pointerEvents: boxesLocked ? 'auto' : 'none',
+            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+        }}>
+            <MarkdownContent
+                key={`${boxId}-${layer.id}`}
+                content={current}
+                className={`content${animate ? ` anim-${textAnimation}` : ''}`}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: 'fit-content',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    color,
+                    fontSize: `${layer.size}px`,
+                    fontFamily: layer.font || undefined,
+                    textAlign: align as 'left' | 'center' | 'right',
+                    ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
+                    ...(colorAnimation === 'fade' ? {
+                        transition: `color ${animationDuration}ms ease`
+                    } : {}),
+                }}
+                onAnimationEnd={handleEnd}
+            />
+        </div>
+    );
+});
+
+// ---- Overlay (per image/video layer) --------------------------------------
+const LayerOverlayView = React.memo(({
+    overlay,
+    layerId,
+    boxId,
+    variableValues,
+    colorAnimation,
+    animationDuration,
+}: {
+    overlay: LayerOverlay;
+    layerId: string;
+    boxId: string;
+    variableValues: { [key: string]: string };
+    colorAnimation: AnimationSettings['colorAnimation'];
+    animationDuration: number;
+}) => {
+    const size = computeLayerOverlaySize(overlay, layerId, variableValues);
+    const color = resolveLayerColor(overlay.variableColors, overlay.colorText, overlay.color || '#00000000', variableValues, `${layerId}_colorText`);
+
+    return (
+        <div key={`overlay-${boxId}-${layerId}`} style={{
+            position: 'absolute',
+            ...(overlay.direction === 'left' ? {
+                top: 0,
+                left: 0,
+                bottom: 0,
+                width: `${size}%`
+            } : overlay.direction === 'right' ? {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                width: `${size}%`
+            } : overlay.direction === 'top' ? {
+                top: 0,
+                left: 0,
+                right: 0,
+                height: `${size}%`
+            } : {
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: `${size}%`
+            }),
+            backgroundColor: color,
+            pointerEvents: 'none',
+            transition: colorAnimation === 'fade'
+                ? `width 0.3s ease, height 0.3s ease, background-color ${animationDuration}ms ease`
+                : 'width 0.3s ease, height 0.3s ease'
+        }} />
+    );
+});
+
+// ============================================================================
+// Box
+// ============================================================================
 export default function Box({
     boxData,
     isSelected,
@@ -124,121 +681,15 @@ export default function Box({
 
     const { textAnimation = 'none', backgroundImageAnimation = 'none', colorAnimation = 'none', animationDuration = 300 } = animationSettings || {};
 
-    // Track previous rendered values to detect changes for animations.
-    // A null value means the section hasn't received its first non-empty content yet
-    // ("seeding"): the first non-empty value is recorded as the baseline WITHOUT animation,
-    // so only subsequent real value changes animate.
-    const prevValuesRef = useRef<{
-        header: string | null;
-        left: string | null;
-        right: string | null;
-        bgImage: string | null;
-    }>({ header: null, left: null, right: null, bgImage: null });
-
     const targetRef = useRef<HTMLDivElement>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const currentStreamRef = useRef<MediaStream | null>(null);
     const [frame, setFrame] = useState(boxData.frame);
     const [showModal, setShowModal] = useState(false);
-    const [loadedBackgroundImage, setLoadedBackgroundImage] = useState<string>('');
     const [isDragStartCalled, setIsDragStartCalled] = useState(false);
 
-    // Update local frame when initialFrame changes
+    // Update local frame when the box frame changes
     useEffect(() => {
         setFrame(boxData.frame);
     }, [boxData.frame]);
-
-    // Handle video stream setup and cleanup
-    useEffect(() => {
-        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
-        const currentDeviceId = boxData.backgroundVideoDeviceId; // Capture current device ID for cleanup
-
-        const setupVideoStream = async () => {
-            // If no device ID is set, clean up and stop here
-            if (!currentDeviceId) {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = null;
-                }
-                return;
-            }
-
-            // Clean up any existing stream first (just clear the reference, don't stop tracks)
-            // VideoRelayManager is responsible for managing track lifecycle
-            if (videoRef.current && videoRef.current.srcObject) {
-                videoRef.current.srcObject = null;
-            }
-
-            // Web client: Request video stream via WebRTC
-            if (isWebClient) {
-                if (!videoRelayManager) {
-                    // VideoRelayManager initializes when WebSocket connects, which may take a moment
-                    // The effect will re-run once it's ready
-                    return;
-                }
-                console.log(`[Web Client] Requesting video stream for device: ${currentDeviceId}, box: ${boxData.id}`);
-                videoRelayManager.requestVideoStream(currentDeviceId, boxData.id, (stream) => {
-                    console.log(`[Web Client] Received video stream for device: ${currentDeviceId}, box: ${boxData.id}`);
-                    currentStreamRef.current = stream;
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                });
-                return;
-            }
-
-            // Electron host: Get stream from VideoRelayManager (which manages device capture)
-            if (videoRelayManager) {
-                console.log(`[Electron Host] Requesting stream for device: ${currentDeviceId}, box: ${boxData.id}`);
-
-                // Increment reference count for this device
-                videoRelayManager.incrementDeviceRef(currentDeviceId);
-
-                // Start broadcasting (will only capture once if not already broadcasting)
-                await videoRelayManager.startBroadcasting(currentDeviceId);
-
-                // Get the stream from VideoRelayManager
-                const stream = videoRelayManager.getLocalStream(currentDeviceId);
-
-                if (stream && videoRef.current) {
-                    currentStreamRef.current = stream;
-                    videoRef.current.srcObject = stream;
-                    console.log(`[Electron Host] Set video stream for box: ${boxData.id}`);
-                } else {
-                    console.error(`[Electron Host] Failed to get stream for device: ${currentDeviceId}`);
-                }
-            }
-        };
-
-        setupVideoStream();
-
-        // Cleanup function - uses captured currentDeviceId, not boxData.backgroundVideoDeviceId
-        return () => {
-            currentStreamRef.current = null;
-            // Clear video element
-            if (videoRef.current) {
-                videoRef.current.srcObject = null;
-            }
-
-            // Cleanup WebRTC connections when device changes or component unmounts
-            if (videoRelayManager && currentDeviceId) {
-                if (isWebClient) {
-                    console.log(`[Web Client] Closing peer connection for device: ${currentDeviceId}, box: ${boxData.id}`);
-                    videoRelayManager.closePeerConnection(currentDeviceId, boxData.id);
-                } else {
-                    console.log(`[Electron Host] Decrementing ref count for device: ${currentDeviceId}, box: ${boxData.id}`);
-                    videoRelayManager.decrementDeviceRef(currentDeviceId);
-                }
-            }
-        };
-    }, [boxData.backgroundVideoDeviceId, videoRelayManager, boxData.id]); // Only re-run when device changes, not ROI (videoRelayManager is stable ref)
-
-    // When ROI is toggled on/off, React recreates the <video> element (different JSX structure).
-    // The new element loses its srcObject — reassign the saved stream if it has none.
-    useEffect(() => {
-        if (videoRef.current && currentStreamRef.current && !videoRef.current.srcObject) {
-            videoRef.current.srcObject = currentStreamRef.current;
-        }
-    }, [boxData.backgroundVideoROI]);
 
     const getGridLines = (gridSize: number) => {
         const viewportWidth = window.innerWidth;
@@ -287,176 +738,48 @@ export default function Box({
         }
     }, [showModal, onDeselect]);
 
-    // Function to check if a string is an image URL
-    const isImageUrl = (text: string): boolean => {
-        if (!text || typeof text !== 'string') return false;
+    // Collect variable sources for the fetcher, namespaced per layer so multiple
+    // text/color/overlay entries never collide with each other.
+    const fetcherSources = useMemo(() => {
+        const sources: { [key: string]: string } = {};
 
-        try {
-            // Check for HTTP/HTTPS URLs
-            if (text.startsWith('http://') || text.startsWith('https://')) {
-                return true;
-            }
-
-            // Check for data URLs
-            if (text.startsWith('data:image/')) {
-                return true;
-            }
-
-            // Check for file extensions
-            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
-            return imageExtensions.some(ext => text.toLowerCase().endsWith(ext));
-        } catch (error) {
-            console.error('Error in isImageUrl:', error);
-            return false;
-        }
-    };
-
-    // Load background image from storage when backgroundImage changes
-    useEffect(() => {
-        const loadBackgroundImage = async () => {
-            if (!boxData.backgroundImage || typeof boxData.backgroundImage !== 'string') {
-                setLoadedBackgroundImage('');
-                return;
-            }
-
-            try {
-                // If it's already a data URL or HTTP URL, use it directly
-                if (isImageUrl(boxData.backgroundImage) && !boxData.backgroundImage.startsWith('./src/assets/')) {
-                    setLoadedBackgroundImage(boxData.backgroundImage);
-                    return;
+        for (const layer of boxData.layers || []) {
+            if (layer.type === 'text') {
+                sources[`${layer.id}_label`] = layer.source || '';
+                sources[`${layer.id}_colorText`] = layer.colorText || '';
+                (layer.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
+            } else if (layer.type === 'color') {
+                sources[`${layer.id}_colorText`] = layer.colorText || '';
+                (layer.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
+            } else if (layer.type === 'image' || layer.type === 'video') {
+                const overlay = layer.overlay;
+                if (layer.type === 'image') {
+                    sources[`${layer.id}_imageSrc`] = layer.imageSrc || '';
                 }
-
-                // If it's a cached image path, load from storage
-                if (boxData.backgroundImage.startsWith('./src/assets/')) {
-                    const filename = boxData.backgroundImage.split('/').pop();
-                    if (filename) {
-                        try {
-                            // Try IndexedDB first
-                            const imageData = await getImageFromDB(filename);
-                            if (imageData) {
-                                setLoadedBackgroundImage(imageData);
-                                return;
-                            }
-
-                            // Fallback to localStorage
-                            const cachedData = localStorage.getItem(`window_${windowId}_cached_bg_${filename}`);
-                            if (cachedData) {
-                                setLoadedBackgroundImage(cachedData);
-                                return;
-                            }
-                        } catch (error) {
-                            console.error('Failed to load background image:', error);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error in loadBackgroundImage:', error);
+                sources[`${layer.id}_colorText`] = overlay.colorText || '';
+                sources[`${layer.id}_sizeSource`] = overlay.sizeSource || '';
+                (overlay.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
+                (overlay.sizeVariableValues || []).forEach(vs => { if (vs.variable) sources[vs.variable] = vs.variable; });
             }
-
-            setLoadedBackgroundImage('');
-        };
-
-        loadBackgroundImage();
-    }, [boxData.backgroundImage]);
-
-    // IndexedDB helper function
-    const getImageFromDB = async (filename: string): Promise<string | null> => {
-        try {
-            const request = indexedDB.open('CompanionDashboardImages', 3);
-
-            return new Promise((resolve, reject) => {
-                request.onerror = () => reject(request.error);
-                request.onsuccess = () => {
-                    const db = request.result;
-                    const transaction = db.transaction(['images'], 'readonly');
-                    const store = transaction.objectStore('images');
-                    const getRequest = store.get(filename);
-
-                    getRequest.onerror = () => reject(getRequest.error);
-                    getRequest.onsuccess = () => {
-                        const result = getRequest.result;
-                        resolve(result ? result.data : null);
-                    };
-                };
-            });
-        } catch (error) {
-            console.error('Error getting image from IndexedDB:', error);
-            return null;
-        }
-    };
-
-    // Collect all variable names from variable colors arrays
-    const getAllVariableNames = () => {
-        const allVariables: { [key: string]: string } = {};
-
-        // Add variable colors
-        const variableColorArrays = [
-            boxData.backgroundVariableColors,
-            boxData.overlayVariableColors,
-            boxData.borderVariableColors,
-            boxData.headerVariableColors,
-            boxData.headerLabelVariableColors,
-            boxData.leftLabelVariableColors,
-            boxData.rightLabelVariableColors
-        ];
-
-        variableColorArrays.forEach(varColors => {
-            if (varColors && Array.isArray(varColors)) {
-                varColors.forEach(varColor => {
-                    if (varColor.variable) {
-                        allVariables[varColor.variable] = varColor.variable;
-                    }
-                });
-            }
-        });
-
-        // Add variable opacity variables
-        if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
-            boxData.opacityVariableValues.forEach(varOpacity => {
-                if (varOpacity.variable) {
-                    allVariables[varOpacity.variable] = varOpacity.variable;
-                }
-            });
         }
 
-        // Add variable overlay size variables
-        if (boxData.overlaySizeVariableValues && Array.isArray(boxData.overlaySizeVariableValues)) {
-            boxData.overlaySizeVariableValues.forEach(varSize => {
-                if (varSize.variable) {
-                    allVariables[varSize.variable] = varSize.variable;
-                }
-            });
-        }
+        sources.opacitySource = boxData.opacitySource || '';
+        sources.borderColorTextSource = boxData.borderColorText || '';
+        (boxData.opacityVariableValues || []).forEach(varOpacity => { if (varOpacity.variable) sources[varOpacity.variable] = varOpacity.variable; });
+        (boxData.borderVariableColors || []).forEach(varColor => { if (varColor.variable) sources[varColor.variable] = varColor.variable; });
 
-        return allVariables;
-    };
+        return sources;
+    }, [boxData]);
 
     // Use the enhanced variable fetcher
-    // If centralVariableValues provided (web client mode), pass as preFetchedRawValues for local processing
-    // Otherwise (Electron mode), fetch directly from Companion
-    const fetchedVariables = useVariableFetcher(companionBaseUrl, {
-        headerLabelSource: boxData.headerLabelSource,
-        leftLabelSource: boxData.leftLabelSource,
-        rightLabelSource: boxData.rightLabelSource,
-        backgroundColorTextSource: boxData.backgroundColorText,
-        overlayColorTextSource: boxData.overlayColorText,
-        borderColorTextSource: boxData.borderColorText,
-        headerColorTextSource: boxData.headerColorText,
-        headerLabelColorTextSource: boxData.headerLabelColorText,
-        leftLabelColorTextSource: boxData.leftLabelColorText,
-        rightLabelColorTextSource: boxData.rightLabelColorText,
-        opacitySource: boxData.opacitySource,
-        overlaySizeSource: boxData.overlaySizeSource,
-        ...getAllVariableNames() // Add all variable color variables
-    }, connections, refreshRateMs, isDragging, centralVariableValues); // Pass raw values for web client mode
+    const fetchedVariables = useVariableFetcher(companionBaseUrl, fetcherSources, connections, refreshRateMs, isDragging, centralVariableValues);
 
-    // Use the fetched variables (which now handles both Electron and web client modes internally)
     const variableValues = fetchedVariables.values;
     const variableHtmlValues = fetchedVariables.htmlValues;
 
     // Compute opacity from variable or fallback to stored value
     const computedOpacity = () => {
-        // 1. Check variable opacity values first - find first matching variable that evaluates to true
+        // 1. Variable opacity conditions first
         if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
             for (const varOpacity of boxData.opacityVariableValues) {
                 if (varOpacity && varOpacity.variable && varOpacity.value) {
@@ -468,7 +791,7 @@ export default function Box({
             }
         }
 
-        // 2. Check if opacitySource contains a variable pattern
+        // 2. opacitySource contains a variable pattern
         const hasVariable = boxData.opacitySource && boxData.opacitySource.includes('$(') && boxData.opacitySource.includes(')');
 
         if (hasVariable && variableValues.opacitySource) {
@@ -478,93 +801,8 @@ export default function Box({
             }
         }
 
-        // 3. Use the stored opacity value
+        // 3. Stored opacity
         return boxData.opacity / 100;
-    };
-
-    // Compute overlay size from variable or fallback to stored value
-    const computeOverlaySize = () => {
-        // 1. Check variable overlay size values first - find first matching variable that evaluates to true
-        if (boxData.overlaySizeVariableValues && Array.isArray(boxData.overlaySizeVariableValues)) {
-            for (const varSize of boxData.overlaySizeVariableValues) {
-                if (varSize && varSize.variable && varSize.value) {
-                    const variableValue = variableValues[varSize.variable] || '';
-                    if (evaluateComparison(variableValue, varSize.operator, varSize.value)) {
-                        return varSize.size;
-                    }
-                }
-            }
-        }
-
-        // 2. Check if overlaySizeSource contains a variable pattern
-        const hasVariable = boxData.overlaySizeSource && boxData.overlaySizeSource.includes('$(') && boxData.overlaySizeSource.includes(')');
-
-        if (hasVariable && variableValues.overlaySizeSource) {
-            const parsed = parseInt(variableValues.overlaySizeSource);
-            if (!isNaN(parsed)) {
-                return Math.max(0, Math.min(100, parsed));
-            }
-        }
-
-        // 3. Use the stored overlay size value
-        return boxData.overlaySize;
-    };
-
-    // Utility function to resolve color with priority: variable colors > colorText > fallback color
-    const resolveColor = (variableColors: any[], colorText: string, fallbackColor: string, variableValues: any, sourceKey?: string) => {
-        // 1. Check variable colors first - find first matching variable that evaluates to true
-        if (variableColors && Array.isArray(variableColors)) {
-            for (const varColor of variableColors) {
-                if (varColor && varColor.variable && varColor.value) {
-                    const variableValue = variableValues[varColor.variable] || '';
-                    if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
-                        return varColor.color;
-                    }
-                }
-            }
-        }
-
-        // 2. If no variable colors match, check if colorText has a value
-        if (colorText && colorText.trim()) {
-            // Use the fetcher's resolved value (sourceKey) so Companion variables resolve correctly;
-            // fall back to colorText directly for plain hex codes
-            if (sourceKey) {
-                return variableValues[sourceKey] || colorText;
-            }
-            return colorText;
-        }
-
-        // 3. Fall back to the picker color
-        return fallbackColor;
-    };
-
-    // Resolve background color similar to canvas implementation
-    const resolveBoxBackgroundColor = () => {
-        try {
-            // 1. Check variable colors first
-            if (boxData.backgroundVariableColors && Array.isArray(boxData.backgroundVariableColors)) {
-                for (const varColor of boxData.backgroundVariableColors) {
-                    if (varColor && varColor.variable && varColor.value) {
-                        const variableValue = variableValues[varColor.variable] || '';
-                        if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
-                            return varColor.color || '';
-                        }
-                    }
-                }
-            }
-
-            // 2. Check if backgroundColorText has a value and resolve it
-            if (boxData.backgroundColorText && typeof boxData.backgroundColorText === 'string' && boxData.backgroundColorText.trim()) {
-                const resolvedValue = variableValues.backgroundColorTextSource || boxData.backgroundColorText;
-                return resolvedValue || '';
-            }
-
-            // 3. Fall back to the picker color
-            return boxData.backgroundColor || '#262626';
-        } catch (error) {
-            console.error('Error in resolveBoxBackgroundColor:', error);
-            return boxData.backgroundColor || '#262626';
-        }
     };
 
     // Helper to send Companion button press
@@ -610,320 +848,9 @@ export default function Box({
         }
     };
 
-    // Resolve overlay color with same priority logic as background
-    const resolveOverlayColor = () => {
-        try {
-            // 1. Check variable colors first
-            if (boxData.overlayVariableColors && Array.isArray(boxData.overlayVariableColors)) {
-                for (const varColor of boxData.overlayVariableColors) {
-                    if (varColor && varColor.variable && varColor.value) {
-                        const variableValue = variableValues[varColor.variable] || '';
-                        if (variableValue === varColor.value) {
-                            return varColor.color || '';
-                        }
-                    }
-                }
-            }
-
-            // 2. Check if overlayColorText has a value and resolve it
-            if (boxData.overlayColorText && typeof boxData.overlayColorText === 'string' && boxData.overlayColorText.trim()) {
-                const resolvedValue = variableValues.overlayColorTextSource || boxData.overlayColorText;
-                return resolvedValue || '';
-            }
-
-            // 3. Fall back to the picker color
-            return boxData.overlayColor || '#00000000';
-        } catch (error) {
-            console.error('Error in resolveOverlayColor:', error);
-            return boxData.overlayColor || '#00000000';
-        }
-    };
-
-    // Generate background style that handles both color and image
-    const getBackgroundStyle = () => {
-        try {
-            const actualBackgroundColor = resolveBoxBackgroundColor();
-
-            // Check if the resolved background color is actually an image URL
-            if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
-                return {
-                    backgroundColor: 'transparent'
-                };
-            }
-
-            // If there's a manually set background image, use it
-            if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
-                return {
-                    backgroundColor: 'transparent'
-                };
-            }
-
-            // Otherwise, use as background color
-            return {
-                backgroundColor: actualBackgroundColor || '#262626'
-            };
-        } catch (error) {
-            console.error('Error in getBackgroundStyle:', error);
-            return {
-                backgroundColor: boxData.backgroundColor || '#262626'
-            };
-        }
-    };
-
-    // Get background image info for rendering
-    const getBackgroundImageInfo = () => {
-        try {
-            const actualBackgroundColor = resolveBoxBackgroundColor();
-            const opacity = (boxData.backgroundImageOpacity || 100) / 100;
-
-            // Check if the resolved background color is actually an image URL
-            if (actualBackgroundColor && isImageUrl(actualBackgroundColor)) {
-                return {
-                    url: actualBackgroundColor,
-                    size: boxData.backgroundImageSize || 'cover',
-                    opacity
-                };
-            }
-
-            // If there's a manually set background image, use it
-            if (loadedBackgroundImage && typeof loadedBackgroundImage === 'string') {
-                return {
-                    url: loadedBackgroundImage,
-                    size: boxData.backgroundImageSize || 'cover',
-                    opacity
-                };
-            }
-
-            return null;
-        } catch (error) {
-            console.error('Error in getBackgroundImageInfo:', error);
-            return null;
-        }
-    };
-
-    // Use the fetched values or fall back to manual labels
-    /*
-    const displayLabels = {
-        header: variableValues.headerLabelSource || boxData.headerLabelSource,
-        left: variableValues.leftLabelSource || boxData.leftLabelSource,
-        right: variableValues.rightLabelSource || boxData.rightLabelSource,
-        backgroundColor: variableValues.backgroundColorTextSource || boxData.backgroundColorText,
-        headerColor: variableValues.headerColorTextSource || boxData.headerColorText,
-        headerLabelColor: variableValues.headerLabelColorTextSource || boxData.headerLabelColorText,
-        leftLabelColorTextSource: variableValues.leftLabelColorTextSource || boxData.leftLabelColorText,
-        rightLabelColorTextSource: variableValues.rightLabelColorTextSource || boxData.rightLabelColorText,
-    };*/
-
-
-    const displayHtmlLabels = useMemo(() => {
-        try {
-            return {
-                header: variableHtmlValues.headerLabelSource || '',
-                left: variableHtmlValues.leftLabelSource || '',
-                right: variableHtmlValues.rightLabelSource || '',
-            };
-        } catch (error) {
-            console.error('Error in displayHtmlLabels:', error);
-            return {
-                header: '',
-                left: '',
-                right: '',
-            };
-        }
-    }, [variableHtmlValues.headerLabelSource, variableHtmlValues.leftLabelSource, variableHtmlValues.rightLabelSource]);
-
-    // Memoize styles to prevent unnecessary re-renders
-    const headerStyle = useMemo(() => {
-        const align = boxData.headerLabelAlign || 'center';
-        const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
-            left: 'flex-start',
-            center: 'center',
-            right: 'flex-end'
-        };
-
-        return {
-            backgroundColor: resolveColor(boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor, variableValues, 'headerColorTextSource'),
-            color: resolveColor(boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor, variableValues, 'headerLabelColorTextSource'),
-            fontSize: `${boxData.headerLabelSize}px`,
-            fontFamily: boxData.headerLabelFont || undefined,
-            textAlign: align as 'left' | 'center' | 'right',
-            display: boxData.headerLabelVisible ? 'flex' : 'none',
-            alignItems: 'center' as const,
-            justifyContent: justifyMap[align],
-            ...(colorAnimation === 'fade' ? { transition: `color ${animationDuration}ms ease, background-color ${animationDuration}ms ease` } : {}),
-        };
-    }, [
-        boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
-        boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, variableValues,
-        colorAnimation, animationDuration
-    ]);
-
-    const leftStyle = useMemo(() => {
-        // Ensure leftRightRatio has a valid value, default to 50
-        const ratio = boxData.leftRightRatio ?? 50;
-
-        // Calculate effective width based on visibility
-        // If left is hidden, width is 0%
-        // If right is hidden, width is 100%
-        // Otherwise, use the ratio
-        let effectiveWidth: number;
-        if (!boxData.leftVisible) {
-            effectiveWidth = 0;
-        } else if (!boxData.rightVisible) {
-            effectiveWidth = 100;
-        } else {
-            effectiveWidth = ratio;
-        }
-
-        const align = boxData.leftLabelAlign || 'left';
-        const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
-            left: 'flex-start',
-            center: 'center',
-            right: 'flex-end'
-        };
-
-        return {
-            color: resolveColor(boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor, variableValues, 'leftLabelColorTextSource'),
-            fontSize: `${boxData.leftLabelSize}px`,
-            fontFamily: boxData.leftLabelFont || undefined,
-            display: boxData.leftVisible ? 'flex' : 'none',
-            justifyContent: justifyMap[align],
-            textAlign: align as 'left' | 'center' | 'right',
-            alignItems: 'center' as const,
-            flexBasis: `${effectiveWidth}%`,
-            ...(colorAnimation === 'fade' ? { transition: `color ${animationDuration}ms ease, background-color ${animationDuration}ms ease` } : {}),
-        };
-    }, [
-        boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
-        boxData.leftLabelSize, boxData.leftVisible,
-        boxData.rightVisible, boxData.leftRightRatio, boxData.leftLabelAlign, boxData.leftLabelFont, variableValues,
-        colorAnimation, animationDuration
-    ]);
-
-    const rightStyle = useMemo(() => {
-        // Ensure leftRightRatio has a valid value, default to 50
-        const ratio = boxData.leftRightRatio ?? 50;
-
-        // Calculate effective width based on visibility
-        // If right is hidden, width is 0%
-        // If left is hidden, width is 100%
-        // Otherwise, use 100 - ratio
-        let effectiveWidth: number;
-        if (!boxData.rightVisible) {
-            effectiveWidth = 0;
-        } else if (!boxData.leftVisible) {
-            effectiveWidth = 100;
-        } else {
-            effectiveWidth = 100 - ratio;
-        }
-
-        const align = boxData.rightLabelAlign || 'right';
-        const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
-            left: 'flex-start',
-            center: 'center',
-            right: 'flex-end'
-        };
-
-        return {
-            color: resolveColor(boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor, variableValues, 'rightLabelColorTextSource'),
-            fontSize: `${boxData.rightLabelSize}px`,
-            fontFamily: boxData.rightLabelFont || undefined,
-            display: boxData.rightVisible ? 'flex' : 'none',
-            justifyContent: justifyMap[align],
-            textAlign: align as 'left' | 'center' | 'right',
-            alignItems: 'center' as const,
-            flexBasis: `${effectiveWidth}%`,
-            ...(colorAnimation === 'fade' ? { transition: `color ${animationDuration}ms ease, background-color ${animationDuration}ms ease` } : {}),
-        };
-    }, [
-        boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
-        boxData.rightLabelSize, boxData.rightVisible,
-        boxData.leftVisible, boxData.leftRightRatio, boxData.rightLabelAlign, boxData.rightLabelFont, variableValues,
-        colorAnimation, animationDuration
-    ]);
-
-    // Current background image URL for change detection
-    const currentBgUrl = (() => {
-        const info = getBackgroundImageInfo();
-        return info ? info.url : '';
-    })();
-
-    // Detect whether each element's value changed since the previous non-empty value.
-    // Sections start at null (not yet seeded); once seeded with their first non-empty
-    // content, subsequent different values count as changes (and animation may trigger).
-    const prevHeader = prevValuesRef.current.header;
-    const prevLeft = prevValuesRef.current.left;
-    const prevRight = prevValuesRef.current.right;
-    const prevBg = prevValuesRef.current.bgImage;
-
-    const didChange = {
-        header: prevHeader !== null && prevHeader !== displayHtmlLabels.header && !!displayHtmlLabels.header,
-        left: prevLeft !== null && prevLeft !== displayHtmlLabels.left && !!displayHtmlLabels.left,
-        right: prevRight !== null && prevRight !== displayHtmlLabels.right && !!displayHtmlLabels.right,
-        bgImage: prevBg !== null && prevBg !== currentBgUrl && !!currentBgUrl,
-    };
-
-    // Update tracked values for the next comparison (seeding the baseline on the
-    // first non-empty value, and tracking subsequent values thereafter)
-    prevValuesRef.current = {
-        header: (prevHeader !== null || !!displayHtmlLabels.header) ? displayHtmlLabels.header : null,
-        left: (prevLeft !== null || !!displayHtmlLabels.left) ? displayHtmlLabels.left : null,
-        right: (prevRight !== null || !!displayHtmlLabels.right) ? displayHtmlLabels.right : null,
-        bgImage: (prevBg !== null || !!currentBgUrl) ? currentBgUrl : null,
-    };
-
-    // Animation active state - set true when a change is detected (before paint via
-    // useLayoutEffect), cleared when the element's animation completes via onAnimationEnd.
-    // This keeps the animation class stable through rapid re-renders so animations
-    // can't be cut short, while still skipping the initial-load animation.
-    const [animatingHeader, setAnimatingHeader] = useState(false);
-    const [animatingLeft, setAnimatingLeft] = useState(false);
-    const [animatingRight, setAnimatingRight] = useState(false);
-    const [animatingBg, setAnimatingBg] = useState(false);
-
-    useLayoutEffect(() => {
-        if (didChange.header && textAnimation !== 'none' && !!displayHtmlLabels.header) {
-            setAnimatingHeader(true);
-        }
-    }, [didChange.header, textAnimation, displayHtmlLabels.header]);
-
-    useLayoutEffect(() => {
-        if (didChange.left && textAnimation !== 'none' && !!displayHtmlLabels.left) {
-            setAnimatingLeft(true);
-        }
-    }, [didChange.left, textAnimation, displayHtmlLabels.left]);
-
-    useLayoutEffect(() => {
-        if (didChange.right && textAnimation !== 'none' && !!displayHtmlLabels.right) {
-            setAnimatingRight(true);
-        }
-    }, [didChange.right, textAnimation, displayHtmlLabels.right]);
-
-    useLayoutEffect(() => {
-        if (didChange.bgImage && backgroundImageAnimation !== 'none') {
-            setAnimatingBg(true);
-        }
-    }, [didChange.bgImage, backgroundImageAnimation]);
-
-    // Clear animation state when the element's animation finishes (guarded to our own keyframes)
-    const handleAnimEnd = (key: 'header' | 'left' | 'right') => (e: React.AnimationEvent<HTMLDivElement>) => {
-        if (e.animationName?.startsWith('box-')) {
-            if (key === 'header') setAnimatingHeader(false);
-            if (key === 'left') setAnimatingLeft(false);
-            if (key === 'right') setAnimatingRight(false);
-        }
-    };
-    const handleBgAnimEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
-        if (e.animationName?.startsWith('box-')) {
-            setAnimatingBg(false);
-        }
-    };
-
-    const animateTextHeader = animatingHeader && textAnimation !== 'none' && !!displayHtmlLabels.header;
-    const animateTextLeft = animatingLeft && textAnimation !== 'none' && !!displayHtmlLabels.left;
-    const animateTextRight = animatingRight && textAnimation !== 'none' && !!displayHtmlLabels.right;
-    const animateBgImage = animatingBg && backgroundImageAnimation !== 'none';
+    const resolvedBorder = isImageUrl(resolveLayerColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues, 'borderColorTextSource'))
+        ? 'transparent'
+        : resolveLayerColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues, 'borderColorTextSource');
 
     return (
         <div>
@@ -943,7 +870,6 @@ export default function Box({
                             e.stopPropagation();
                             if (e.altKey) {
                                 // Duplicate this box with proper position offset based on anchor point
-                                // Helper to get display position from internal position
                                 const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
                                     const [x, y] = translate;
                                     switch (anchor) {
@@ -956,7 +882,6 @@ export default function Box({
                                     }
                                 };
 
-                                // Helper to get internal position from display position
                                 const getInternalPos = (displayPos: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
                                     const [x, y] = displayPos;
                                     switch (anchor) {
@@ -969,7 +894,6 @@ export default function Box({
                                     }
                                 };
 
-                                // Get current display position, add offset, convert back to internal
                                 const currentDisplayPos = getDisplayPos(boxData.frame.translate, boxData.frame.width, boxData.frame.height, boxData.anchorPoint);
                                 const newDisplayPos: [number, number] = [currentDisplayPos[0] + 20, currentDisplayPos[1] + 20];
                                 const newInternalPos = getInternalPos(newDisplayPos, boxData.frame.width, boxData.frame.height, boxData.anchorPoint);
@@ -981,8 +905,7 @@ export default function Box({
                                         ...boxData.frame,
                                         translate: newInternalPos
                                     },
-                                    // Ensure leftRightRatio has a valid value
-                                    leftRightRatio: boxData.leftRightRatio ?? 50
+                                    layers: duplicateLayers(boxData.layers || []),
                                 };
                                 onDuplicate(duplicatedBox);
                             } else {
@@ -1002,7 +925,7 @@ export default function Box({
                             width: `${frame.width}px`,
                             height: `${frame.height}px`,
                             backgroundColor: 'transparent',
-                            border: boxData.noBorder ? 'none' : `5px solid ${resolveColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues, 'borderColorTextSource')}`,
+                            border: boxData.noBorder ? 'none' : `5px solid ${resolvedBorder}`,
                             borderRadius: `${boxData.borderRadius ?? 15}px`,
                             clipPath: `inset(0 round ${boxData.borderRadius ?? 15}px)`,
                             WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
@@ -1013,219 +936,62 @@ export default function Box({
                             ...(colorAnimation === 'fade' && !boxData.noBorder ? { transition: `border-color ${animationDuration}ms ease` } : {}),
                         }}
                     >
-                        {/* Background color layer - child div so overflow:hidden clips it,
-                            avoiding double anti-aliasing at corners from box's own background */}
-                        <div style={{
-                            position: 'absolute',
-                            top: 0, left: 0, right: 0, bottom: 0,
-                            ...getBackgroundStyle(),
-                            pointerEvents: 'none',
-                            ...(colorAnimation === 'fade' ? { transition: `background-color ${animationDuration}ms ease` } : {}),
-                        }} />
-
-                        {/* Background image layer */}
-                        {(() => {
-                            const bgImageInfo = getBackgroundImageInfo();
-                            if (!bgImageInfo) return null;
-
-                            return (
-                                <div
-                                    className={animateBgImage ? `anim-${backgroundImageAnimation}` : undefined}
-                                    onAnimationEnd={handleBgAnimEnd}
-                                    style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        backgroundImage: `url("${bgImageInfo.url}")`,
-                                        backgroundSize: bgImageInfo.size,
-                                        backgroundPosition: 'center',
-                                        backgroundRepeat: 'no-repeat',
-                                        opacity: bgImageInfo.opacity,
-                                        pointerEvents: 'none',
-                                        borderRadius: `${boxData.borderRadius ?? 15}px`,
-                                        ...(animateBgImage ? { animationDuration: `${animationDuration}ms` } : {})
-                                    }}
-                                />
-                            );
-                        })()}
-
-                        {/* Video background layer */}
-                        {boxData.backgroundVideoDeviceId && (() => {
-                            const roi = boxData.backgroundVideoROI;
-
-                            if (!roi) {
-                                // No ROI - simple case, use objectFit directly
+                        {/* Layers (list order is top-first: index 0 paints on top, so render reversed) */}
+                        {(boxData.layers || []).slice().reverse().map(layer => {
+                            if (layer.type === 'color') {
                                 return (
-                                    <video
-                                        key={`video-${boxData.id}-no-roi`}
-                                        ref={videoRef}
-                                        autoPlay
-                                        playsInline
-                                        muted
-                                        style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            height: '100%',
-                                            objectFit: boxData.backgroundVideoSize || 'cover',
-                                            pointerEvents: 'none',
-                                            zIndex: 0
-                                        }}
+                                    <ColorLayerView
+                                        key={layer.id}
+                                        layer={layer}
+                                        variableValues={variableValues}
+                                        colorAnimation={colorAnimation}
+                                        animationDuration={animationDuration}
+                                        borderRadius={boxData.borderRadius ?? 15}
                                     />
                                 );
                             }
-
-                            // With ROI:
-                            // Step 1: Create a "cropped video" container with ROI aspect ratio
-                            // Step 2: Position/scale the actual video to show only the ROI region
-                            // Step 3: Apply cover/contain to the cropped container
-
-                            // Get video dimensions to calculate actual ROI aspect ratio
-                            const videoWidth = videoRef.current?.videoWidth || 1920;
-                            const videoHeight = videoRef.current?.videoHeight || 1080;
-
-                            // Calculate actual pixel dimensions of ROI
-                            const roiPixelWidth = videoWidth * (roi.width / 100);
-                            const roiPixelHeight = videoHeight * (roi.height / 100);
-
-                            // Calculate actual aspect ratio of the ROI region
-                            const roiAspectRatio = roiPixelWidth / roiPixelHeight;
-
+                            if (layer.type === 'image') {
+                                return (
+                                    <ImageLayerView
+                                        key={layer.id}
+                                        layer={layer}
+                                        boxId={boxData.id}
+                                        variableValues={variableValues}
+                                        backgroundImageAnimation={backgroundImageAnimation}
+                                        colorAnimation={colorAnimation}
+                                        animationDuration={animationDuration}
+                                        borderRadius={boxData.borderRadius ?? 15}
+                                    />
+                                );
+                            }
+                            if (layer.type === 'video') {
+                                return (
+                                    <VideoLayerView
+                                        key={layer.id}
+                                        layer={layer}
+                                        boxId={boxData.id}
+                                        videoRelayManager={videoRelayManager}
+                                        variableValues={variableValues}
+                                        colorAnimation={colorAnimation}
+                                        animationDuration={animationDuration}
+                                        borderRadius={boxData.borderRadius ?? 15}
+                                    />
+                                );
+                            }
                             return (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    pointerEvents: 'none',
-                                    zIndex: 0
-                                }}>
-                                    {/* Container with ROI aspect ratio that applies cover/contain */}
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        transform: 'translate(-50%, -50%)',
-                                        aspectRatio: `${roiAspectRatio}`,
-                                        ...(boxData.backgroundVideoSize === 'contain' ? {
-                                            // Contain: fit inside box - let aspect ratio determine actual size
-                                            maxWidth: '100%',
-                                            maxHeight: '100%',
-                                            width: 'auto',
-                                            height: '100%'
-                                        } : {
-                                            // Cover: fill entire box
-                                            minWidth: '100%',
-                                            minHeight: '100%'
-                                        }),
-                                        overflow: 'hidden'
-                                    }}>
-                                        {/* The actual video, scaled to fit ROI dimensions */}
-                                        <video
-                                            ref={videoRef}
-                                            autoPlay
-                                            playsInline
-                                            muted
-                                            style={{
-                                                position: 'absolute',
-                                                // Scale video so ROI region fills container
-                                                width: `${100 / roi.width * 100}%`,
-                                                height: `${100 / roi.height * 100}%`,
-                                                // Position video so ROI region is at top-left of container
-                                                left: `${-roi.x / roi.width * 100}%`,
-                                                top: `${-roi.y / roi.height * 100}%`,
-                                                objectFit: 'fill',
-                                                pointerEvents: 'none'
-                                            }}
-                                        />
-                                    </div>
-                                </div>
+                                <TextLayerView
+                                    key={layer.id}
+                                    layer={layer}
+                                    boxId={boxData.id}
+                                    variableValues={variableValues}
+                                    variableHtmlValues={variableHtmlValues}
+                                    textAnimation={textAnimation}
+                                    colorAnimation={colorAnimation}
+                                    animationDuration={animationDuration}
+                                    boxesLocked={boxesLocked}
+                                />
                             );
-                        })()}
-
-                        {/* Overlay layer on top of background */}
-                        <div style={{
-                            position: 'absolute',
-                            ...(boxData.overlayDirection === 'left' ? {
-                                top: 0,
-                                left: 0,
-                                bottom: 0,
-                                width: `${computeOverlaySize()}%`
-                            } : boxData.overlayDirection === 'right' ? {
-                                top: 0,
-                                right: 0,
-                                bottom: 0,
-                                width: `${computeOverlaySize()}%`
-                            } : boxData.overlayDirection === 'top' ? {
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: `${computeOverlaySize()}%`
-                            } : {
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                height: `${computeOverlaySize()}%`
-                            }),
-                            backgroundColor: resolveOverlayColor(),
-                            pointerEvents: 'none',
-                            zIndex: 1,
-                            transition: colorAnimation === 'fade'
-                                ? `width 0.3s ease, height 0.3s ease, background-color ${animationDuration}ms ease`
-                                : 'width 0.3s ease, height 0.3s ease'
-                        }}></div>
-
-                        {/* Wrapper for interactive content - has pointer-events: auto when locked */}
-                        <div style={{
-                            pointerEvents: boxesLocked ? 'auto' : 'none',
-                            width: '100%',
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'stretch',
-                            position: 'relative',
-                            zIndex: 2
-                        }}>
-                            {/* Header */}
-                            <MarkdownContent
-                                key={`${boxData.id}-header`}
-                                content={displayHtmlLabels.header}
-                                className={`header${animateTextHeader ? ` anim-${textAnimation}` : ''}`}
-                                style={{
-                                    ...headerStyle,
-                                    ...(animateTextHeader ? { animationDuration: `${animationDuration}ms` } : {})
-                                }}
-                                onAnimationEnd={handleAnimEnd('header')}
-                            />
-
-                            {/* Body with left and right labels */}
-                            <div className='content-container'>
-                                <MarkdownContent
-                                    key={`${boxData.id}-left`}
-                                    content={displayHtmlLabels.left}
-                                    className={`content${animateTextLeft ? ` anim-${textAnimation}` : ''}`}
-                                    style={{
-                                        ...leftStyle,
-                                        ...(animateTextLeft ? { animationDuration: `${animationDuration}ms` } : {})
-                                    }}
-                                    onAnimationEnd={handleAnimEnd('left')}
-                                />
-                                <MarkdownContent
-                                    key={`${boxData.id}-right`}
-                                    content={displayHtmlLabels.right}
-                                    className={`content${animateTextRight ? ` anim-${textAnimation}` : ''}`}
-                                    style={{
-                                        ...rightStyle,
-                                        ...(animateTextRight ? { animationDuration: `${animationDuration}ms` } : {})
-                                    }}
-                                    onAnimationEnd={handleAnimEnd('right')}
-                                />
-                            </div>
-                        </div>
+                        })}
 
                         {/* Click interceptor for Companion button - only active when locked with valid button location */}
                         {boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim() && (
@@ -1264,7 +1030,6 @@ export default function Box({
                             preventDefault={true}
                             stopDragging={false}
                             onDrag={({ beforeTranslate }) => {
-                                // Call onDragStart only once at the beginning of drag
                                 if (!isDragStartCalled) {
                                     onDragStart?.();
                                     setIsDragStartCalled(true);
@@ -1277,7 +1042,6 @@ export default function Box({
                                 targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
                             }}
                             onDragEnd={({ lastEvent }) => {
-                                // Call onDragEnd and reset drag start flag
                                 onDragEnd?.();
                                 setIsDragStartCalled(false);
                                 if (lastEvent) {
@@ -1289,7 +1053,6 @@ export default function Box({
                                 }
                             }}
                             onResize={({ width, height, drag }) => {
-                                // Call onDragStart for resize operations too
                                 if (!isDragStartCalled) {
                                     onDragStart?.();
                                     setIsDragStartCalled(true);
@@ -1306,7 +1069,6 @@ export default function Box({
                                 targetRef.current!.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
                             }}
                             onResizeEnd={({ lastEvent }) => {
-                                // Call onDragEnd for resize operations too
                                 onDragEnd?.();
                                 setIsDragStartCalled(false);
                                 if (lastEvent) {
