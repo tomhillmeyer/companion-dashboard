@@ -168,6 +168,23 @@ export interface CanvasSettings {
 // Configuration Export/Import Type
 // ============================================================================
 
+// ============================================================================
+// Animation Types
+// ============================================================================
+
+export type AnimationType = 'none' | 'fade' | 'grow' | 'slide' | 'slide-bottom' | 'slide-left' | 'slide-right';
+
+export interface AnimationSettings {
+    textAnimation: AnimationType;
+    backgroundImageAnimation: AnimationType;
+    colorAnimation: 'none' | 'fade';
+    animationDuration: number; // milliseconds
+}
+
+// ============================================================================
+// Configuration Export/Import Type
+// ============================================================================
+
 export interface DashboardConfig {
     version: string;
     timestamp: string;
@@ -180,6 +197,7 @@ export interface DashboardConfig {
     font_family: string;
     scale_enabled: boolean;
     design_width: number;
+    animation_settings?: Partial<AnimationSettings>;
 }
 
 // ============================================================================

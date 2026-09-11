@@ -12,7 +12,7 @@ import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
 import { VideoRelayManager } from './VideoRelayManager';
-import type { BoxData, CompanionConnection, VariableColor, PageData } from './types';
+import type { BoxData, CompanionConnection, VariableColor, PageData, AnimationSettings, AnimationType } from './types';
 import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
@@ -37,6 +37,7 @@ const FONT_STORAGE_KEY = `global_font_family`;
 const LOCK_STORAGE_KEY = `window_${windowId}_boxes_locked`;
 const SCALE_ENABLED_KEY = `window_${windowId}_scale_enabled`;
 const DESIGN_WIDTH_KEY = `window_${windowId}_design_width`;
+const ANIMATION_STORAGE_KEY = `window_${windowId}_animation_settings`;
 
 // Type definitions now imported from ./types.ts
 
@@ -594,6 +595,36 @@ export default function App() {
         return 100;
     });
 
+    // Animation settings state - initialize from localStorage (or default for web clients)
+    const defaultAnimationSettings = (): Partial<AnimationSettings> => {
+        try {
+            const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI && !Capacitor.isNativePlatform();
+            if (isWebClient) {
+                // Web clients get animation settings via WebSocket state sync
+                return {};
+            }
+            const saved = localStorage.getItem(ANIMATION_STORAGE_KEY);
+            if (!saved) return {};
+            const parsed = JSON.parse(saved);
+            // Migrate legacy animation types removed from AnimationType
+            const migrate = (v: string): AnimationType => {
+                if (v === 'pulse') return 'grow';
+                if (v === 'glow') return 'none';
+                return v as AnimationType;
+            };
+            if (parsed.textAnimation !== undefined) parsed.textAnimation = migrate(parsed.textAnimation);
+            if (parsed.backgroundImageAnimation !== undefined) parsed.backgroundImageAnimation = migrate(parsed.backgroundImageAnimation);
+            return parsed;
+        } catch (error) {
+            return {};
+        }
+    };
+
+    const [textAnimation, setTextAnimation] = useState<AnimationType>(() => defaultAnimationSettings().textAnimation || 'none');
+    const [backgroundImageAnimation, setBackgroundImageAnimation] = useState<AnimationType>(() => defaultAnimationSettings().backgroundImageAnimation || 'none');
+    const [colorAnimation, setColorAnimation] = useState<'none' | 'fade'>(() => defaultAnimationSettings().colorAnimation || 'none');
+    const [animationDuration, setAnimationDuration] = useState<number>(() => defaultAnimationSettings().animationDuration || 300);
+
     // Font family state - initialize from localStorage
     const [fontFamily, setFontFamily] = useState<string>(() => {
         return localStorage.getItem(FONT_STORAGE_KEY) || 'Work Sans';
@@ -701,6 +732,20 @@ export default function App() {
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
     }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs]);
+
+    // Save animation settings to localStorage whenever they change
+    useEffect(() => {
+        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI && !Capacitor.isNativePlatform();
+        if (!isWebClient) {
+            const animationSettings = {
+                textAnimation,
+                backgroundImageAnimation,
+                colorAnimation,
+                animationDuration
+            };
+            localStorage.setItem(ANIMATION_STORAGE_KEY, JSON.stringify(animationSettings));
+        }
+    }, [textAnimation, backgroundImageAnimation, colorAnimation, animationDuration]);
 
     // Save companion connection URL to localStorage whenever it changes
     useEffect(() => {
@@ -1044,6 +1089,12 @@ export default function App() {
                     designWidth,
                     mainConnectionValid,
                     additionalConnectionValidities,
+                    animationSettings: {
+                        textAnimation,
+                        backgroundImageAnimation,
+                        colorAnimation,
+                        animationDuration
+                    },
                     isLicensed
                 };
 
@@ -1056,7 +1107,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, isLicensed]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -1080,6 +1131,15 @@ export default function App() {
                 if (stateData.boxes) {
                     setBoxes(stateData.boxes);
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateData.boxes));
+                }
+
+                if (stateData.animationSettings) {
+                    const as = stateData.animationSettings;
+                    if (as.textAnimation !== undefined) setTextAnimation(as.textAnimation);
+                    if (as.backgroundImageAnimation !== undefined) setBackgroundImageAnimation(as.backgroundImageAnimation);
+                    if (as.colorAnimation !== undefined) setColorAnimation(as.colorAnimation);
+                    if (as.animationDuration !== undefined) setAnimationDuration(as.animationDuration);
+                    localStorage.setItem(ANIMATION_STORAGE_KEY, JSON.stringify(stateData.animationSettings));
                 }
 
                 if (stateData.pages) {
@@ -1291,6 +1351,15 @@ export default function App() {
                                 setIsLicensed(data.isLicensed);
                             }
 
+                            // Update animation settings (web clients don't save to localStorage - they're remote views)
+                            if (data.animationSettings) {
+                                const as = data.animationSettings;
+                                if (as.textAnimation !== undefined) setTextAnimation(as.textAnimation);
+                                if (as.backgroundImageAnimation !== undefined) setBackgroundImageAnimation(as.backgroundImageAnimation);
+                                if (as.colorAnimation !== undefined) setColorAnimation(as.colorAnimation);
+                                if (as.animationDuration !== undefined) setAnimationDuration(as.animationDuration);
+                            }
+
                             // Clear the receiving flag after a short delay to ensure all state updates are processed
                             setTimeout(() => {
                                 if ((window as any).isReceivingUpdate === batchId) {
@@ -1390,7 +1459,13 @@ export default function App() {
                     companionBaseUrl,
                     fontFamily,
                     scaleEnabled,
-                    designWidth
+                    designWidth,
+                    animationSettings: {
+                        textAnimation,
+                        backgroundImageAnimation,
+                        colorAnimation,
+                        animationDuration
+                    }
                 };
 
                 ws.send(JSON.stringify({
@@ -1399,7 +1474,7 @@ export default function App() {
                 }));
             }
         }
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, isDragging]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isDragging]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -2105,6 +2180,14 @@ export default function App() {
                 onScaleEnabledChange={setScaleEnabled}
                 designWidth={designWidth}
                 onDesignWidthChange={setDesignWidth}
+                textAnimation={textAnimation}
+                onTextAnimationChange={setTextAnimation}
+                backgroundImageAnimation={backgroundImageAnimation}
+                onBackgroundImageAnimationChange={setBackgroundImageAnimation}
+                colorAnimation={colorAnimation}
+                onColorAnimationChange={setColorAnimation}
+                animationDuration={animationDuration}
+                onAnimationDurationChange={setAnimationDuration}
                 pages={pages}
                 isLicensed={isLicensed}
             />
@@ -2191,6 +2274,12 @@ export default function App() {
                             centralVariableValues={isWebClient ? receivedVariableValues : undefined}
                             videoRelayManager={videoRelayManagerRef.current}
                             videoRelayManagerReady={videoRelayManagerReady}
+                            animationSettings={{
+                                textAnimation,
+                                backgroundImageAnimation,
+                                colorAnimation,
+                                animationDuration
+                            }}
                             boxRef={(el) => {
                                 if (el) {
                                     boxRefsMap.current[box.id] = el;

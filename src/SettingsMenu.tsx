@@ -7,7 +7,7 @@ import { FaLock } from "react-icons/fa6";
 import { FaLockOpen } from "react-icons/fa6";
 import { FaChevronDown, FaChevronUp, FaCopy } from "react-icons/fa6";
 import { v4 as uuid } from 'uuid';
-import type { VariableColor, CompanionConnection, ROI, ComparisonOperator, PageData } from './types';
+import type { VariableColor, CompanionConnection, ROI, ComparisonOperator, PageData, AnimationType } from './types';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
 import { useVideoDevices } from './useVideoDevices';
@@ -30,6 +30,7 @@ const windowId = (window as any).electronAPI?.windowId || '1';
 const STORAGE_KEY = `window_${windowId}_companion_connection_url`;
 const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 const FONT_STORAGE_KEY = `global_font_family`;
+const ANIMATION_STORAGE_KEY = `window_${windowId}_animation_settings`;
 
 const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox: () => void;
@@ -72,6 +73,14 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onScaleEnabledChange?: (enabled: boolean) => void;
     designWidth?: number;
     onDesignWidthChange?: (width: number) => void;
+    textAnimation?: AnimationType;
+    onTextAnimationChange?: (animation: AnimationType) => void;
+    backgroundImageAnimation?: AnimationType;
+    onBackgroundImageAnimationChange?: (animation: AnimationType) => void;
+    colorAnimation?: 'none' | 'fade';
+    onColorAnimationChange?: (animation: 'none' | 'fade') => void;
+    animationDuration?: number;
+    onAnimationDurationChange?: (duration: number) => void;
     pages?: PageData[];
     isLicensed?: boolean;
 }>(({
@@ -115,6 +124,14 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onScaleEnabledChange,
     designWidth = 1920,
     onDesignWidthChange,
+    textAnimation = 'none',
+    onTextAnimationChange,
+    backgroundImageAnimation = 'none',
+    onBackgroundImageAnimationChange,
+    colorAnimation = 'none',
+    onColorAnimationChange,
+    animationDuration = 300,
+    onAnimationDurationChange,
     pages = [],
     isLicensed
 }, ref) => {
@@ -258,6 +275,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         font: true,
         responsiveScaling: true,
         background: true,
+        animations: true,
         boxes: true,
         webServer: true,
         configuration: true
@@ -522,6 +540,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 font_family: localStorage.getItem(FONT_STORAGE_KEY) || '',
                 scale_enabled: localStorage.getItem(`window_${windowId}_scale_enabled`) === 'true',
                 design_width: parseInt(localStorage.getItem(`window_${windowId}_design_width`) || '1920'),
+                animation_settings: {
+                    textAnimation,
+                    backgroundImageAnimation,
+                    colorAnimation,
+                    animationDuration
+                },
                 web_server: {
                     enabled: webServerRunning,
                     port: webServerPort ? parseInt(webServerPort, 10) : 80,
@@ -1280,6 +1304,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             localStorage.removeItem('companion_connection_url');
             localStorage.removeItem(`window_${windowId}_companion_connections`);
             localStorage.removeItem(`window_${windowId}_canvas_settings`);
+            localStorage.removeItem(ANIMATION_STORAGE_KEY);
 
             // Set new data
             localStorage.setItem(`window_${windowId}_boxes`, JSON.stringify(pendingConfig.boxes));
@@ -1308,6 +1333,16 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             if (pendingConfig.design_width !== undefined) {
                 localStorage.setItem(`window_${windowId}_design_width`, pendingConfig.design_width.toString());
                 onDesignWidthChange?.(pendingConfig.design_width);
+            }
+
+            // Restore animation settings if they exist
+            if (pendingConfig.animation_settings) {
+                const as = pendingConfig.animation_settings;
+                localStorage.setItem(ANIMATION_STORAGE_KEY, JSON.stringify(as));
+                if (as.textAnimation !== undefined) onTextAnimationChange?.(as.textAnimation);
+                if (as.backgroundImageAnimation !== undefined) onBackgroundImageAnimationChange?.(as.backgroundImageAnimation);
+                if (as.colorAnimation !== undefined) onColorAnimationChange?.(as.colorAnimation);
+                if (as.animationDuration !== undefined) onAnimationDurationChange?.(as.animationDuration);
             }
 
             // Restore background image if it exists
@@ -1807,6 +1842,72 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                     )}
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('animations'); }}>
+                        <span className='section-label'>Animations</span>
+                        {collapsedSections.animations ? <FaChevronDown /> : <FaChevronUp />}
+                    </div>
+                    {!collapsedSections.animations && (
+                        <div className='menu-section animations-section'>
+                            <div className="settings-subsection">
+                                <div className="animation-setting-row">
+                                    <label htmlFor="text-animation-type">Text Animation</label>
+                                    <select
+                                        id="text-animation-type"
+                                        value={textAnimation}
+                                        onChange={(e) => onTextAnimationChange?.(e.target.value as AnimationType)}
+                                    >
+                                        <option value="none">None</option>
+                                        <option value="fade">Fade</option>
+                                        <option value="grow">Grow</option>
+                                        <option value="slide">Slide (top)</option>
+                                        <option value="slide-bottom">Slide (bottom)</option>
+                                        <option value="slide-left">Slide (left)</option>
+                                        <option value="slide-right">Slide (right)</option>
+                                    </select>
+                                </div>
+                                <div className="animation-setting-row">
+                                    <label htmlFor="bg-image-animation-type">Background Image Animation</label>
+                                    <select
+                                        id="bg-image-animation-type"
+                                        value={backgroundImageAnimation}
+                                        onChange={(e) => onBackgroundImageAnimationChange?.(e.target.value as AnimationType)}
+                                    >
+                                        <option value="none">None</option>
+                                        <option value="fade">Fade</option>
+                                        <option value="grow">Grow</option>
+                                        <option value="slide">Slide (top)</option>
+                                        <option value="slide-bottom">Slide (bottom)</option>
+                                        <option value="slide-left">Slide (left)</option>
+                                        <option value="slide-right">Slide (right)</option>
+                                    </select>
+                                </div>
+                                <div className="animation-setting-row">
+                                    <label htmlFor="color-animation-type">Color Animation</label>
+                                    <select
+                                        id="color-animation-type"
+                                        value={colorAnimation}
+                                        onChange={(e) => onColorAnimationChange?.(e.target.value as 'none' | 'fade')}
+                                    >
+                                        <option value="none">None</option>
+                                        <option value="fade">Fade</option>
+                                    </select>
+                                </div>
+                                <div className="animation-setting-row">
+                                    <label htmlFor="animation-duration">Duration (ms)</label>
+                                    <input
+                                        id="animation-duration"
+                                        type="number"
+                                        min="100"
+                                        max="5000"
+                                        step="50"
+                                        value={animationDuration}
+                                        onChange={(e) => onAnimationDurationChange?.(parseInt(e.target.value) || 300)}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
 

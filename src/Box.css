@@ -159,3 +159,94 @@
     user-select: none;
     /* Standard */
 }
+
+/* ==========================================================================
+   Update Animations
+   Fired on value change only (via useLayoutEffect + onAnimationEnd).
+   Duration set inline via animationDuration style from the global settings.
+   ========================================================================== */
+@keyframes box-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes box-grow {
+    from {
+        transform: scale(0.7);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
+@keyframes box-slide-in {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes box-slide-in-bottom {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes box-slide-in-left {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes box-slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.anim-fade {
+    animation: box-fade-in var(--anim-duration, 300ms) ease forwards;
+}
+
+.anim-grow {
+    animation: box-grow var(--anim-duration, 300ms) ease;
+}
+
+.anim-slide {
+    animation: box-slide-in var(--anim-duration, 300ms) ease forwards;
+}
+
+.anim-slide-bottom {
+    animation: box-slide-in-bottom var(--anim-duration, 300ms) ease forwards;
+}
+
+.anim-slide-left {
+    animation: box-slide-in-left var(--anim-duration, 300ms) ease forwards;
+}
+
+.anim-slide-right {
+    animation: box-slide-in-right var(--anim-duration, 300ms) ease forwards;
+}

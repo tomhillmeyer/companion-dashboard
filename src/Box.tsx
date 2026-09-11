@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useLayoutEffect } from 'react';
 
 // Get window ID for isolated storage
 const windowId = (window as any).electronAPI?.windowId || '1';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
-import type { BoxData, CompanionConnection, PageData } from './types';
+import type { BoxData, CompanionConnection, PageData, AnimationSettings } from './types';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
@@ -16,11 +16,13 @@ import { evaluateComparison } from './variableComparison';
 const MarkdownContent = React.memo(({
     content,
     style,
-    className = ''
+    className = '',
+    onAnimationEnd
 }: {
     content: string;
     style: React.CSSProperties;
     className?: string;
+    onAnimationEnd?: (e: React.AnimationEvent<HTMLDivElement>) => void;
 }) => {
     // Check for media content that should not have padding (images, iframes, etc.)
     const isTextOnly = (() => {
@@ -61,11 +63,13 @@ const MarkdownContent = React.memo(({
         <div
             className={className}
             style={style}
+            onAnimationEnd={onAnimationEnd}
             dangerouslySetInnerHTML={{ __html: processedContent }}
         />
     );
 }, (prevProps, nextProps) => {
     // Custom comparison to prevent unnecessary re-renders
+    // (onAnimationEnd omitted intentionally - doesn't affect rendering)
     return prevProps.content === nextProps.content &&
            prevProps.className === nextProps.className &&
            JSON.stringify(prevProps.style) === JSON.stringify(nextProps.style);
@@ -92,6 +96,7 @@ export default function Box({
     boxRef,
     isMultiSelect = false,
     pages = [],
+    animationSettings,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -114,7 +119,21 @@ export default function Box({
     boxRef?: (el: HTMLDivElement | null) => void;
     isMultiSelect?: boolean;
     pages?: PageData[];
+    animationSettings?: AnimationSettings;
 }) {
+
+    const { textAnimation = 'none', backgroundImageAnimation = 'none', colorAnimation = 'none', animationDuration = 300 } = animationSettings || {};
+
+    // Track previous rendered values to detect changes for animations.
+    // A null value means the section hasn't received its first non-empty content yet
+    // ("seeding"): the first non-empty value is recorded as the baseline WITHOUT animation,
+    // so only subsequent real value changes animate.
+    const prevValuesRef = useRef<{
+        header: string | null;
+        left: string | null;
+        right: string | null;
+        bgImage: string | null;
+    }>({ header: null, left: null, right: null, bgImage: null });
 
     const targetRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -731,11 +750,13 @@ export default function Box({
             display: boxData.headerLabelVisible ? 'flex' : 'none',
             alignItems: 'center' as const,
             justifyContent: justifyMap[align],
+            ...(colorAnimation === 'fade' ? { transition: `color ${animationDuration}ms ease, background-color ${animationDuration}ms ease` } : {}),
         };
     }, [
         boxData.headerVariableColors, boxData.headerColorText, boxData.headerColor,
         boxData.headerLabelVariableColors, boxData.headerLabelColorText, boxData.headerLabelColor,
-        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, variableValues
+        boxData.headerLabelSize, boxData.headerLabelVisible, boxData.headerLabelAlign, boxData.headerLabelFont, variableValues,
+        colorAnimation, animationDuration
     ]);
 
     const leftStyle = useMemo(() => {
@@ -771,11 +792,13 @@ export default function Box({
             textAlign: align as 'left' | 'center' | 'right',
             alignItems: 'center' as const,
             flexBasis: `${effectiveWidth}%`,
+            ...(colorAnimation === 'fade' ? { transition: `color ${animationDuration}ms ease, background-color ${animationDuration}ms ease` } : {}),
         };
     }, [
         boxData.leftLabelVariableColors, boxData.leftLabelColorText, boxData.leftLabelColor,
         boxData.leftLabelSize, boxData.leftVisible,
-        boxData.rightVisible, boxData.leftRightRatio, boxData.leftLabelAlign, boxData.leftLabelFont, variableValues
+        boxData.rightVisible, boxData.leftRightRatio, boxData.leftLabelAlign, boxData.leftLabelFont, variableValues,
+        colorAnimation, animationDuration
     ]);
 
     const rightStyle = useMemo(() => {
@@ -811,12 +834,96 @@ export default function Box({
             textAlign: align as 'left' | 'center' | 'right',
             alignItems: 'center' as const,
             flexBasis: `${effectiveWidth}%`,
+            ...(colorAnimation === 'fade' ? { transition: `color ${animationDuration}ms ease, background-color ${animationDuration}ms ease` } : {}),
         };
     }, [
         boxData.rightLabelVariableColors, boxData.rightLabelColorText, boxData.rightLabelColor,
         boxData.rightLabelSize, boxData.rightVisible,
-        boxData.leftVisible, boxData.leftRightRatio, boxData.rightLabelAlign, boxData.rightLabelFont, variableValues
+        boxData.leftVisible, boxData.leftRightRatio, boxData.rightLabelAlign, boxData.rightLabelFont, variableValues,
+        colorAnimation, animationDuration
     ]);
+
+    // Current background image URL for change detection
+    const currentBgUrl = (() => {
+        const info = getBackgroundImageInfo();
+        return info ? info.url : '';
+    })();
+
+    // Detect whether each element's value changed since the previous non-empty value.
+    // Sections start at null (not yet seeded); once seeded with their first non-empty
+    // content, subsequent different values count as changes (and animation may trigger).
+    const prevHeader = prevValuesRef.current.header;
+    const prevLeft = prevValuesRef.current.left;
+    const prevRight = prevValuesRef.current.right;
+    const prevBg = prevValuesRef.current.bgImage;
+
+    const didChange = {
+        header: prevHeader !== null && prevHeader !== displayHtmlLabels.header && !!displayHtmlLabels.header,
+        left: prevLeft !== null && prevLeft !== displayHtmlLabels.left && !!displayHtmlLabels.left,
+        right: prevRight !== null && prevRight !== displayHtmlLabels.right && !!displayHtmlLabels.right,
+        bgImage: prevBg !== null && prevBg !== currentBgUrl && !!currentBgUrl,
+    };
+
+    // Update tracked values for the next comparison (seeding the baseline on the
+    // first non-empty value, and tracking subsequent values thereafter)
+    prevValuesRef.current = {
+        header: (prevHeader !== null || !!displayHtmlLabels.header) ? displayHtmlLabels.header : null,
+        left: (prevLeft !== null || !!displayHtmlLabels.left) ? displayHtmlLabels.left : null,
+        right: (prevRight !== null || !!displayHtmlLabels.right) ? displayHtmlLabels.right : null,
+        bgImage: (prevBg !== null || !!currentBgUrl) ? currentBgUrl : null,
+    };
+
+    // Animation active state - set true when a change is detected (before paint via
+    // useLayoutEffect), cleared when the element's animation completes via onAnimationEnd.
+    // This keeps the animation class stable through rapid re-renders so animations
+    // can't be cut short, while still skipping the initial-load animation.
+    const [animatingHeader, setAnimatingHeader] = useState(false);
+    const [animatingLeft, setAnimatingLeft] = useState(false);
+    const [animatingRight, setAnimatingRight] = useState(false);
+    const [animatingBg, setAnimatingBg] = useState(false);
+
+    useLayoutEffect(() => {
+        if (didChange.header && textAnimation !== 'none' && !!displayHtmlLabels.header) {
+            setAnimatingHeader(true);
+        }
+    }, [didChange.header, textAnimation, displayHtmlLabels.header]);
+
+    useLayoutEffect(() => {
+        if (didChange.left && textAnimation !== 'none' && !!displayHtmlLabels.left) {
+            setAnimatingLeft(true);
+        }
+    }, [didChange.left, textAnimation, displayHtmlLabels.left]);
+
+    useLayoutEffect(() => {
+        if (didChange.right && textAnimation !== 'none' && !!displayHtmlLabels.right) {
+            setAnimatingRight(true);
+        }
+    }, [didChange.right, textAnimation, displayHtmlLabels.right]);
+
+    useLayoutEffect(() => {
+        if (didChange.bgImage && backgroundImageAnimation !== 'none') {
+            setAnimatingBg(true);
+        }
+    }, [didChange.bgImage, backgroundImageAnimation]);
+
+    // Clear animation state when the element's animation finishes (guarded to our own keyframes)
+    const handleAnimEnd = (key: 'header' | 'left' | 'right') => (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.animationName?.startsWith('box-')) {
+            if (key === 'header') setAnimatingHeader(false);
+            if (key === 'left') setAnimatingLeft(false);
+            if (key === 'right') setAnimatingRight(false);
+        }
+    };
+    const handleBgAnimEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.animationName?.startsWith('box-')) {
+            setAnimatingBg(false);
+        }
+    };
+
+    const animateTextHeader = animatingHeader && textAnimation !== 'none' && !!displayHtmlLabels.header;
+    const animateTextLeft = animatingLeft && textAnimation !== 'none' && !!displayHtmlLabels.left;
+    const animateTextRight = animatingRight && textAnimation !== 'none' && !!displayHtmlLabels.right;
+    const animateBgImage = animatingBg && backgroundImageAnimation !== 'none';
 
     return (
         <div>
@@ -903,6 +1010,7 @@ export default function Box({
                             zIndex: boxData.zIndex,
                             opacity: computedOpacity(),
                             pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
+                            ...(colorAnimation === 'fade' && !boxData.noBorder ? { transition: `border-color ${animationDuration}ms ease` } : {}),
                         }}
                     >
                         {/* Background color layer - child div so overflow:hidden clips it,
@@ -912,6 +1020,7 @@ export default function Box({
                             top: 0, left: 0, right: 0, bottom: 0,
                             ...getBackgroundStyle(),
                             pointerEvents: 'none',
+                            ...(colorAnimation === 'fade' ? { transition: `background-color ${animationDuration}ms ease` } : {}),
                         }} />
 
                         {/* Background image layer */}
@@ -921,6 +1030,8 @@ export default function Box({
 
                             return (
                                 <div
+                                    className={animateBgImage ? `anim-${backgroundImageAnimation}` : undefined}
+                                    onAnimationEnd={handleBgAnimEnd}
                                     style={{
                                         position: 'absolute',
                                         top: 0,
@@ -933,7 +1044,8 @@ export default function Box({
                                         backgroundRepeat: 'no-repeat',
                                         opacity: bgImageInfo.opacity,
                                         pointerEvents: 'none',
-                                        borderRadius: `${boxData.borderRadius ?? 15}px`
+                                        borderRadius: `${boxData.borderRadius ?? 15}px`,
+                                        ...(animateBgImage ? { animationDuration: `${animationDuration}ms` } : {})
                                     }}
                                 />
                             );
@@ -1062,7 +1174,9 @@ export default function Box({
                             backgroundColor: resolveOverlayColor(),
                             pointerEvents: 'none',
                             zIndex: 1,
-                            transition: 'width 0.3s ease, height 0.3s ease'
+                            transition: colorAnimation === 'fade'
+                                ? `width 0.3s ease, height 0.3s ease, background-color ${animationDuration}ms ease`
+                                : 'width 0.3s ease, height 0.3s ease'
                         }}></div>
 
                         {/* Wrapper for interactive content - has pointer-events: auto when locked */}
@@ -1080,8 +1194,12 @@ export default function Box({
                             <MarkdownContent
                                 key={`${boxData.id}-header`}
                                 content={displayHtmlLabels.header}
-                                className="header"
-                                style={headerStyle}
+                                className={`header${animateTextHeader ? ` anim-${textAnimation}` : ''}`}
+                                style={{
+                                    ...headerStyle,
+                                    ...(animateTextHeader ? { animationDuration: `${animationDuration}ms` } : {})
+                                }}
+                                onAnimationEnd={handleAnimEnd('header')}
                             />
 
                             {/* Body with left and right labels */}
@@ -1089,14 +1207,22 @@ export default function Box({
                                 <MarkdownContent
                                     key={`${boxData.id}-left`}
                                     content={displayHtmlLabels.left}
-                                    className="content"
-                                    style={leftStyle}
+                                    className={`content${animateTextLeft ? ` anim-${textAnimation}` : ''}`}
+                                    style={{
+                                        ...leftStyle,
+                                        ...(animateTextLeft ? { animationDuration: `${animationDuration}ms` } : {})
+                                    }}
+                                    onAnimationEnd={handleAnimEnd('left')}
                                 />
                                 <MarkdownContent
                                     key={`${boxData.id}-right`}
                                     content={displayHtmlLabels.right}
-                                    className="content"
-                                    style={rightStyle}
+                                    className={`content${animateTextRight ? ` anim-${textAnimation}` : ''}`}
+                                    style={{
+                                        ...rightStyle,
+                                        ...(animateTextRight ? { animationDuration: `${animationDuration}ms` } : {})
+                                    }}
+                                    onAnimationEnd={handleAnimEnd('right')}
                                 />
                             </div>
                         </div>
