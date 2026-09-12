@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, LayerRadius } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, LayerRadius, AnimationType } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -182,6 +182,57 @@ const LayerPositionEditor = ({
                 onChange={(e) => onOffsetChange({ offsetX: offsetX ?? 0, offsetY: Number(e.target.value) || 0 })}
                 className="content-text-input"
             />
+        </div>
+    </div>
+);
+
+const ANIMATION_OPTIONS: { value: AnimationType; label: string }[] = [
+    { value: 'none', label: 'None' },
+    { value: 'fade', label: 'Fade' },
+    { value: 'grow', label: 'Grow' },
+    { value: 'slide', label: 'Slide (top)' },
+    { value: 'slide-bottom', label: 'Slide (bottom)' },
+    { value: 'slide-left', label: 'Slide (left)' },
+    { value: 'slide-right', label: 'Slide (right)' },
+];
+
+// Per-layer animation override. Mirrors the font picker: "Global" clears the
+// override (undefined) so the layer follows the dashboard-wide animation setting.
+const AnimationOverrideSelect = ({
+    label,
+    value,
+    onChange,
+    options = ANIMATION_OPTIONS,
+}: {
+    label: string;
+    value: AnimationType | undefined;
+    onChange: (value: AnimationType | undefined) => void;
+    options?: { value: AnimationType; label: string }[];
+}) => (
+    <div className="setting-row">
+        <div className="setting-label">
+            <span className="setting-header">{label}</span>
+            <select
+                value={value ?? 'global'}
+                onChange={(e) => {
+                    const v = e.target.value;
+                    onChange(v === 'global' ? undefined : (v as AnimationType));
+                }}
+                style={{
+                    width: '100%',
+                    padding: '8px',
+                    backgroundColor: '#1a1a1a',
+                    color: 'white',
+                    border: '1px solid #61BAFA',
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                }}
+            >
+                <option value="global">Global</option>
+                {options.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
         </div>
     </div>
 );
@@ -1087,6 +1138,19 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 />
                 <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
             </div>
+            <div className='setting-container'>
+                <h3 className="section-heading">Color Animation</h3>
+                <AnimationOverrideSelect
+                    label="Animation"
+                    value={layer.colorAnimation}
+                    onChange={(value) => updateLayerField(layer.id, { colorAnimation: value as 'none' | 'fade' | undefined })}
+                    options={[
+                        { value: 'none' as AnimationType, label: 'None' },
+                        { value: 'fade' as AnimationType, label: 'Fade' },
+                    ]}
+                />
+                <div className="setting-hint">Global follows the dashboard-wide Color Animation setting.</div>
+            </div>
         </>
     );
 
@@ -1176,6 +1240,15 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
                 />
                 <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+            </div>
+            <div className='setting-container'>
+                <h3 className="section-heading">Image Animation</h3>
+                <AnimationOverrideSelect
+                    label="Animation"
+                    value={layer.backgroundImageAnimation}
+                    onChange={(value) => updateLayerField(layer.id, { backgroundImageAnimation: value })}
+                />
+                <div className="setting-hint">Global follows the dashboard-wide Background Image Animation setting.</div>
             </div>
             <OverlayEditor
                 overlay={layer.overlay}
@@ -1481,6 +1554,15 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         colors={layer.variableColors}
                         onColorsChange={(variableColors) => updateLayerField(layer.id, { variableColors })}
                     />
+                </div>
+                <div className='setting-container'>
+                    <h3 className="section-heading">Text Animation</h3>
+                    <AnimationOverrideSelect
+                        label="Animation"
+                        value={layer.textAnimation}
+                        onChange={(value) => updateLayerField(layer.id, { textAnimation: value })}
+                    />
+                    <div className="setting-hint">Global follows the dashboard-wide Text Animation setting.</div>
                 </div>
                 <div className='setting-container'>
                     <h3 className="section-heading">Position</h3>

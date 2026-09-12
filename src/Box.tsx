@@ -944,7 +944,7 @@ export default function Box({
                                         key={layer.id}
                                         layer={layer}
                                         variableValues={variableValues}
-                                        colorAnimation={colorAnimation}
+                                        colorAnimation={layer.colorAnimation ?? colorAnimation}
                                         animationDuration={animationDuration}
                                         borderRadius={boxData.borderRadius ?? 15}
                                     />
@@ -957,7 +957,7 @@ export default function Box({
                                         layer={layer}
                                         boxId={boxData.id}
                                         variableValues={variableValues}
-                                        backgroundImageAnimation={backgroundImageAnimation}
+                                        backgroundImageAnimation={layer.backgroundImageAnimation ?? backgroundImageAnimation}
                                         colorAnimation={colorAnimation}
                                         animationDuration={animationDuration}
                                         borderRadius={boxData.borderRadius ?? 15}
@@ -985,7 +985,7 @@ export default function Box({
                                     boxId={boxData.id}
                                     variableValues={variableValues}
                                     variableHtmlValues={variableHtmlValues}
-                                    textAnimation={textAnimation}
+                                    textAnimation={layer.textAnimation ?? textAnimation}
                                     colorAnimation={colorAnimation}
                                     animationDuration={animationDuration}
                                     boxesLocked={boxesLocked}

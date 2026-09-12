@@ -32,6 +32,46 @@ const CONNECTIONS_STORAGE_KEY = `window_${windowId}_companion_connections`;
 const FONT_STORAGE_KEY = `global_font_family`;
 const ANIMATION_STORAGE_KEY = `window_${windowId}_animation_settings`;
 
+const PROBE_TIMEOUT_MS = 3000;
+
+async function fetchWithTimeout(url: string, timeoutMs = PROBE_TIMEOUT_MS): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function probeCompanion(url: string): Promise<boolean> {
+    // Primary probe: internal timestamp variable
+    try {
+        const response = await fetchWithTimeout(`${url}/api/variable/internal/time_unix/value`);
+        if (response.ok) {
+            const timestamp = parseInt(await response.text());
+            if (!isNaN(timestamp)) {
+                return true;
+            }
+        }
+    } catch {
+        // Fall through to fallback probe
+    }
+
+    // Fallback probe: connections endpoint, present in all modern Companion API versions
+    try {
+        const response = await fetchWithTimeout(`${url}/api/connections`);
+        if (response.ok) {
+            await response.json();
+            return true;
+        }
+    } catch {
+        // Ignore
+    }
+
+    return false;
+}
+
 const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox: () => void;
     connectionUrl: string;
@@ -164,8 +204,6 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             onAdditionalConnectionValiditiesChange(validities);
         }
     };
-    const [mainConnectionStopped, setMainConnectionStopped] = useState<boolean>(false);
-    const [connectionsStopped, setConnectionsStopped] = useState<boolean>(false);
 
     // License state
     const [hasLicense, setHasLicense] = useState<boolean>(hasStoredLicense());
@@ -688,7 +726,6 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
     useEffect(() => {
         // Reset when connectionUrl changes
-        setMainConnectionStopped(false);
         updateIsValidUrl(null);
     }, [connectionUrl]);
 
@@ -701,43 +738,20 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         }
 
         const checkConnection = async () => {
-            if (mainConnectionStopped) {
-                return;
-            }
-
             if (!connectionUrl) {
                 updateIsValidUrl(null);
                 return;
             }
 
-            try {
-                const response = await fetch(`${connectionUrl}/api/variable/internal/time_unix/value`);
-                if (!response.ok) throw new Error('Non-200 response');
-                const data = await response.text();
-                const timestamp = parseInt(data);
-                if (!isNaN(timestamp)) {
-                    updateIsValidUrl(true);
-                } else {
-                    throw new Error('Invalid response');
-                }
-            } catch (err) {
-                updateIsValidUrl(false);
-                setMainConnectionStopped(true);
-                console.warn('Main connection failed, stopped checking');
-            }
+            const valid = await probeCompanion(connectionUrl);
+            updateIsValidUrl(valid);
         };
 
         checkConnection(); // Initial check
         const interval = setInterval(checkConnection, 5000); // Repeat every 5s
 
         return () => clearInterval(interval); // Cleanup
-    }, [connectionUrl, mainConnectionStopped]);
-
-    // Check connections validity (Electron only)
-    useEffect(() => {
-        // Reset when connections change
-        setConnectionsStopped(false);
-    }, [connections]);
+    }, [connectionUrl]);
 
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
@@ -748,12 +762,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         }
 
         const checkConnections = async () => {
-            if (connectionsStopped) {
-                return;
-            }
-
             const validities: { [key: string]: boolean | null } = {};
-            let hasAnyError = false;
 
             for (const connection of connections) {
                 if (!connection.url) {
@@ -761,28 +770,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                     continue;
                 }
 
-                try {
-                    const response = await fetch(`${connection.url}/api/variable/internal/time_unix/value`);
-                    if (!response.ok) throw new Error('Non-200 response');
-                    const data = await response.text();
-                    const timestamp = parseInt(data);
-                    if (!isNaN(timestamp)) {
-                        validities[connection.id] = true;
-                    } else {
-                        throw new Error('Invalid response');
-                    }
-                } catch (err) {
-                    validities[connection.id] = false;
-                    hasAnyError = true;
-                }
+                validities[connection.id] = await probeCompanion(connection.url);
             }
 
             updateConnectionValidities(validities);
-
-            if (hasAnyError) {
-                setConnectionsStopped(true);
-                console.warn('Additional connection(s) failed, stopped checking');
-            }
         };
 
         if (connections.length > 0) {
@@ -790,7 +781,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             const interval = setInterval(checkConnections, 5000);
             return () => clearInterval(interval);
         }
-    }, [connections, connectionsStopped]);
+    }, [connections]);
 
     // Touch gesture handlers
     useEffect(() => {
@@ -1846,7 +1837,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                     )}
 
                     <div className='section-label-container' onClick={(e) => { e.stopPropagation(); toggleSection('animations'); }}>
-                        <span className='section-label'>Animations</span>
+                        <span className='section-label'>Global Animations</span>
                         {collapsedSections.animations ? <FaChevronDown /> : <FaChevronUp />}
                     </div>
                     {!collapsedSections.animations && (

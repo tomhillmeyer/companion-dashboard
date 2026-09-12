@@ -89,6 +89,7 @@ export interface ColorLayer extends BaseLayer {
     variableColors: VariableColor[];
     mask: LayerMask;
     radius?: LayerRadius;
+    colorAnimation?: 'none' | 'fade'; // undefined = follow global
 }
 
 export interface ImageLayer extends BaseLayer {
@@ -98,6 +99,7 @@ export interface ImageLayer extends BaseLayer {
     imageOpacity: number;
     overlay: LayerOverlay;
     radius?: LayerRadius;
+    backgroundImageAnimation?: AnimationType; // undefined = follow global
 }
 
 export interface VideoLayer extends BaseLayer {
@@ -120,6 +122,7 @@ export interface TextLayer extends BaseLayer {
     colorText: string;
     variableColors: VariableColor[];
     visible: boolean;
+    textAnimation?: AnimationType; // undefined = follow global
 }
 
 export type BoxLayer = ColorLayer | ImageLayer | VideoLayer | TextLayer;
