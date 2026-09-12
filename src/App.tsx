@@ -17,6 +17,7 @@ import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
+import { getDisplayPosition, getInternalPosition } from './layerUtils';
 
 
 // Get window ID for isolated storage
@@ -1820,6 +1821,41 @@ export default function App() {
                 event.preventDefault();
                 setSelectedBoxIds([]);
             }
+            // Nudge selected boxes with arrow keys (matches modal X/Y pixel editing)
+            else if (!boxesLocked && selectedBoxIds.length > 0 && (
+                event.key === 'ArrowUp' ||
+                event.key === 'ArrowDown' ||
+                event.key === 'ArrowLeft' ||
+                event.key === 'ArrowRight'
+            )) {
+                // Ignore when typing in form fields so arrow keys keep working for text editing
+                const target = event.target as HTMLElement | null;
+                if (target && (target.isContentEditable || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+                    return;
+                }
+                event.preventDefault();
+                const distance = event.shiftKey ? 10 : 1;
+                const deltaX = event.key === 'ArrowLeft' ? -distance : event.key === 'ArrowRight' ? distance : 0;
+                const deltaY = event.key === 'ArrowUp' ? -distance : event.key === 'ArrowDown' ? distance : 0;
+
+                setBoxes(prev => prev.map(b => {
+                    if (!selectedBoxIds.includes(b.id)) {
+                        return b;
+                    }
+                    const displayPos = getDisplayPosition(b.frame.translate, b.frame.width, b.frame.height, b.anchorPoint);
+                    const newDisplayPos: [number, number] = [
+                        Math.round(displayPos[0] + deltaX),
+                        Math.round(displayPos[1] + deltaY)
+                    ];
+                    return {
+                        ...b,
+                        frame: {
+                            ...b.frame,
+                            translate: getInternalPosition(newDisplayPos, b.frame.width, b.frame.height, b.anchorPoint)
+                        }
+                    };
+                }));
+            }
             // Create new box with Cmd+N (Mac) or Ctrl+N (Windows/Linux)
             else if (event.key === 'n' && (event.metaKey || event.ctrlKey)) {
                 event.preventDefault();
@@ -1834,7 +1870,7 @@ export default function App() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selectedBoxIds, findReplaceModalOpen, boxes]);
+    }, [selectedBoxIds, findReplaceModalOpen, boxes, boxesLocked]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -2182,10 +2218,11 @@ export default function App() {
                         resizable
                         snappable
                         snapThreshold={15}
-                        snapDirections={{ top: true, left: true, bottom: true, right: true }}
+snapDirections={{ top: true, left: true, bottom: true, right: true }}
                         verticalGuidelines={gridLines.verticalGridLines}
                         horizontalGuidelines={gridLines.horizontalGridLines}
                         useResizeObserver={true}
+                        useMutationObserver={true}
                         touchAction="none"
                         dragContainer={document.body}
                         preventDefault={true}

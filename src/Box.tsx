@@ -1025,6 +1025,7 @@ export default React.memo(function Box({
                             horizontalGuidelines={gridLines.horizontalGridLines}
                             isDisplaySnapDigit
                             useResizeObserver={true}
+                            useMutationObserver={true}
                             touchAction="none"
                             dragContainer={document.body}
                             preventDefault={true}

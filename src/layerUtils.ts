@@ -1,5 +1,31 @@
-import type { LayerOverlay, LayerRadius, VariableColor } from './types';
+import type { BoxData, LayerOverlay, LayerRadius, VariableColor } from './types';
 import { evaluateComparison } from './variableComparison';
+
+// Convert internal position (top-left) to display position (based on anchor point)
+export const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
+    const [x, y] = internalPos;
+    switch (anchor) {
+        case 'top-left': return [x, y];
+        case 'top-right': return [x + width, y];
+        case 'bottom-left': return [x, y + height];
+        case 'bottom-right': return [x + width, y + height];
+        case 'center': return [x + width / 2, y + height / 2];
+        default: return [x, y];
+    }
+};
+
+// Convert display position to internal position (top-left)
+export const getInternalPosition = (displayPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
+    const [x, y] = displayPos;
+    switch (anchor) {
+        case 'top-left': return [x, y];
+        case 'top-right': return [x - width, y];
+        case 'bottom-left': return [x, y - height];
+        case 'bottom-right': return [x - width, y - height];
+        case 'center': return [x - width / 2, y - height / 2];
+        default: return [x, y];
+    }
+};
 
 // Resolve a layer's per-corner radius; unset corners fall back to the box radius.
 export const resolveLayerRadius = (
