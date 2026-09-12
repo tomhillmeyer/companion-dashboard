@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, LayerRadius, AnimationType } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -13,7 +13,7 @@ import { resolveLayerRadius } from './layerUtils';
 
 import { FaX } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
-import { FaPlus, FaTrash, FaVideo, FaImage, FaPalette, FaFont, FaGripVertical, FaGear } from "react-icons/fa6";
+import { FaPlus, FaTrash, FaVideo, FaImage, FaPalette, FaFont, FaGripVertical, FaGear, FaLink } from "react-icons/fa6";
 
 
 type BoxSettingsModalProps = {
@@ -410,6 +410,7 @@ const layerTypeIcon = (type: LayerType) => {
     switch (type) {
         case 'video': return <FaVideo />;
         case 'image': return <FaImage />;
+        case 'url': return <FaLink />;
         case 'text': return <FaFont />;
         case 'color': return <FaPalette />;
     }
@@ -420,6 +421,7 @@ const layerDisplayLabel = (layer: BoxLayer): string => {
         case 'text': return layer.source || 'Text';
         case 'video': return 'Video';
         case 'image': return 'Image';
+        case 'url': return (layer as UrlLayer).urlSrc || 'URL';
         case 'color': return 'Color';
     }
 };
@@ -484,6 +486,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     );
     const selectedVideoLayer = (selectedLayer && selectedLayer.type === 'video') ? selectedLayer as VideoLayer : null;
     const selectedImageLayer = (selectedLayer && selectedLayer.type === 'image') ? selectedLayer as ImageLayer : null;
+    const selectedUrlLayer = (selectedLayer && selectedLayer.type === 'url') ? selectedLayer as UrlLayer : null;
     const selectedTextLayer = (selectedLayer && selectedLayer.type === 'text') ? selectedLayer as TextLayer : null;
     const selectedColorLayer = (selectedLayer && selectedLayer.type === 'color') ? selectedLayer as ColorLayer : null;
 
@@ -1258,6 +1261,62 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         </>
     );
 
+    const renderUrlEditor = (layer: UrlLayer) => (
+        <>
+            {renderLayerHeader(layer)}
+            <div className='setting-container'>
+                <h3 className="section-heading">URL</h3>
+                <div className="setting-row">
+                    <div className="setting-label">
+                        <span className="setting-header">URL or Variable</span>
+                        <input
+                            type="text"
+                            value={layer.urlSrc}
+                            onChange={(e) => updateLayerField(layer.id, { urlSrc: e.target.value })}
+                            placeholder="https://example.com or $(variable)"
+                            className="full-width-input"
+                        />
+                    </div>
+                </div>
+                <div className="opacity-controls">
+                    <label htmlFor={`url-opacity-${layer.id}`}>URL Opacity (%)</label>
+                    <input
+                        id={`url-opacity-${layer.id}`}
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={layer.urlOpacity ?? 100}
+                        onChange={(e) => updateLayerField(layer.id, { urlOpacity: parseInt(e.target.value) || 100 })}
+                        style={{ width: '100%' }}
+                        className="opacity-input"
+                    />
+                </div>
+            </div>
+            <div className='setting-container'>
+                <h3 className="section-heading">Corner Radius</h3>
+                <CornerRadiusEditor
+                    radius={layer.radius}
+                    boxRadius={formData.borderRadius ?? 15}
+                    onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
+                />
+                <div className="setting-hint">Box radius applies at the box border; these values add independent rounding.</div>
+            </div>
+            <div className='setting-container'>
+                <h3 className="section-heading">Position</h3>
+                <LayerPositionEditor
+                    offsetX={layer.offsetX}
+                    offsetY={layer.offsetY}
+                    onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
+                />
+                <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+            </div>
+            <OverlayEditor
+                overlay={layer.overlay}
+                onOverlayChange={(patch) => updateLayerOverlay(layer.id, patch)}
+            />
+        </>
+    );
+
     const renderVideoEditor = (layer: VideoLayer) => (
         <>
             {renderLayerHeader(layer)}
@@ -1595,6 +1654,8 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 return renderVideoEditor(selectedVideoLayer as VideoLayer);
             case 'text':
                 return renderTextEditor(selectedTextLayer as TextLayer);
+            case 'url':
+                return renderUrlEditor(selectedUrlLayer as UrlLayer);
         }
     };
 
@@ -1673,6 +1734,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         </button>
                         <button type="button" onClick={() => { addLayer('text'); setShowAddMenu(false); }}>
                             <FaFont /> Text
+                        </button>
+                        <button type="button" onClick={() => { addLayer('url'); setShowAddMenu(false); }}>
+                            <FaLink /> URL
                         </button>
                     </div>
                 )}

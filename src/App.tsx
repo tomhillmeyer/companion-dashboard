@@ -927,9 +927,10 @@ export default function App() {
                 } else if (layer.type === 'color') {
                     if (layer.colorText) allVariables[layer.colorText] = layer.colorText;
                     (layer.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
-                } else if (layer.type === 'image' || layer.type === 'video') {
+                } else if (layer.type === 'image' || layer.type === 'video' || layer.type === 'url') {
                     const overlay = layer.overlay || ({} as any);
                     if (layer.type === 'image' && layer.imageSrc) allVariables[layer.imageSrc] = layer.imageSrc;
+                    if (layer.type === 'url' && layer.urlSrc) allVariables[layer.urlSrc] = layer.urlSrc;
                     if (overlay.colorText) allVariables[overlay.colorText] = overlay.colorText;
                     if (overlay.sizeSource) allVariables[overlay.sizeSource] = overlay.sizeSource;
                     (overlay.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
@@ -1725,11 +1726,12 @@ export default function App() {
                         variableColors: replaceConditions(layer.variableColors),
                     };
                 }
-                // Image and video layers (overlay-based)
+                // Image, video, and URL layers (overlay-based)
                 const overlay = layer.overlay;
                 return {
                     ...layer,
                     ...(layer.type === 'image' ? { imageSrc: replaceInString(layer.imageSrc) } : {}),
+                    ...(layer.type === 'url' ? { urlSrc: replaceInString(layer.urlSrc) } : {}),
                     overlay: {
                         ...overlay,
                         colorText: replaceInString(overlay.colorText),

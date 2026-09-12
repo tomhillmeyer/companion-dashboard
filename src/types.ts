@@ -49,7 +49,7 @@ export interface VariableOverlaySize {
 // Layer Types (Layered Box Elements)
 // ============================================================================
 
-export type LayerType = 'video' | 'color' | 'image' | 'text';
+export type LayerType = 'video' | 'color' | 'image' | 'text' | 'url';
 
 export interface BaseLayer {
     id: string;
@@ -98,6 +98,7 @@ export interface ImageLayer extends BaseLayer {
     imageSize: 'cover' | 'contain';
     imageOpacity: number;
     overlay: LayerOverlay;
+    mask?: LayerMask;
     radius?: LayerRadius;
     backgroundImageAnimation?: AnimationType; // undefined = follow global
 }
@@ -108,6 +109,7 @@ export interface VideoLayer extends BaseLayer {
     videoSize: 'cover' | 'contain';
     roi?: { x: number; y: number; width: number; height: number };
     overlay: LayerOverlay;
+    mask?: LayerMask;
     radius?: LayerRadius;
 }
 
@@ -125,7 +127,15 @@ export interface TextLayer extends BaseLayer {
     textAnimation?: AnimationType; // undefined = follow global
 }
 
-export type BoxLayer = ColorLayer | ImageLayer | VideoLayer | TextLayer;
+export interface UrlLayer extends BaseLayer {
+    type: 'url';
+    urlSrc: string;
+    urlOpacity: number;
+    overlay: LayerOverlay;
+    radius?: LayerRadius;
+}
+
+export type BoxLayer = ColorLayer | ImageLayer | VideoLayer | TextLayer | UrlLayer;
 
 // ============================================================================
 // Box Data Type

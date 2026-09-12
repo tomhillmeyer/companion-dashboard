@@ -6,7 +6,7 @@
  * factories used by createNewBox and the BoxSettingsModal "+" add menu.
  */
 
-import type { BoxData, BoxLayer, ColorLayer, ImageLayer, LayerMask, LayerOverlay, LayerType, TextLayer, VariableColor, VariableOverlaySize, VideoLayer } from './types';
+import type { BoxData, BoxLayer, ColorLayer, ImageLayer, LayerMask, LayerOverlay, LayerType, TextLayer, UrlLayer, VariableColor, VariableOverlaySize, VideoLayer } from './types';
 import { v4 as uuid } from 'uuid';
 
 // ============================================================================
@@ -84,6 +84,18 @@ export function createDefaultLayer(type: LayerType, overrides: Partial<BoxLayer>
                 overlay: createDefaultOverlay(),
             };
             return { ...layer, ...overrides } as VideoLayer;
+        }
+        case 'url': {
+            const layer: UrlLayer = {
+                id: uuid(),
+                type: 'url',
+                offsetX: 0,
+                offsetY: 0,
+                urlSrc: '',
+                urlOpacity: 100,
+                overlay: createDefaultOverlay(),
+            };
+            return { ...layer, ...overrides } as UrlLayer;
         }
         case 'text': {
             const layer: TextLayer = {
@@ -190,7 +202,7 @@ export function migrateBoxData(raw: any): BoxData {
             if (!l || !l.id) l = { ...l, id: uuid() };
             if (l.offsetX === undefined) l.offsetX = 0;
             if (l.offsetY === undefined) l.offsetY = 0;
-            if ((l.type === 'image' || l.type === 'video') && !l.overlay) {
+            if ((l.type === 'image' || l.type === 'video' || l.type === 'url') && !l.overlay) {
                 l.overlay = createDefaultOverlay();
             }
             if (l.type === 'color' && !l.mask) {

@@ -1,5 +1,5 @@
 import { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
-import type { BoxData, ColorLayer, ImageLayer, TextLayer, VideoLayer, LayerOverlay } from './types';
+import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, LayerOverlay } from './types';
 import { isImageUrl } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, getImageFromDB } from './layerUtils';
 import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
@@ -148,6 +148,54 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
                     ? { clipPath: `inset(0 round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                     : {}),
             }} />
+            <OverlayPreview overlay={layer.overlay} layerId={layer.id} variableValues={values} />
+        </div>
+    );
+};
+
+// ---- URL layer -------------------------------------------------------------
+const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }: { layer: UrlLayer; variableValues?: { [key: string]: string }; variableLookup?: { [key: string]: string }; borderRadius: number }) => {
+    const values = variableValues || {};
+
+    const resolvedUrl = (variableLookup
+        ? resolveSourceValue(layer.urlSrc || '', variableLookup)
+        : (values[`${layer.id}_urlSrc`] || '').trim()
+    ).trim();
+    const effectiveUrl = resolvedUrl || layer.urlSrc || '';
+
+    if (!effectiveUrl) return null;
+
+    const radius = resolveLayerRadius(layer.radius, borderRadius);
+    const offsetX = layer.offsetX ?? 0;
+    const offsetY = layer.offsetY ?? 0;
+
+    return (
+        <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            pointerEvents: 'none',
+            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+        }}>
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                overflow: 'hidden',
+                opacity: (layer.urlOpacity ?? 100) / 100,
+                ...(layer.radius
+                    ? { borderRadius: `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px` }
+                    : {}),
+            }}>
+                <iframe
+                    src={effectiveUrl}
+                    title={`URL layer ${layer.id}`}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        pointerEvents: 'none',
+                    }}
+                />
+            </div>
             <OverlayPreview overlay={layer.overlay} layerId={layer.id} variableValues={values} />
         </div>
     );
@@ -459,6 +507,9 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
                         }
                         if (layer.type === 'video') {
                             return <VideoLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
+                        }
+                        if (layer.type === 'url') {
+                            return <UrlLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} />;
                         }
                         return <TextLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableHtmlValues={variableHtmlValues} variableLookup={variableLookup} />;
                     })}

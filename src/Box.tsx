@@ -5,7 +5,7 @@ const windowId = (window as any).electronAPI?.windowId || '1';
 import { v4 as uuid } from 'uuid';
 import Moveable from 'react-moveable';
 import './Box.css';
-import type { AnimationSettings, BoxData, ColorLayer, CompanionConnection, ImageLayer, LayerOverlay, PageData, TextLayer, VideoLayer } from './types';
+import type { AnimationSettings, BoxData, ColorLayer, CompanionConnection, ImageLayer, LayerOverlay, PageData, TextLayer, UrlLayer, VideoLayer } from './types';
 import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
@@ -482,6 +482,73 @@ const VideoLayerView = React.memo(({
     );
 });
 
+// ---- URL layer -------------------------------------------------------------
+const UrlLayerView = React.memo(({
+    layer,
+    boxId,
+    variableValues,
+    colorAnimation,
+    animationDuration,
+    borderRadius,
+    boxesLocked,
+}: {
+    layer: UrlLayer;
+    boxId: string;
+    variableValues: { [key: string]: string };
+    colorAnimation: AnimationSettings['colorAnimation'];
+    animationDuration: number;
+    borderRadius: number;
+    boxesLocked: boolean;
+}) => {
+    const resolvedUrl = (variableValues[`${layer.id}_urlSrc`] || '').trim();
+    const effectiveUrl = resolvedUrl || layer.urlSrc || '';
+    const offsetX = layer.offsetX ?? 0;
+    const offsetY = layer.offsetY ?? 0;
+    const radius = resolveLayerRadius(layer.radius, borderRadius);
+    const boxRadius = layer.radius
+        ? `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px`
+        : undefined;
+
+    if (!effectiveUrl) return null;
+
+    return (
+        <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            pointerEvents: boxesLocked ? 'auto' : 'none',
+            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+        }}>
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                overflow: 'hidden',
+                opacity: (layer.urlOpacity ?? 100) / 100,
+                ...(boxRadius ? { borderRadius: boxRadius } : {}),
+            }}>
+                <iframe
+                    key={`${boxId}-${layer.id}`}
+                    src={effectiveUrl}
+                    title={`URL layer ${layer.id}`}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        pointerEvents: 'auto',
+                    }}
+                />
+            </div>
+            <LayerOverlayView
+                overlay={layer.overlay}
+                layerId={layer.id}
+                boxId={boxId}
+                variableValues={variableValues}
+                colorAnimation={colorAnimation}
+                animationDuration={animationDuration}
+            />
+        </div>
+    );
+});
+
 // ---- Text layer ------------------------------------------------------------
 const TextLayerView = React.memo(({
     layer,
@@ -751,10 +818,13 @@ export default React.memo(function Box({
             } else if (layer.type === 'color') {
                 sources[`${layer.id}_colorText`] = layer.colorText || '';
                 (layer.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
-            } else if (layer.type === 'image' || layer.type === 'video') {
+            } else if (layer.type === 'image' || layer.type === 'video' || layer.type === 'url') {
                 const overlay = layer.overlay;
                 if (layer.type === 'image') {
                     sources[`${layer.id}_imageSrc`] = layer.imageSrc || '';
+                }
+                if (layer.type === 'url') {
+                    sources[`${layer.id}_urlSrc`] = layer.urlSrc || '';
                 }
                 sources[`${layer.id}_colorText`] = overlay.colorText || '';
                 sources[`${layer.id}_sizeSource`] = overlay.sizeSource || '';
@@ -975,6 +1045,20 @@ export default React.memo(function Box({
                                         colorAnimation={colorAnimation}
                                         animationDuration={animationDuration}
                                         borderRadius={boxData.borderRadius ?? 15}
+                                    />
+                                );
+                            }
+                            if (layer.type === 'url') {
+                                return (
+                                    <UrlLayerView
+                                        key={layer.id}
+                                        layer={layer}
+                                        boxId={boxData.id}
+                                        variableValues={variableValues}
+                                        colorAnimation={colorAnimation}
+                                        animationDuration={animationDuration}
+                                        borderRadius={boxData.borderRadius ?? 15}
+                                        boxesLocked={boxesLocked}
                                     />
                                 );
                             }
