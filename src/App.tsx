@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 import Box from './Box.tsx';
 import SettingsMenu from './SettingsMenu.tsx';
@@ -176,7 +176,7 @@ export default function App() {
         setSelectedBoxIds([]); // Clear any selection
     };
 
-    const duplicateBox = (originalBoxData: BoxData) => {
+    const duplicateBox = useCallback((originalBoxData: BoxData) => {
         // Helper functions for position conversion
         const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
             const [x, y] = translate;
@@ -218,7 +218,7 @@ export default function App() {
             layers: duplicateLayers(originalBoxData.layers || []),
         };
         setBoxes((prev) => [...prev, duplicatedBox]);
-    };
+    }, []);
 
     // Page management handlers
     const handlePageAdd = () => {
@@ -559,12 +559,12 @@ export default function App() {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                return parsed.refreshRateMs || 100;
+                return parsed.refreshRateMs || 250;
             } catch (error) {
-                return 100;
+                return 250;
             }
         }
-        return 100;
+        return 250;
     });
 
     // Animation settings state - initialize from localStorage (or default for web clients)
@@ -596,6 +596,26 @@ export default function App() {
     const [backgroundImageAnimation, setBackgroundImageAnimation] = useState<AnimationType>(() => defaultAnimationSettings().backgroundImageAnimation || 'none');
     const [colorAnimation, setColorAnimation] = useState<'none' | 'fade'>(() => defaultAnimationSettings().colorAnimation || 'none');
     const [animationDuration, setAnimationDuration] = useState<number>(() => defaultAnimationSettings().animationDuration || 300);
+
+    // Memoized animation settings object for stable Box props
+    const animationSettings = useMemo<AnimationSettings>(() => ({
+        textAnimation,
+        backgroundImageAnimation,
+        colorAnimation,
+        animationDuration,
+    }), [textAnimation, backgroundImageAnimation, colorAnimation, animationDuration]);
+
+    // Stable handlers for boxes (prevent unnecessary re-renders via Box memo)
+    const handleBoxDeselect = useCallback(() => setSelectedBoxIds([]), []);
+    const handleBoxUpdate = useCallback((updatedBox: BoxData) => {
+        setBoxes(prev => prev.map(b => b.id === updatedBox.id ? updatedBox : b));
+    }, []);
+    const handleBoxDelete = useCallback((boxId: string) => {
+        setBoxes(prev => prev.filter(b => b.id !== boxId));
+        setSelectedBoxIds(prev => prev.filter(id => id !== boxId));
+    }, []);
+    const handleDragStart = useCallback(() => setIsDragging(true), []);
+    const handleDragEnd = useCallback(() => setIsDragging(false), []);
 
     // Font family state - initialize from localStorage
     const [fontFamily, setFontFamily] = useState<string>(() => {
@@ -1065,7 +1085,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, allVariableValues, allHtmlVariableValues, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -2124,31 +2144,21 @@ export default function App() {
                                     setSelectedBoxIds([box.id]);
                                 }
                             }}
-                            onDeselect={() => setSelectedBoxIds([])} // Clear all selections
-                            onBoxUpdate={(updatedBox) => {
-                                setBoxes(prev => prev.map(b => b.id === updatedBox.id ? updatedBox : b));
-                            }}
-                            onDelete={(boxId) => {
-                                setBoxes((prev) => prev.filter((b) => b.id !== boxId));
-                                setSelectedBoxIds(prev => prev.filter(id => id !== boxId));
-                            }}
+                            onDeselect={handleBoxDeselect} // Clear all selections
+                            onBoxUpdate={handleBoxUpdate}
+                            onDelete={handleBoxDelete}
                             onDuplicate={duplicateBox}
                             companionBaseUrl={companionBaseUrl}
                             connections={connections}
                             refreshRateMs={refreshRateMs}
                             isDragging={isDragging}
-                            onDragStart={() => setIsDragging(true)}
-                            onDragEnd={() => setIsDragging(false)}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
                             boxesLocked={boxesLocked}
-                            centralVariableValues={isWebClient ? receivedVariableValues : undefined}
+                            centralVariableValues={allVariableValues}
                             videoRelayManager={videoRelayManagerRef.current}
                             videoRelayManagerReady={videoRelayManagerReady}
-                            animationSettings={{
-                                textAnimation,
-                                backgroundImageAnimation,
-                                colorAnimation,
-                                animationDuration
-                            }}
+                            animationSettings={animationSettings}
                             boxRef={(el) => {
                                 if (el) {
                                     boxRefsMap.current[box.id] = el;

@@ -632,7 +632,7 @@ const LayerOverlayView = React.memo(({
 // ============================================================================
 // Box
 // ============================================================================
-export default function Box({
+export default React.memo(function Box({
     boxData,
     isSelected,
     onSelect,
@@ -643,7 +643,7 @@ export default function Box({
     gridSize = 15,
     companionBaseUrl,
     connections = [],
-    refreshRateMs = 100,
+    refreshRateMs = 250,
     isDragging = false,
     onDragStart,
     onDragEnd,
@@ -1110,4 +1110,4 @@ export default function Box({
             )}
         </div>
     );
-}
+});

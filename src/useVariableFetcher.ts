@@ -78,7 +78,7 @@ export const useVariableFetcher = (
     baseUrl: string,
     sources: { [key: string]: string }, // e.g., { headerLabelSource: "$(internal:time_hms_12)", leftLabelSource: "Hello $(custom:test)" }
     connections: CompanionConnection[] = [], // Additional connections
-    refreshRateMs: number = 100, // Configurable refresh rate in milliseconds
+    refreshRateMs: number = 250, // Configurable refresh rate in milliseconds
     isDragging: boolean = false, // Pause updates during drag operations
     preFetchedRawValues?: { [key: string]: string } // Pre-fetched raw variable values (for web clients)
 ) => {
@@ -86,6 +86,7 @@ export const useVariableFetcher = (
     const consecutiveFailuresRef = useRef<number>(0);
     const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentIntervalTimeRef = useRef<number>(refreshRateMs);
+    const inFlightRef = useRef<boolean>(false);
 
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
@@ -155,6 +156,13 @@ export const useVariableFetcher = (
     useEffect(() => {
         const fetchVariables = async () => {
 
+            // Skip if a previous fetch cycle is still running (prevents overlapping fetches)
+            if (inFlightRef.current) {
+                return;
+            }
+            inFlightRef.current = true;
+
+            try {
             // If pre-fetched values are provided, use local processing only (no fetch)
             const usePreFetched = preFetchedRawValues && Object.keys(preFetchedRawValues).length > 0;
 
@@ -307,10 +315,26 @@ export const useVariableFetcher = (
                 const hasChanged = JSON.stringify(prevRawValues) !== JSON.stringify(newRawValues);
                 return hasChanged ? newRawValues : prevRawValues;
             });
+            } catch (error) {
+                console.error('Variable fetch cycle error:', error);
+            } finally {
+                inFlightRef.current = false;
+            }
         };
 
         // Initial fetch
         fetchVariables();
+
+        // In pre-fetched mode there is no polling - this effect re-runs whenever preFetchedRawValues changes
+        const usePreFetched = preFetchedRawValues && Object.keys(preFetchedRawValues).length > 0;
+        if (usePreFetched) {
+            return () => {
+                if (intervalRef.current) {
+                    clearInterval(intervalRef.current);
+                    intervalRef.current = null;
+                }
+            };
+        }
 
         // Set up interval - use configurable refresh rate when connection is available
         const intervalTime = baseUrl ? refreshRateMs : 5000; // Use refreshRateMs with connection, 5 seconds without
