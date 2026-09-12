@@ -8,7 +8,7 @@ interface CompanionConnection {
 
 // Parse variables from a source string like "$(internal:time_hms_12)" or "$(custom:1266_active)" or "[2]$(custom:test)"
 // Also detects escaped variables like "\$(connection:variable)"
-const parseVariables = (source: string): Array<{variable: string, connectionIndex?: number, isEscaped: boolean, fullMatch: string}> => {
+export const parseVariables = (source: string): Array<{variable: string, connectionIndex?: number, isEscaped: boolean, fullMatch: string}> => {
     const variableRegex = /(\\)?(\[(\d+)\])?\$\(([^)]+)\)/g;
     const matches = [];
     let match;
@@ -31,7 +31,7 @@ const variableToApiPath = (variable: string): string => {
 };
 
 // Escape markdown characters in text
-const escapeMarkdown = (text: string): string => {
+export const escapeMarkdown = (text: string): string => {
     // Escape markdown special characters: * _ [ ] ( ) !
     return text.replace(/([*_\[\]()!])/g, '\\$1');
 };
@@ -72,6 +72,39 @@ export const parseMarkdown = (text: string): string => {
     });
 
     return processedText;
+};
+
+// Resolve every variable reference in a source string against a live variable lookup map.
+// Lookup keys are the full "$(connection:name)" references. Unresolved/absent variables are
+// stripped (matching the fetcher's behavior of showing surrounding text). Escaped variables
+// ("\$(...)") are replaced with markdown-escaped values so their content stays literal.
+export const resolveSourceValue = (
+    source: string,
+    variableLookup: { [key: string]: string } | undefined
+): string => {
+    if (!source || !variableLookup) {
+        return source || '';
+    }
+
+    const variables = parseVariables(source);
+    if (variables.length === 0) {
+        return source;
+    }
+
+    let processed = source;
+    for (const { variable, isEscaped, fullMatch } of variables) {
+        const lookupKey = `$(${variable})`;
+        const replacement = variableLookup[lookupKey];
+        if (replacement === undefined || replacement === null) {
+            processed = processed.replace(fullMatch, '');
+        } else if (isEscaped) {
+            processed = processed.replace(fullMatch, escapeMarkdown(replacement));
+        } else {
+            processed = processed.replace(fullMatch, replacement);
+        }
+    }
+
+    return processed;
 };
 
 export const useVariableFetcher = (

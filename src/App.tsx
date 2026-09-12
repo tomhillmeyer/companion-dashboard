@@ -15,6 +15,7 @@ import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor, PageData, AnimationSettings, AnimationType } from './types';
 import Moveable from 'react-moveable';
 import { evaluateComparison } from './variableComparison';
+import { parseVariables } from './useVariableFetcher';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
 import { getDisplayPosition, getInternalPosition } from './layerUtils';
@@ -957,6 +958,14 @@ export default function App() {
                     }
                 });
             }
+        });
+
+        // Register every individual variable reference parsed out of the collected sources,
+        // so live per-variable lookups ("$(connection:name)" -> value) work for the preview.
+        Object.keys(allVariables).forEach(sourceString => {
+            parseVariables(sourceString).forEach(({ variable }) => {
+                allVariables[`$(${variable})`] = `$(${variable})`;
+            });
         });
 
         return allVariables;

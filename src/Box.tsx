@@ -1107,6 +1107,7 @@ export default React.memo(function Box({
                     pages={pages}
                     variableValues={variableValues}
                     variableHtmlValues={variableHtmlValues}
+                    variableLookup={centralVariableValues}
                 />
             )}
         </div>

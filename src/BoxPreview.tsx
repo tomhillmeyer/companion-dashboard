@@ -1,8 +1,8 @@
-import { useRef, useLayoutEffect, useState, useEffect } from 'react';
+import { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
 import type { BoxData, ColorLayer, ImageLayer, TextLayer, VideoLayer, LayerOverlay } from './types';
 import { isImageUrl } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, getImageFromDB } from './layerUtils';
-import { parseMarkdown } from './useVariableFetcher';
+import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
 import { FaVideoSlash } from 'react-icons/fa6';
 import './Box.css';
 import './BoxPreview.css';
@@ -11,6 +11,7 @@ interface BoxPreviewProps {
     boxData: BoxData;
     variableValues?: { [key: string]: string };
     variableHtmlValues?: { [key: string]: string };
+    variableLookup?: { [key: string]: string };
 }
 
 const windowId = (window as any).electronAPI?.windowId || '1';
@@ -26,6 +27,16 @@ const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
     center: 'center',
     right: 'flex-end',
 };
+
+// Memoized HTML container: guards dangerouslySetInnerHTML against re-sets when the
+// resolved content is unchanged (React 19 diffs the __html object by reference, so a
+// fresh object every render would wipe and re-create iframes on idle re-renders).
+const MemoContent = memo(({ html, style }: { html: string; style: React.CSSProperties }) => (
+    <div className="content" style={style} dangerouslySetInnerHTML={{ __html: html }} />
+), (prevProps, nextProps) =>
+    prevProps.html === nextProps.html &&
+    JSON.stringify(prevProps.style) === JSON.stringify(nextProps.style)
+);
 
 // ---- Color layer -----------------------------------------------------------
 const ColorLayerPreview = ({ layer, variableValues, borderRadius }: { layer: ColorLayer; variableValues?: { [key: string]: string }; borderRadius: number }) => {
@@ -56,11 +67,14 @@ const ColorLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Col
 };
 
 // ---- Image layer -----------------------------------------------------------
-const ImageLayerPreview = ({ layer, variableValues, borderRadius }: { layer: ImageLayer; variableValues?: { [key: string]: string }; borderRadius: number }) => {
+const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }: { layer: ImageLayer; variableValues?: { [key: string]: string }; variableLookup?: { [key: string]: string }; borderRadius: number }) => {
     const [loadedImage, setLoadedImage] = useState<string>('');
     const values = variableValues || {};
 
-    const resolvedSource = (values[`${layer.id}_imageSrc`] || '').trim();
+    const resolvedSource = (variableLookup
+        ? resolveSourceValue(layer.imageSrc || '', variableLookup)
+        : (values[`${layer.id}_imageSrc`] || '').trim()
+    ).trim();
     const effectiveSrc = isImageUrl(resolvedSource) ? resolvedSource : layer.imageSrc || '';
 
     useEffect(() => {
@@ -313,14 +327,17 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
 };
 
 // ---- Text layer ------------------------------------------------------------
-const TextLayerPreview = ({ layer, variableValues, variableHtmlValues }: { layer: TextLayer; variableValues?: { [key: string]: string }; variableHtmlValues?: { [key: string]: string } }) => {
+const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableLookup }: { layer: TextLayer; variableValues?: { [key: string]: string }; variableHtmlValues?: { [key: string]: string }; variableLookup?: { [key: string]: string } }) => {
     const values = variableValues || {};
 
     const rawSource = layer.source || '';
     const htmlValue = variableHtmlValues?.[`${layer.id}_label`];
-    const html = rawSource && /\$\([^)]+\)/.test(rawSource)
-        ? (htmlValue ?? rawSource)
-        : parseMarkdown(rawSource);
+    const hasVariables = /\$\([^)]+\)/.test(rawSource);
+    const html = hasVariables && variableLookup
+        ? parseMarkdown(resolveSourceValue(rawSource, variableLookup))
+        : hasVariables
+            ? (htmlValue ?? rawSource)
+            : parseMarkdown(rawSource);
 
     const color = resolveLayerColor(layer.variableColors, layer.colorText, layer.color || '#ffffff', values, `${layer.id}_colorText`);
 
@@ -345,8 +362,10 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues }: { layer
             pointerEvents: 'none',
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
         }}>
-            <div
-                className="content"
+            <MemoContent
+                html={isTextOnly(html)
+                    ? `<span class="text-only-content">${html}</span>`
+                    : html}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -358,9 +377,6 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues }: { layer
                     fontFamily: layer.font || undefined,
                     textAlign: align as 'left' | 'center' | 'right',
                 }}
-                dangerouslySetInnerHTML={{ __html: isTextOnly(html)
-                    ? `<span class="text-only-content">${html}</span>`
-                    : html }}
             />
         </div>
     );
@@ -392,7 +408,7 @@ const OverlayPreview = ({ overlay, layerId, variableValues }: { overlay: LayerOv
 // ============================================================================
 // BoxPreview
 // ============================================================================
-export default function BoxPreview({ boxData, variableValues, variableHtmlValues }: BoxPreviewProps) {
+export default function BoxPreview({ boxData, variableValues, variableHtmlValues, variableLookup }: BoxPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(() => window.innerWidth * 0.4);
 
@@ -439,12 +455,12 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
                             return <ColorLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
                         }
                         if (layer.type === 'image') {
-                            return <ImageLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
+                            return <ImageLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} />;
                         }
                         if (layer.type === 'video') {
                             return <VideoLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
                         }
-                        return <TextLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableHtmlValues={variableHtmlValues} />;
+                        return <TextLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableHtmlValues={variableHtmlValues} variableLookup={variableLookup} />;
                     })}
                 </div>
             </div>

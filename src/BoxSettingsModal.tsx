@@ -26,6 +26,7 @@ type BoxSettingsModalProps = {
     pages?: PageData[];
     variableValues?: { [key: string]: string };
     variableHtmlValues?: { [key: string]: string };
+    variableLookup?: { [key: string]: string };
 };
 
 // ============================================================================
@@ -423,7 +424,7 @@ const layerDisplayLabel = (layer: BoxLayer): string => {
     }
 };
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], variableValues, variableHtmlValues }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], variableValues, variableHtmlValues, variableLookup }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -1704,7 +1705,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 style={{ width: '40vw', flexShrink: 0 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <BoxPreview boxData={formData} variableValues={variableValues} variableHtmlValues={variableHtmlValues} />
+                <BoxPreview boxData={formData} variableValues={variableValues} variableHtmlValues={variableHtmlValues} variableLookup={variableLookup} />
             </div>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
