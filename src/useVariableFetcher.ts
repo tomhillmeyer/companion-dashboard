@@ -1,5 +1,9 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 
+// A failed variable is not re-requested for this long, isolating a bad reference
+// so it can't hammer the server or slow down the fetches that are working.
+const VARIABLE_SKIP_MS = 5000;
+
 interface CompanionConnection {
     id: string;
     url: string;
@@ -120,6 +124,9 @@ export const useVariableFetcher = (
     const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentIntervalTimeRef = useRef<number>(refreshRateMs);
     const inFlightRef = useRef<boolean>(false);
+    // Per-variable skip window: a failed variable is not re-requested for a few
+    // seconds so one bad reference can't hammer the server or degrade other fetches.
+    const variableSkipUntilRef = useRef<Map<string, number>>(new Map());
 
     // Initialize state with processed values - remove variables immediately to show surrounding text
     const [values, setValues] = useState<{ [key: string]: string }>(() => {
@@ -202,7 +209,8 @@ export const useVariableFetcher = (
             const newValues: { [key: string]: string } = {};
             const newHtmlValues: { [key: string]: string } = {};
             const newRawValues: { [key: string]: string } = {};
-            let hasAnyFetchError = false;
+            let totalVariablesAttempted = 0;
+            let totalVariablesFailed = 0;
 
             for (const [sourceKey, sourceValue] of Object.entries(sourcesRef)) {
                 if (!sourceValue) {
@@ -241,32 +249,42 @@ export const useVariableFetcher = (
                         continue;
                     }
 
-                    try {
-                        let targetUrl = baseUrl;
+                    let targetUrl = baseUrl;
 
-                        // If connectionIndex is specified, use the corresponding connection
-                        if (connectionIndex !== undefined) {
-                            if (connectionIndex === 0) {
-                                // Connection [0] is the default connection
-                                targetUrl = baseUrl;
+                    // If connectionIndex is specified, use the corresponding connection
+                    if (connectionIndex !== undefined) {
+                        if (connectionIndex === 0) {
+                            // Connection [0] is the default connection
+                            targetUrl = baseUrl;
+                        } else {
+                            // Use the additional connection
+                            const connectionArray = connectionsRef;
+                            const targetConnection = connectionArray[connectionIndex - 1];
+                            if (targetConnection && targetConnection.url) {
+                                targetUrl = targetConnection.url;
                             } else {
-                                // Use the additional connection
-                                const connectionArray = connectionsRef;
-                                const targetConnection = connectionArray[connectionIndex - 1];
-                                if (targetConnection && targetConnection.url) {
-                                    targetUrl = targetConnection.url;
-                                } else {
-                                    console.warn(`Connection [${connectionIndex}] not found or has no URL`);
-                                    processedString = processedString.replace(fullMatch, '');
-                                    continue;
-                                }
+                                console.warn(`Connection [${connectionIndex}] not found or has no URL`);
+                                processedString = processedString.replace(fullMatch, '');
+                                continue;
                             }
                         }
+                    }
 
+                    // Skip recently-failed variables so a bad reference doesn't get
+                    // re-requested every cycle (or slow down the ones that work).
+                    const variableKey = `${targetUrl}|${variable}`;
+                    if ((variableSkipUntilRef.current.get(variableKey) || 0) > Date.now()) {
+                        processedString = processedString.replace(fullMatch, '');
+                        continue;
+                    }
+                    totalVariablesAttempted += 1;
+
+                    try {
                         const apiPath = variableToApiPath(variable);
                         const response = await fetch(`${targetUrl}${apiPath}`);
 
                         if (response.ok) {
+                            variableSkipUntilRef.current.delete(variableKey);
                             const data = await response.text(); // API returns plain text
                             // If API returns the variable name itself or null, treat as empty
                             if (data === variable || data === 'null' || data === null || data === undefined) {
@@ -279,12 +297,14 @@ export const useVariableFetcher = (
                         } else {
                             console.warn(`Failed to fetch ${variable} from ${targetUrl}:`, response.status);
                             processedString = processedString.replace(fullMatch, '');
-                            hasAnyFetchError = true;
+                            variableSkipUntilRef.current.set(variableKey, Date.now() + VARIABLE_SKIP_MS);
+                            totalVariablesFailed += 1;
                         }
                     } catch (error) {
                         console.error(`Error fetching ${variable}:`, error);
                         processedString = processedString.replace(fullMatch, '');
-                        hasAnyFetchError = true;
+                        variableSkipUntilRef.current.set(variableKey, Date.now() + VARIABLE_SKIP_MS);
+                        totalVariablesFailed += 1;
                     }
                 }
 
@@ -293,8 +313,10 @@ export const useVariableFetcher = (
                 newHtmlValues[sourceKey] = parseMarkdown(processedString);
             }
 
-            // Handle fetch errors with exponential backoff (don't permanently stop)
-            if (hasAnyFetchError && !usePreFetched) {
+            // Only slow down when the whole connection is unreachable (every attempted
+            // variable failed). A single bad variable is isolated by the skip window
+            // above and must never degrade fetching for the rest.
+            if (!usePreFetched && totalVariablesAttempted > 0 && totalVariablesFailed >= totalVariablesAttempted) {
                 consecutiveFailuresRef.current += 1;
                 // Exponential backoff: 100ms → 1s → 5s → 30s (max)
                 const backoffDelays = [100, 1000, 5000, 30000];
@@ -314,8 +336,8 @@ export const useVariableFetcher = (
                         }, newInterval);
                     }
                 }
-            } else if (!hasAnyFetchError && consecutiveFailuresRef.current > 0) {
-                // Connection recovered - reset to normal interval
+            } else if (!usePreFetched && totalVariablesAttempted > 0 && totalVariablesFailed < totalVariablesAttempted && consecutiveFailuresRef.current > 0) {
+                // Any variable succeeded - connection is alive, resume the normal refresh rate
                 consecutiveFailuresRef.current = 0;
                 const normalInterval = baseUrl ? refreshRateMs : 5000;
 
