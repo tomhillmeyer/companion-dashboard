@@ -1624,6 +1624,33 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </div>
                         </div>
                     </div>
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Text Wrap</span>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                {(['word', 'letter', 'ellipsis', 'truncate'] as const).map(wrap => (
+                                    <button
+                                        key={wrap}
+                                        type="button"
+                                        onClick={() => updateLayerField(layer.id, { wrap })}
+                                        style={{
+                                            padding: '8px 12px',
+                                            backgroundColor: (layer.wrap || 'word') === wrap ? '#61BAFA' : '#333',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            color: 'white',
+                                            cursor: 'pointer',
+                                            fontSize: '11px',
+                                            fontWeight: '600',
+                                            textTransform: 'capitalize',
+                                        }}
+                                    >
+                                        {wrap === 'word' ? 'Word' : wrap === 'letter' ? 'Letter' : wrap === 'ellipsis' ? 'Ellipsis' : 'Truncate'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div className='setting-container'>
                     <h3 className="section-heading">Text Color</h3>

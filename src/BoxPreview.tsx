@@ -437,6 +437,18 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
         bottom: 'flex-end',
     };
 
+    const wrap = layer.wrap || 'word';
+    const wrapStyle = wrap === 'letter'
+        ? { overflowWrap: 'anywhere' as const, wordBreak: 'break-all' as const }
+        : wrap === 'ellipsis' || wrap === 'truncate'
+            ? {
+                display: 'block' as const,
+                whiteSpace: 'nowrap' as const,
+                overflow: 'hidden' as const,
+                textOverflow: (wrap === 'ellipsis' ? 'ellipsis' : 'clip') as 'ellipsis' | 'clip',
+            }
+            : { whiteSpace: 'normal' as const, overflowWrap: 'normal' as const };
+
     return (
         <div style={{
             position: 'absolute',
@@ -461,6 +473,7 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
                     fontSize: `${layer.size}px`,
                     fontFamily: layer.font || undefined,
                     textAlign: align as 'left' | 'center' | 'right',
+                    ...wrapStyle,
                 }}
             />
         </div>

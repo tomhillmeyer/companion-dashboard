@@ -110,6 +110,7 @@ export function createDefaultLayer(type: LayerType, overrides: Partial<BoxLayer>
                 size: 16,
                 align: 'center',
                 alignVertical: 'middle',
+                wrap: 'word',
                 font: '',
                 color: '#ffffff',
                 colorText: '',
@@ -217,6 +218,9 @@ export function migrateBoxData(raw: any): BoxData {
             if (l.type === 'text') {
                 if (l.alignVertical === undefined) {
                     l.alignVertical = 'middle';
+                }
+                if (l.wrap === undefined) {
+                    l.wrap = 'word';
                 }
                 const { background, backgroundText, backgroundVariableColors, label, ...rest } = l;
                 l = rest;

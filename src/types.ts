@@ -119,6 +119,7 @@ export interface TextLayer extends BaseLayer {
     size: number;
     align: 'left' | 'center' | 'right';
     alignVertical: 'top' | 'middle' | 'bottom';
+    wrap?: 'word' | 'letter' | 'ellipsis' | 'truncate'; // undefined = word wrap
     font: string; // '' = use global font
     color: string;
     colorText: string;
