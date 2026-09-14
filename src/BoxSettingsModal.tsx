@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerMask, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -109,6 +109,34 @@ const VariableColorEditor = ({ title, colors, onColorsChange }: {
         </div>
     );
 };
+
+// Shared per-side mask editor for color/image/video/url layers.
+const MaskEditor = ({
+    mask,
+    onMaskChange,
+}: {
+    mask: LayerMask | undefined;
+    onMaskChange: (mask: LayerMask) => void;
+}) => (
+    <div className="setting-row">
+        {(['top', 'bottom', 'left', 'right'] as const).map(side => (
+            <div key={side} className="mask-side-input">
+                <span className="setting-header">{side}</span>
+                <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={mask?.[side] ?? 0}
+                    onChange={(e) => onMaskChange({
+                        ...(mask || { top: 0, bottom: 0, left: 0, right: 0 }),
+                        [side]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                    })}
+                    className="content-text-input"
+                />
+            </div>
+        ))}
+    </div>
+);
 
 // Shared per-corner radius editor for color/image/video layers.
 const CornerRadiusEditor = ({
@@ -1102,26 +1130,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Mask</h3>
-                <div className="setting-row">
-                    {(['top', 'bottom', 'left', 'right'] as const).map(side => (
-                        <div key={side} className="mask-side-input">
-                            <span className="setting-header">{side}</span>
-                            <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={layer.mask?.[side] ?? 0}
-                                onChange={(e) => updateLayerField(layer.id, {
-                                    mask: {
-                                        ...(layer.mask || { top: 0, bottom: 0, left: 0, right: 0 }),
-                                        [side]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                                    }
-                                })}
-                                className="content-text-input"
-                            />
-                        </div>
-                    ))}
-                </div>
+                <MaskEditor
+                    mask={layer.mask}
+                    onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                />
                 <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
             </div>
             <div className='setting-container'>
@@ -1228,6 +1240,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
             </div>
             <div className='setting-container'>
+                <h3 className="section-heading">Mask</h3>
+                <MaskEditor
+                    mask={layer.mask}
+                    onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                />
+                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
+            </div>
+            <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
                 <CornerRadiusEditor
                     radius={layer.radius}
@@ -1291,6 +1311,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         className="opacity-input"
                     />
                 </div>
+            </div>
+            <div className='setting-container'>
+                <h3 className="section-heading">Mask</h3>
+                <MaskEditor
+                    mask={layer.mask}
+                    onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                />
+                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
@@ -1457,6 +1485,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     </div>
                 </div>
             )}
+            <div className='setting-container'>
+                <h3 className="section-heading">Mask</h3>
+                <MaskEditor
+                    mask={layer.mask}
+                    onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                />
+                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
+            </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
                 <CornerRadiusEditor

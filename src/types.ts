@@ -132,6 +132,7 @@ export interface UrlLayer extends BaseLayer {
     urlSrc: string;
     urlOpacity: number;
     overlay: LayerOverlay;
+    mask?: LayerMask;
     radius?: LayerRadius;
 }
 

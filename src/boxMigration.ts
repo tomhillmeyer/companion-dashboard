@@ -70,6 +70,7 @@ export function createDefaultLayer(type: LayerType, overrides: Partial<BoxLayer>
                 imageSize: 'cover',
                 imageOpacity: 100,
                 overlay: createDefaultOverlay(),
+                mask: createDefaultMask(),
             };
             return { ...layer, ...overrides } as ImageLayer;
         }
@@ -82,6 +83,7 @@ export function createDefaultLayer(type: LayerType, overrides: Partial<BoxLayer>
                 deviceId: '',
                 videoSize: 'cover',
                 overlay: createDefaultOverlay(),
+                mask: createDefaultMask(),
             };
             return { ...layer, ...overrides } as VideoLayer;
         }
@@ -94,6 +96,7 @@ export function createDefaultLayer(type: LayerType, overrides: Partial<BoxLayer>
                 urlSrc: '',
                 urlOpacity: 100,
                 overlay: createDefaultOverlay(),
+                mask: createDefaultMask(),
             };
             return { ...layer, ...overrides } as UrlLayer;
         }
@@ -204,6 +207,9 @@ export function migrateBoxData(raw: any): BoxData {
             if (l.offsetY === undefined) l.offsetY = 0;
             if ((l.type === 'image' || l.type === 'video' || l.type === 'url') && !l.overlay) {
                 l.overlay = createDefaultOverlay();
+            }
+            if ((l.type === 'image' || l.type === 'video' || l.type === 'url') && !l.mask) {
+                l.mask = createDefaultMask();
             }
             if (l.type === 'color' && !l.mask) {
                 l.mask = createDefaultMask();

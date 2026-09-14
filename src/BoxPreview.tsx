@@ -127,6 +127,9 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
     const radius = resolveLayerRadius(layer.radius, borderRadius);
     const offsetX = layer.offsetX ?? 0;
     const offsetY = layer.offsetY ?? 0;
+    const mask = layer.mask;
+    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
+    const needsClip = hasMask || !!layer.radius;
 
     return (
         <div style={{
@@ -144,8 +147,8 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
                 backgroundRepeat: 'no-repeat',
                 opacity: (layer.imageOpacity ?? 100) / 100,
                 pointerEvents: 'none',
-                ...(layer.radius
-                    ? { clipPath: `inset(0 round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                ...(needsClip
+                    ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                     : {}),
             }} />
             <OverlayPreview overlay={layer.overlay} layerId={layer.id} variableValues={values} />
@@ -168,6 +171,13 @@ const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }
     const radius = resolveLayerRadius(layer.radius, borderRadius);
     const offsetX = layer.offsetX ?? 0;
     const offsetY = layer.offsetY ?? 0;
+    const mask = layer.mask;
+    const maskTop = mask?.top || 0;
+    const maskRight = mask?.right || 0;
+    const maskBottom = mask?.bottom || 0;
+    const maskLeft = mask?.left || 0;
+    const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
+    const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
     return (
         <div style={{
@@ -178,7 +188,10 @@ const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }
         }}>
             <div style={{
                 position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
+                top: `${mask?.top || 0}%`,
+                right: `${mask?.right || 0}%`,
+                bottom: `${mask?.bottom || 0}%`,
+                left: `${mask?.left || 0}%`,
                 overflow: 'hidden',
                 opacity: (layer.urlOpacity ?? 100) / 100,
                 ...(layer.radius
@@ -189,8 +202,11 @@ const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }
                     src={effectiveUrl}
                     title={`URL layer ${layer.id}`}
                     style={{
-                        width: '100%',
-                        height: '100%',
+                        position: 'absolute',
+                        top: `${-maskTop / vFactor}%`,
+                        left: `${-maskLeft / hFactor}%`,
+                        width: `${100 / hFactor}%`,
+                        height: `${100 / vFactor}%`,
                         border: 'none',
                         pointerEvents: 'none',
                     }}
@@ -281,6 +297,13 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
         : undefined;
     const offsetX = layer.offsetX ?? 0;
     const offsetY = layer.offsetY ?? 0;
+    const mask = layer.mask;
+    const maskTop = mask?.top || 0;
+    const maskRight = mask?.right || 0;
+    const maskBottom = mask?.bottom || 0;
+    const maskLeft = mask?.left || 0;
+    const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
+    const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
     const videoContent = (() => {
         if (videoError) {
@@ -290,7 +313,7 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
                     backgroundColor: '#111',
                     display: 'flex', flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center',
-                    pointerEvents: 'none', ...(videoRadius ? { borderRadius: videoRadius } : {}),
+                    pointerEvents: 'none',
                     gap: '0.4em', color: '#888',
                 }}>
                     <FaVideoSlash style={{ fontSize: '2em' }} />
@@ -310,11 +333,13 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
                     playsInline
                     muted
                     style={{
-                        position: 'absolute', top: 0, left: 0,
-                        width: '100%', height: '100%',
+                        position: 'absolute',
+                        top: `${-maskTop / vFactor}%`,
+                        left: `${-maskLeft / hFactor}%`,
+                        width: `${100 / hFactor}%`,
+                        height: `${100 / vFactor}%`,
                         objectFit: layer.videoSize || 'cover',
                         pointerEvents: 'none',
-                        ...(videoRadius ? { borderRadius: videoRadius } : {}),
                     }}
                 />
             );
@@ -326,8 +351,11 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
 
         return (
             <div style={{
-                position: 'absolute', top: 0, left: 0,
-                width: '100%', height: '100%',
+                position: 'absolute',
+                top: `${-maskTop / vFactor}%`,
+                left: `${-maskLeft / hFactor}%`,
+                width: `${100 / hFactor}%`,
+                height: `${100 / vFactor}%`,
                 pointerEvents: 'none',
             }}>
                 <div style={{
@@ -338,7 +366,6 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
                         ? { maxWidth: '100%', maxHeight: '100%', width: 'auto', height: '100%' }
                         : { minWidth: '100%', minHeight: '100%' }),
                     overflow: 'hidden',
-                    ...(videoRadius ? { borderRadius: videoRadius } : {}),
                 }}>
                     <video
                         key={`preview-${layer.id}-roi`}
@@ -368,7 +395,17 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
             pointerEvents: 'none',
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
         }}>
-            {videoContent}
+            <div style={{
+                position: 'absolute',
+                top: `${mask?.top || 0}%`,
+                right: `${mask?.right || 0}%`,
+                bottom: `${mask?.bottom || 0}%`,
+                left: `${mask?.left || 0}%`,
+                overflow: 'hidden',
+                ...(videoRadius ? { borderRadius: videoRadius } : {}),
+            }}>
+                {videoContent}
+            </div>
             <OverlayPreview overlay={layer.overlay} layerId={layer.id} variableValues={variableValues || {}} />
         </div>
     );

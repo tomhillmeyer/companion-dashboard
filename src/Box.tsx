@@ -224,6 +224,9 @@ const ImageLayerView = React.memo(({
     const radius = resolveLayerRadius(layer.radius, borderRadius);
     const offsetX = layer.offsetX ?? 0;
     const offsetY = layer.offsetY ?? 0;
+    const mask = layer.mask;
+    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
+    const needsClip = hasMask || !!layer.radius;
 
     return (
         <div style={{
@@ -244,8 +247,8 @@ const ImageLayerView = React.memo(({
                     backgroundRepeat: 'no-repeat',
                     opacity: (layer.imageOpacity ?? 100) / 100,
                     pointerEvents: 'none',
-                    ...(layer.radius
-                        ? { clipPath: `inset(0 round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                    ...(needsClip
+                        ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                         : {}),
                     ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
                 }}
@@ -291,6 +294,13 @@ const VideoLayerView = React.memo(({
         : undefined;
     const offsetX = layer.offsetX ?? 0;
     const offsetY = layer.offsetY ?? 0;
+    const mask = layer.mask;
+    const maskTop = mask?.top || 0;
+    const maskRight = mask?.right || 0;
+    const maskBottom = mask?.bottom || 0;
+    const maskLeft = mask?.left || 0;
+    const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
+    const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
     // Handle video stream setup and cleanup
     useEffect(() => {
@@ -392,14 +402,13 @@ const VideoLayerView = React.memo(({
                     muted
                     style={{
                         position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
+                        top: `${-maskTop / vFactor}%`,
+                        left: `${-maskLeft / hFactor}%`,
+                        width: `${100 / hFactor}%`,
+                        height: `${100 / vFactor}%`,
                         objectFit: layer.videoSize || 'cover',
                         pointerEvents: 'none',
                         zIndex: 0,
-                        ...(videoRadius ? { borderRadius: videoRadius } : {})
                     }}
                 />
             );
@@ -417,10 +426,10 @@ const VideoLayerView = React.memo(({
         return (
             <div style={{
                 position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
+                top: `${-maskTop / vFactor}%`,
+                left: `${-maskLeft / hFactor}%`,
+                width: `${100 / hFactor}%`,
+                height: `${100 / vFactor}%`,
                 pointerEvents: 'none',
                 zIndex: 0
             }}>
@@ -440,7 +449,6 @@ const VideoLayerView = React.memo(({
                         minHeight: '100%'
                     }),
                     overflow: 'hidden',
-                    ...(videoRadius ? { borderRadius: videoRadius } : {})
                 }}>
                     <video
                         ref={videoRef}
@@ -469,7 +477,17 @@ const VideoLayerView = React.memo(({
             pointerEvents: 'none',
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
         }}>
-            {videoContent}
+            <div style={{
+                position: 'absolute',
+                top: `${mask?.top || 0}%`,
+                right: `${mask?.right || 0}%`,
+                bottom: `${mask?.bottom || 0}%`,
+                left: `${mask?.left || 0}%`,
+                overflow: 'hidden',
+                ...(videoRadius ? { borderRadius: videoRadius } : {}),
+            }}>
+                {videoContent}
+            </div>
             <LayerOverlayView
                 overlay={layer.overlay}
                 layerId={layer.id}
@@ -508,8 +526,30 @@ const UrlLayerView = React.memo(({
     const boxRadius = layer.radius
         ? `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px`
         : undefined;
+    const mask = layer.mask;
+    const topInset = `${mask?.top || 0}%`;
+    const rightInset = `${mask?.right || 0}%`;
+    const bottomInset = `${mask?.bottom || 0}%`;
+    const leftInset = `${mask?.left || 0}%`;
+    const maskTop = mask?.top || 0;
+    const maskRight = mask?.right || 0;
+    const maskBottom = mask?.bottom || 0;
+    const maskLeft = mask?.left || 0;
+    const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
+    const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
     if (!effectiveUrl) return null;
+
+    const iframeStyle: React.CSSProperties = {
+        position: 'absolute',
+        top: `${-maskTop / vFactor}%`,
+        left: `${-maskLeft / hFactor}%`,
+        width: `${100 / hFactor}%`,
+        height: `${100 / vFactor}%`,
+        display: 'block',
+        border: 'none',
+        pointerEvents: boxesLocked ? 'auto' : 'none',
+    };
 
     return (
         <div style={{
@@ -520,7 +560,10 @@ const UrlLayerView = React.memo(({
         }}>
             <div style={{
                 position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
+                top: topInset,
+                right: rightInset,
+                bottom: bottomInset,
+                left: leftInset,
                 overflow: 'hidden',
                 opacity: (layer.urlOpacity ?? 100) / 100,
                 ...(boxRadius ? { borderRadius: boxRadius } : {}),
@@ -529,12 +572,8 @@ const UrlLayerView = React.memo(({
                     key={`${boxId}-${layer.id}`}
                     src={effectiveUrl}
                     title={`URL layer ${layer.id}`}
-                    style={{
-                        width: '100%',
-                        height: '100%',
-                        border: 'none',
-                        pointerEvents: 'auto',
-                    }}
+                    tabIndex={boxesLocked ? undefined : -1}
+                    style={iframeStyle}
                 />
             </div>
             <LayerOverlayView
@@ -545,6 +584,13 @@ const UrlLayerView = React.memo(({
                 colorAnimation={colorAnimation}
                 animationDuration={animationDuration}
             />
+            {!boxesLocked && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    pointerEvents: 'auto',
+                }} />
+            )}
         </div>
     );
 });
