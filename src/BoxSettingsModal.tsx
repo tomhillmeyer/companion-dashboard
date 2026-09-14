@@ -215,6 +215,42 @@ const LayerPositionEditor = ({
     </div>
 );
 
+// Shared max width/height (% of box) editor for text layers.
+const MaxSizeEditor = ({
+    maxWidth,
+    maxHeight,
+    onMaxSizeChange,
+}: {
+    maxWidth: number | undefined;
+    maxHeight: number | undefined;
+    onMaxSizeChange: (size: { maxWidth?: number; maxHeight?: number }) => void;
+}) => (
+    <div className="setting-row">
+        <div className="mask-side-input">
+            <span className="setting-header">Max Width</span>
+            <input
+                type="number"
+                min={0}
+                max={100}
+                value={maxWidth ?? 100}
+                onChange={(e) => onMaxSizeChange({ maxWidth: Math.max(0, Math.min(100, Number(e.target.value) || 0)), maxHeight })}
+                className="content-text-input"
+            />
+        </div>
+        <div className="mask-side-input">
+            <span className="setting-header">Max Height</span>
+            <input
+                type="number"
+                min={0}
+                max={100}
+                value={maxHeight ?? 100}
+                onChange={(e) => onMaxSizeChange({ maxWidth, maxHeight: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
+                className="content-text-input"
+            />
+        </div>
+    </div>
+);
+
 const ANIMATION_OPTIONS: { value: AnimationType; label: string }[] = [
     { value: 'none', label: 'None' },
     { value: 'fade', label: 'Fade' },
@@ -1651,6 +1687,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </div>
                         </div>
                     </div>
+                </div>
+                <div className='setting-container'>
+                    <h3 className="section-heading">Text Area (Max Width & Height)</h3>
+                    <MaxSizeEditor
+                        maxWidth={layer.maxWidth}
+                        maxHeight={layer.maxHeight}
+                        onMaxSizeChange={(size) => updateLayerField(layer.id, size)}
+                    />
+                    <div className="setting-row">
+                        <div className="setting-label">
+                            <span className="setting-header">Scroll Overflow</span>
+                            <label className="nav-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={layer.scrollable === true}
+                                    onChange={(e) => updateLayerField(layer.id, { scrollable: e.target.checked })}
+                                />
+                                <span className="nav-toggle-track" />
+                            </label>
+                        </div>
+                    </div>
+                    <div className="setting-hint">Word/Letter wrap taller than the area scrolls. Percent of the box, 100 = full size.</div>
                 </div>
                 <div className='setting-container'>
                     <h3 className="section-heading">Text Color</h3>

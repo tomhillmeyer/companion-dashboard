@@ -111,6 +111,9 @@ export function createDefaultLayer(type: LayerType, overrides: Partial<BoxLayer>
                 align: 'center',
                 alignVertical: 'middle',
                 wrap: 'word',
+                scrollable: false,
+                maxWidth: 100,
+                maxHeight: 100,
                 font: '',
                 color: '#ffffff',
                 colorText: '',
@@ -221,6 +224,24 @@ export function migrateBoxData(raw: any): BoxData {
                 }
                 if (l.wrap === undefined) {
                     l.wrap = 'word';
+                }
+                if (l.scrollable === undefined) {
+                    l.scrollable = false;
+                }
+                if (l.maxWidth === undefined) {
+                    l.maxWidth = 100;
+                }
+                if (l.maxHeight === undefined) {
+                    l.maxHeight = 100;
+                }
+                // Convert the interim 4-side text mask (if any) into width/height constraints
+                if (l.mask !== undefined && l.mask !== null) {
+                    const m = l.mask;
+                    if (m.left > 0 || m.right > 0 || m.top > 0 || m.bottom > 0) {
+                        l.maxWidth = Math.max(0, 100 - (m.left + m.right));
+                        l.maxHeight = Math.max(0, 100 - (m.top + m.bottom));
+                    }
+                    delete l.mask;
                 }
                 const { background, backgroundText, backgroundVariableColors, label, ...rest } = l;
                 l = rest;

@@ -120,6 +120,9 @@ export interface TextLayer extends BaseLayer {
     align: 'left' | 'center' | 'right';
     alignVertical: 'top' | 'middle' | 'bottom';
     wrap?: 'word' | 'letter' | 'ellipsis' | 'truncate'; // undefined = word wrap
+    scrollable?: boolean; // scroll out-of-bounds text (word/letter wrap), default off
+    maxWidth?: number; // % of box width, 100 = full size (no restriction)
+    maxHeight?: number; // % of box height, 100 = full size (no restriction)
     font: string; // '' = use global font
     color: string;
     colorText: string;

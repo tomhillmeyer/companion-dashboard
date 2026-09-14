@@ -667,6 +667,26 @@ const TextLayerView = React.memo(({
             }
             : { whiteSpace: 'normal' as const, overflowWrap: 'normal' as const };
 
+    const maxWidth = layer.maxWidth ?? 100;
+    const maxHeight = layer.maxHeight ?? 100;
+    const hasArea = maxWidth < 100 || maxHeight < 100;
+    const isWrapMode = wrap === 'word' || wrap === 'letter';
+    const scrollable = layer.scrollable === true && isWrapMode;
+    const areaStyle = scrollable
+        ? {
+            maxWidth: `${maxWidth}%`,
+            maxHeight: `${maxHeight}%`,
+            overflow: 'auto' as const,
+            display: 'block' as const,
+        }
+        : hasArea
+            ? {
+                maxWidth: `${maxWidth}%`,
+                maxHeight: `${maxHeight}%`,
+                overflow: 'hidden' as const,
+            }
+            : isWrapMode ? { overflow: 'visible' as const } : {};
+
     return (
         <div style={{
             position: 'absolute',
@@ -692,6 +712,7 @@ const TextLayerView = React.memo(({
                     fontFamily: layer.font || undefined,
                     textAlign: align as 'left' | 'center' | 'right',
                     ...wrapStyle,
+                    ...areaStyle,
                     ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
                     ...(colorAnimation === 'fade' ? {
                         transition: `color ${animationDuration}ms ease`
