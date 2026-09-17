@@ -1,5 +1,5 @@
 import type { BoxData, LayerOverlay, LayerRadius, VariableColor } from './types';
-import { evaluateComparison } from './variableComparison';
+import { evaluateComparison, resolveOperand } from './variableComparison';
 
 // Convert internal position (top-left) to display position (based on anchor point)
 export const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
@@ -51,8 +51,9 @@ export const resolveLayerColor = (
     if (variableColors && Array.isArray(variableColors)) {
         for (const varColor of variableColors) {
             if (varColor && varColor.variable && varColor.value) {
-                const variableValue = variableValues[varColor.variable] || '';
-                if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
+                const leftValue = resolveOperand(varColor.variable, variableValues);
+                const rightValue = resolveOperand(varColor.value, variableValues);
+                if (evaluateComparison(leftValue, varColor.operator, rightValue)) {
                     return varColor.color;
                 }
             }
@@ -79,8 +80,9 @@ export const computeLayerOverlaySize = (
     if (overlay.sizeVariableValues && Array.isArray(overlay.sizeVariableValues)) {
         for (const varSize of overlay.sizeVariableValues) {
             if (varSize && varSize.variable && varSize.value) {
-                const variableValue = variableValues[varSize.variable] || '';
-                if (evaluateComparison(variableValue, varSize.operator, varSize.value)) {
+                const leftValue = resolveOperand(varSize.variable, variableValues);
+                const rightValue = resolveOperand(varSize.value, variableValues);
+                if (evaluateComparison(leftValue, varSize.operator, rightValue)) {
                     return varSize.size;
                 }
             }

@@ -7,6 +7,25 @@
 import type { ComparisonOperator } from './types';
 
 /**
+ * Returns true when the given operand string references one or more Companion
+ * variables (e.g. "$(main:current_scene)") rather than being a literal value.
+ */
+export function isVariableRef(value: string | undefined): value is string {
+    return !!value && value.includes('$(') && value.includes(')');
+}
+
+/**
+ * Resolves a comparison operand that may be either a literal string or a
+ * Companion variable reference. Variable references are looked up in the
+ * fetched value map (keyed by the raw "$(connection:name)" pattern); literals
+ * are returned unchanged.
+ */
+export function resolveOperand(value: string | undefined, values: { [key: string]: string }): string {
+    if (!value) return '';
+    return isVariableRef(value) ? (values[value] ?? '') : value;
+}
+
+/**
  * Evaluates a comparison between a variable value and a target value using the specified operator.
  * Attempts numeric comparison first, falls back to string comparison.
  *

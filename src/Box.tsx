@@ -10,7 +10,7 @@ import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
-import { evaluateComparison } from './variableComparison';
+import { evaluateComparison, isVariableRef, resolveOperand } from './variableComparison';
 import { isImageUrl, duplicateLayers } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, getImageFromDB } from './layerUtils';
 
@@ -890,14 +890,22 @@ export default React.memo(function Box({
     const fetcherSources = useMemo(() => {
         const sources: { [key: string]: string } = {};
 
+        // Register both operands of a condition when they are variable references;
+        // either side may be a literal string or a "$(connection:name)" variable.
+        const registerConditionSources = (condition: { variable?: string; value?: string } | undefined) => {
+            if (!condition) return;
+            if (isVariableRef(condition.variable)) sources[condition.variable] = condition.variable;
+            if (isVariableRef(condition.value)) sources[condition.value] = condition.value;
+        };
+
         for (const layer of boxData.layers || []) {
             if (layer.type === 'text') {
                 sources[`${layer.id}_label`] = layer.source || '';
                 sources[`${layer.id}_colorText`] = layer.colorText || '';
-                (layer.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
+                (layer.variableColors || []).forEach(registerConditionSources);
             } else if (layer.type === 'color') {
                 sources[`${layer.id}_colorText`] = layer.colorText || '';
-                (layer.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
+                (layer.variableColors || []).forEach(registerConditionSources);
             } else if (layer.type === 'image' || layer.type === 'video' || layer.type === 'url') {
                 const overlay = layer.overlay;
                 if (layer.type === 'image') {
@@ -908,15 +916,15 @@ export default React.memo(function Box({
                 }
                 sources[`${layer.id}_colorText`] = overlay.colorText || '';
                 sources[`${layer.id}_sizeSource`] = overlay.sizeSource || '';
-                (overlay.variableColors || []).forEach(vc => { if (vc.variable) sources[vc.variable] = vc.variable; });
-                (overlay.sizeVariableValues || []).forEach(vs => { if (vs.variable) sources[vs.variable] = vs.variable; });
+                (overlay.variableColors || []).forEach(registerConditionSources);
+                (overlay.sizeVariableValues || []).forEach(registerConditionSources);
             }
         }
 
         sources.opacitySource = boxData.opacitySource || '';
         sources.borderColorTextSource = boxData.borderColorText || '';
-        (boxData.opacityVariableValues || []).forEach(varOpacity => { if (varOpacity.variable) sources[varOpacity.variable] = varOpacity.variable; });
-        (boxData.borderVariableColors || []).forEach(varColor => { if (varColor.variable) sources[varColor.variable] = varColor.variable; });
+        (boxData.opacityVariableValues || []).forEach(registerConditionSources);
+        (boxData.borderVariableColors || []).forEach(registerConditionSources);
 
         return sources;
     }, [boxData]);
@@ -933,8 +941,9 @@ export default React.memo(function Box({
         if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
             for (const varOpacity of boxData.opacityVariableValues) {
                 if (varOpacity && varOpacity.variable && varOpacity.value) {
-                    const variableValue = variableValues[varOpacity.variable] || '';
-                    if (evaluateComparison(variableValue, varOpacity.operator, varOpacity.value)) {
+                    const leftValue = resolveOperand(varOpacity.variable, variableValues);
+                    const rightValue = resolveOperand(varOpacity.value, variableValues);
+                    if (evaluateComparison(leftValue, varOpacity.operator, rightValue)) {
                         return varOpacity.opacity / 100;
                     }
                 }

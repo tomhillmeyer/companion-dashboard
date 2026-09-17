@@ -1623,7 +1623,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                                     type="text"
                                                     value={vc.variable}
                                                     onChange={(e) => updateCanvasVariableColor(vc.id, 'variable', e.target.value)}
-                                                    placeholder="Variable"
+                                                    placeholder="Variable or text"
                                                     className="canvas-variable-input"
                                                 />
                                                 <select
@@ -1642,7 +1642,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                                     type="text"
                                                     value={vc.value}
                                                     onChange={(e) => updateCanvasVariableColor(vc.id, 'value', e.target.value)}
-                                                    placeholder="Value"
+                                                    placeholder="Variable or text"
                                                     className="canvas-value-input"
                                                 />
                                                 <ColorPicker

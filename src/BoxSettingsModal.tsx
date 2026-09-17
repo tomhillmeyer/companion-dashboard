@@ -61,7 +61,7 @@ const VariableColorEditor = ({ title, colors, onColorsChange }: {
                                 type="text"
                                 value={vc.variable}
                                 onChange={(e) => update(vc.id, 'variable', e.target.value)}
-                                placeholder="Variable"
+                                placeholder="Variable or text"
                                 className="variable-input"
                             />
                             <select
@@ -80,7 +80,7 @@ const VariableColorEditor = ({ title, colors, onColorsChange }: {
                                 type="text"
                                 value={vc.value}
                                 onChange={(e) => update(vc.id, 'value', e.target.value)}
-                                placeholder="Value"
+                                placeholder="Variable or text"
                                 className="value-input"
                             />
                             <ColorPicker
@@ -330,7 +330,7 @@ const VariableSizeEditor = ({ sizes, onSizesChange }: {
                                 className="variable-input"
                                 value={vs.variable}
                                 onChange={(e) => update(vs.id, 'variable', e.target.value)}
-                                placeholder="Variable"
+                                placeholder="Variable or text"
                             />
                             <select
                                 value={vs.operator}
@@ -349,7 +349,7 @@ const VariableSizeEditor = ({ sizes, onSizesChange }: {
                                 className="value-input"
                                 value={vs.value}
                                 onChange={(e) => update(vs.id, 'value', e.target.value)}
-                                placeholder="Value"
+                                placeholder="Variable or text"
                             />
                             <input
                                 type="number"
@@ -982,7 +982,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                             type="text"
                                             value={vo.variable}
                                             onChange={(e) => updateVariableOpacity(vo.id, 'variable', e.target.value)}
-                                            placeholder="Variable"
+                                            placeholder="Variable or text"
                                             className="variable-input"
                                         />
                                         <select
@@ -1001,7 +1001,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                             type="text"
                                             value={vo.value}
                                             onChange={(e) => updateVariableOpacity(vo.id, 'value', e.target.value)}
-                                            placeholder="Value"
+                                            placeholder="Variable or text"
                                             className="value-input"
                                         />
                                         <input
@@ -1170,7 +1170,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     mask={layer.mask}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
                 />
-                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
@@ -1179,7 +1179,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
                 />
-                <div className="setting-hint">Box radius applies at the box border; these values add independent rounding.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
@@ -1188,7 +1188,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     offsetY={layer.offsetY}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
                 />
-                <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Color Animation</h3>
@@ -1201,7 +1201,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         { value: 'fade' as AnimationType, label: 'Fade' },
                     ]}
                 />
-                <div className="setting-hint">Global follows the dashboard-wide Color Animation setting.</div>
+                
             </div>
         </>
     );
@@ -1281,7 +1281,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     mask={layer.mask}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
                 />
-                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
@@ -1290,7 +1290,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
                 />
-                <div className="setting-hint">Box radius applies at the box border; these values add independent rounding.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
@@ -1299,7 +1299,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     offsetY={layer.offsetY}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
                 />
-                <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Image Animation</h3>
@@ -1308,7 +1308,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     value={layer.backgroundImageAnimation}
                     onChange={(value) => updateLayerField(layer.id, { backgroundImageAnimation: value })}
                 />
-                <div className="setting-hint">Global follows the dashboard-wide Background Image Animation setting.</div>
+                
             </div>
             <OverlayEditor
                 overlay={layer.overlay}
@@ -1354,7 +1354,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     mask={layer.mask}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
                 />
-                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
@@ -1363,7 +1363,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
                 />
-                <div className="setting-hint">Box radius applies at the box border; these values add independent rounding.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
@@ -1372,7 +1372,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     offsetY={layer.offsetY}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
                 />
-                <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+                
             </div>
             <OverlayEditor
                 overlay={layer.overlay}
@@ -1527,7 +1527,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     mask={layer.mask}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
                 />
-                <div className="setting-hint">0 = fully visible, 100 = fully masked.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
@@ -1536,7 +1536,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
                 />
-                <div className="setting-hint">Box radius applies at the box border; these values add independent rounding.</div>
+                
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
@@ -1545,7 +1545,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     offsetY={layer.offsetY}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
                 />
-                <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+                
             </div>
             <OverlayEditor
                 overlay={layer.overlay}
@@ -1678,7 +1678,8 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                             cursor: 'pointer',
                                             fontSize: '11px',
                                             fontWeight: '600',
-                                            textTransform: 'capitalize',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px',
                                         }}
                                     >
                                         {wrap === 'word' ? 'Word' : wrap === 'letter' ? 'Letter' : wrap === 'ellipsis' ? 'Ellipsis' : 'Truncate'}
@@ -1708,7 +1709,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </label>
                         </div>
                     </div>
-                    <div className="setting-hint">Word/Letter wrap taller than the area scrolls. Percent of the box, 100 = full size.</div>
+                    
                 </div>
                 <div className='setting-container'>
                     <h3 className="section-heading">Text Color</h3>
@@ -1743,7 +1744,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         value={layer.textAnimation}
                         onChange={(value) => updateLayerField(layer.id, { textAnimation: value })}
                     />
-                    <div className="setting-hint">Global follows the dashboard-wide Text Animation setting.</div>
+                    
                 </div>
                 <div className='setting-container'>
                     <h3 className="section-heading">Position</h3>
@@ -1752,7 +1753,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         offsetY={layer.offsetY}
                         onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
                     />
-                    <div className="setting-hint">Positive X moves right, positive Y moves down.</div>
+                    
                 </div>
             </div>
         </>

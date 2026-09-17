@@ -491,12 +491,6 @@
     box-sizing: border-box;
 }
 
-.setting-hint {
-    font-size: 12px;
-    color: #888;
-    margin-top: 10px;
-}
-
 .setting-input-group {
     display: flex;
     align-items: center;
@@ -504,13 +498,15 @@
 }
 
 .modal-content input[type="text"] {
-    height: 40px;
-    padding: 0 12px;
+    min-height: 56px;
+    padding: 16px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
-    font-size: 14px;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.4;
     width: 100%;
     min-width: 120px;
     box-sizing: border-box;
@@ -522,19 +518,41 @@
 }
 
 .modal-content input[type="number"] {
-    width: 60px;
-    height: 40px;
-    padding: 0 12px;
+    width: 72px;
+    min-height: 56px;
+    padding: 16px 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
     text-align: center;
-    font-size: 14px;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.4;
     box-sizing: border-box;
 }
 
 .modal-content input[type="number"]:focus {
+    outline: none;
+    border-color: #61BAFA;
+}
+
+.modal-content select {
+    width: 100%;
+    min-height: 56px;
+    padding: 0 12px !important;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #1a1a1a;
+    color: white;
+    font-size: 21px !important;
+    font-weight: 500;
+    line-height: 1.4;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.modal-content select:focus {
     outline: none;
     border-color: #61BAFA;
 }
@@ -595,6 +613,15 @@
     line-height: 1.4;
 }
 
+/* Match the big input footprint for the font picker inside the box settings modal */
+.setting-font-picker .font-picker-button {
+    min-height: 56px;
+    padding: 16px;
+    font-size: 21px;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
 .variable-color-section {
     display: flex;
     flex-direction: column;
@@ -638,15 +665,17 @@
     min-width: 80px;
 }
 
-.operator-select {
-    width: 60px;
-    height: 40px;
+.modal-content select.operator-select {
+    width: auto;
+    flex: 0 0 auto;
+    min-height: 56px;
     padding: 0 8px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
-    font-size: 14px;
+    font-size: 21px;
+    font-weight: 500;
     cursor: pointer;
     text-align: center;
     box-sizing: border-box;
@@ -666,15 +695,37 @@
 
 .opacity-value-input {
     width: 150px !important;
-    height: 40px;
+    min-height: 56px;
     padding: 0 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
     text-align: center;
-    font-size: 14px;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.4;
     box-sizing: border-box;
+}
+
+/* Keep every control in a comparison row the same 56px height. The generic
+   .modal-content input[type="text"|"number"] rules add 16px of vertical
+   padding, which would otherwise stretch the text/value/opacity fields past
+   the compact operator dropdown. */
+.modal-content .variable-color-row > .variable-input,
+.modal-content .variable-color-row > .value-input,
+.modal-content .variable-color-row > .opacity-value-input {
+    height: 56px;
+    min-height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.modal-content .opacity-controls .opacity-input {
+    height: 56px;
+    min-height: 56px;
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 /* Default fields (color and opacity) take 25% */
@@ -810,14 +861,16 @@
 
 .opacity-input {
     width: 150px;
-    height: 40px;
+    min-height: 56px;
     padding: 0 12px;
     border: 1px solid #444;
     border-radius: 4px;
     background-color: #1a1a1a;
     color: white;
     text-align: center;
-    font-size: 14px;
+    font-size: 21px;
+    font-weight: 500;
+    line-height: 1.4;
     box-sizing: border-box;
 }
 

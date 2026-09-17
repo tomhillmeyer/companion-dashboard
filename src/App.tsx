@@ -14,12 +14,23 @@ import { Capacitor } from '@capacitor/core';
 import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor, PageData, AnimationSettings, AnimationType } from './types';
 import Moveable from 'react-moveable';
-import { evaluateComparison } from './variableComparison';
+import { evaluateComparison, isVariableRef, resolveOperand } from './variableComparison';
 import { parseVariables } from './useVariableFetcher';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
 import { getDisplayPosition, getInternalPosition } from './layerUtils';
 
+
+// Register both operands of a comparison condition as fetch sources when they
+// are variable references; either side may be a literal string or a variable.
+const registerConditionVariables = (
+    target: { [key: string]: string },
+    condition: { variable?: string; value?: string } | undefined
+) => {
+    if (!condition) return;
+    if (isVariableRef(condition.variable)) target[condition.variable] = condition.variable;
+    if (isVariableRef(condition.value)) target[condition.value] = condition.value;
+};
 
 // Get window ID for isolated storage
 const getWindowId = () => {
@@ -899,9 +910,7 @@ export default function App() {
         // Add canvas variable colors
         if (canvasBackgroundVariableColors && Array.isArray(canvasBackgroundVariableColors)) {
             canvasBackgroundVariableColors.forEach(varColor => {
-                if (varColor.variable) {
-                    allVariables[varColor.variable] = varColor.variable;
-                }
+                registerConditionVariables(allVariables, varColor);
             });
         }
 
@@ -923,18 +932,18 @@ export default function App() {
                 if (layer.type === 'text') {
                     if (layer.source) allVariables[layer.source] = layer.source;
                     if (layer.colorText) allVariables[layer.colorText] = layer.colorText;
-                    (layer.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
+                    (layer.variableColors || []).forEach(vc => registerConditionVariables(allVariables, vc));
                 } else if (layer.type === 'color') {
                     if (layer.colorText) allVariables[layer.colorText] = layer.colorText;
-                    (layer.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
+                    (layer.variableColors || []).forEach(vc => registerConditionVariables(allVariables, vc));
                 } else if (layer.type === 'image' || layer.type === 'video' || layer.type === 'url') {
                     const overlay = layer.overlay || ({} as any);
                     if (layer.type === 'image' && layer.imageSrc) allVariables[layer.imageSrc] = layer.imageSrc;
                     if (layer.type === 'url' && layer.urlSrc) allVariables[layer.urlSrc] = layer.urlSrc;
                     if (overlay.colorText) allVariables[overlay.colorText] = overlay.colorText;
                     if (overlay.sizeSource) allVariables[overlay.sizeSource] = overlay.sizeSource;
-                    (overlay.variableColors || []).forEach(vc => { if (vc.variable) allVariables[vc.variable] = vc.variable; });
-                    (overlay.sizeVariableValues || []).forEach(vs => { if (vs.variable) allVariables[vs.variable] = vs.variable; });
+                    (overlay.variableColors || []).forEach(vc => registerConditionVariables(allVariables, vc));
+                    (overlay.sizeVariableValues || []).forEach(vs => registerConditionVariables(allVariables, vs));
                 }
             });
 
@@ -944,20 +953,12 @@ export default function App() {
 
             // Add variable opacity variables
             if (box.opacityVariableValues && Array.isArray(box.opacityVariableValues)) {
-                box.opacityVariableValues.forEach(varOpacity => {
-                    if (varOpacity.variable) {
-                        allVariables[varOpacity.variable] = varOpacity.variable;
-                    }
-                });
+                box.opacityVariableValues.forEach(varOpacity => registerConditionVariables(allVariables, varOpacity));
             }
 
             // Add variable border color variables
             if (box.borderVariableColors && Array.isArray(box.borderVariableColors)) {
-                box.borderVariableColors.forEach(varColor => {
-                    if (varColor.variable) {
-                        allVariables[varColor.variable] = varColor.variable;
-                    }
-                });
+                box.borderVariableColors.forEach(varColor => registerConditionVariables(allVariables, varColor));
             }
         });
 
@@ -1471,8 +1472,9 @@ export default function App() {
         if (variableColors && Array.isArray(variableColors)) {
             for (const varColor of variableColors) {
                 if (varColor && varColor.variable && varColor.value) {
-                    const variableValue = allVariableValues[varColor.variable] || '';
-                    if (evaluateComparison(variableValue, varColor.operator, varColor.value)) {
+                    const leftValue = resolveOperand(varColor.variable, allVariableValues);
+                    const rightValue = resolveOperand(varColor.value, allVariableValues);
+                    if (evaluateComparison(leftValue, varColor.operator, rightValue)) {
                         return varColor.color;
                     }
                 }
