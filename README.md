@@ -3,8 +3,6 @@
 
 This is an application for displaying variables from Bitfocus Companion. A companion for Companion, if you will.
 
-It is a display of boxes you can resize and move. Each of those boxes has an option for a header field, left field, and right field. Any or all of those fields can be hidden, and all consist of text fields that can display Companion variable values, markdown, HTML, or plain text.
-
 ### App documentation can be found [here](https://wearecreativeland.com/tools/dashboard/companion-dashboard-documentation)!
 
 ---

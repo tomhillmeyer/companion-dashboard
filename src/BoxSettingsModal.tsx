@@ -18,6 +18,7 @@ import { FaX } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
 import { FaPlus, FaTrash, FaVideo, FaImage, FaPalette, FaFont, FaGripVertical, FaGear, FaLink } from "react-icons/fa6";
 
+const windowId = (window as any).electronAPI?.windowId || '1';
 
 type BoxSettingsModalProps = {
     boxData: BoxData;
@@ -559,6 +560,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    const pendingImageLayerRef = useRef<string | null>(null);
     const [uploadingLayerId, setUploadingLayerId] = useState<string | null>(null);
     const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices();
 
@@ -693,6 +695,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     ? canvas.toDataURL('image/png')
                     : canvas.toDataURL('image/jpeg', quality);
 
+                URL.revokeObjectURL(objectUrl);
                 resolve(base64DataUrl);
             };
 
@@ -754,49 +757,68 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     };
 
     const handleImageBrowse = (layerId: string) => {
+        pendingImageLayerRef.current = layerId;
         setUploadingLayerId(layerId);
         imageInputRef.current?.click();
     };
 
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file || !uploadingLayerId) return;
-
-        if (!file.type || typeof file.type !== 'string' || !file.type.startsWith('image/')) {
-            alert('Please select an image file.');
-            return;
-        }
+        // Read the target layer from a ref (set synchronously in handleImageBrowse) so the
+        // async file dialog can never fire against a stale/empty state value.
+        const layerId = pendingImageLayerRef.current || uploadingLayerId;
 
         try {
+            if (!file || !layerId) return;
+
+            const looksLikeImage = (!!file.type && file.type.startsWith('image/'))
+                || /\.(jpe?g|png|gif|bmp|webp|svg)$/i.test(file.name || '');
+            if (!looksLikeImage) {
+                alert('Please select an image file.');
+                return;
+            }
+
             const base64DataUrl = await compressImage(file);
 
             const timestamp = Date.now();
             const cachedFilename = `box_bg_${formData.id}_${timestamp}.jpg`;
+            const cacheKey = `window_${windowId}_cached_bg_${cachedFilename}`;
 
-            // Clear old cached image for this layer if it exists
-            const layer = formData.layers.find(l => l.id === uploadingLayerId);
+            // Clear the previous cached image for this layer from both stores
+            const layer = formData.layers.find(l => l.id === layerId);
             if (layer && layer.type === 'image' && layer.imageSrc && layer.imageSrc.startsWith('./src/assets/')) {
                 const oldFilename = layer.imageSrc.split('/').pop();
                 if (oldFilename) {
                     await deleteImageFromDB(oldFilename);
+                    localStorage.removeItem(`window_${windowId}_cached_bg_${oldFilename}`);
                 }
             }
 
-            updateLayerField(uploadingLayerId, { imageSrc: `./src/assets/${cachedFilename}` });
-
+            // Persist BEFORE updating the layer: the live preview re-renders and reads the
+            // image on the same tick, so writing first avoids a read-before-write race.
             try {
                 await storeImageInDB(cachedFilename, base64DataUrl);
             } catch (dbError) {
-                console.error('IndexedDB storage failed:', dbError);
-                throw new Error('Failed to store image.');
+                console.error('IndexedDB storage failed, falling back to localStorage:', dbError);
+                try {
+                    localStorage.setItem(cacheKey, base64DataUrl);
+                } catch (quotaError) {
+                    if (quotaError instanceof DOMException && quotaError.name === 'QuotaExceededError') {
+                        throw new Error('Storage quota exceeded. Please use a smaller image.');
+                    }
+                    throw quotaError;
+                }
             }
+
+            updateLayerField(layerId, { imageSrc: `./src/assets/${cachedFilename}` });
         } catch (error) {
             console.error('Failed to set image:', error);
             alert('Failed to set image.');
+        } finally {
+            pendingImageLayerRef.current = null;
+            setUploadingLayerId(null);
+            event.target.value = '';
         }
-
-        setUploadingLayerId(null);
-        event.target.value = '';
     };
 
     const clearImage = async (layer: ImageLayer) => {
@@ -804,6 +826,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             const filename = layer.imageSrc.split('/').pop();
             if (filename) {
                 await deleteImageFromDB(filename);
+                localStorage.removeItem(`window_${windowId}_cached_bg_${filename}`);
             }
         }
         updateLayerField(layer.id, { imageSrc: '' });
@@ -1923,7 +1946,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     };
 
     return createPortal(
-        <div className="modal-overlay" onClick={onCancel}>
+        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
             <div
                 style={{ width: '40vw', flexShrink: 0 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1984,6 +2007,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
+                onClick={(e) => e.stopPropagation()}
                 style={{ display: 'none' }}
             />
         </div>,
