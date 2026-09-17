@@ -1,5 +1,5 @@
 import type { BoxData, LayerOverlay, LayerRadius, VariableColor } from './types';
-import { evaluateComparison, resolveOperand } from './variableComparison';
+import { evaluateComparison, isVariableRef, resolveOperand } from './variableComparison';
 
 // Convert internal position (top-left) to display position (based on anchor point)
 export const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
@@ -100,6 +100,37 @@ export const computeLayerOverlaySize = (
 
     // 3. Stored size
     return overlay.size;
+};
+
+// Compute a box's opacity (0-1) with the same priority as the legacy overlay:
+// variable opacity conditions > opacitySource variable > stored opacity.
+export const computeBoxOpacity = (
+    boxData: BoxData,
+    variableValues: { [key: string]: string }
+): number => {
+    // 1. Variable opacity conditions first
+    if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
+        for (const varOpacity of boxData.opacityVariableValues) {
+            if (varOpacity && varOpacity.variable && varOpacity.value) {
+                const leftValue = resolveOperand(varOpacity.variable, variableValues);
+                const rightValue = resolveOperand(varOpacity.value, variableValues);
+                if (evaluateComparison(leftValue, varOpacity.operator, rightValue)) {
+                    return varOpacity.opacity / 100;
+                }
+            }
+        }
+    }
+
+    // 2. opacitySource contains a variable pattern
+    if (isVariableRef(boxData.opacitySource) && variableValues.opacitySource) {
+        const parsed = parseInt(variableValues.opacitySource);
+        if (!isNaN(parsed)) {
+            return Math.max(0, Math.min(100, parsed)) / 100;
+        }
+    }
+
+    // 3. Stored opacity
+    return boxData.opacity / 100;
 };
 
 // IndexedDB helper for locally-uploaded images

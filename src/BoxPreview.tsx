@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
 import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, LayerOverlay } from './types';
 import { isImageUrl } from './boxMigration';
-import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, getImageFromDB } from './layerUtils';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
 import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
 import { FaVideoSlash } from 'react-icons/fa6';
 import './Box.css';
@@ -563,7 +563,7 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
                         border: boxData.noBorder ? 'none' : `5px solid ${borderColor || '#61BAFA'}`,
                         borderRadius: `${borderRadius}px`,
                         clipPath: `inset(0 round ${borderRadius}px)`,
-                        opacity: boxData.opacity / 100,
+                        opacity: computeBoxOpacity(boxData, variableValues || {}),
                         transform: `scale(${scale})`,
                         transformOrigin: 'top left',
                         cursor: 'default',

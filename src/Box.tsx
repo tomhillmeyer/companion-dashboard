@@ -10,9 +10,9 @@ import BoxSettingsModal from './BoxSettingsModal';
 import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
-import { evaluateComparison, isVariableRef, resolveOperand } from './variableComparison';
 import { isImageUrl, duplicateLayers } from './boxMigration';
-import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, getImageFromDB } from './layerUtils';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
+import { buildBoxSources } from './boxSources';
 
 // ============================================================================
 // Component for rendering markdown content
@@ -887,82 +887,13 @@ export default React.memo(function Box({
 
     // Collect variable sources for the fetcher, namespaced per layer so multiple
     // text/color/overlay entries never collide with each other.
-    const fetcherSources = useMemo(() => {
-        const sources: { [key: string]: string } = {};
-
-        // Register both operands of a condition when they are variable references;
-        // either side may be a literal string or a "$(connection:name)" variable.
-        const registerConditionSources = (condition: { variable?: string; value?: string } | undefined) => {
-            if (!condition) return;
-            if (isVariableRef(condition.variable)) sources[condition.variable] = condition.variable;
-            if (isVariableRef(condition.value)) sources[condition.value] = condition.value;
-        };
-
-        for (const layer of boxData.layers || []) {
-            if (layer.type === 'text') {
-                sources[`${layer.id}_label`] = layer.source || '';
-                sources[`${layer.id}_colorText`] = layer.colorText || '';
-                (layer.variableColors || []).forEach(registerConditionSources);
-            } else if (layer.type === 'color') {
-                sources[`${layer.id}_colorText`] = layer.colorText || '';
-                (layer.variableColors || []).forEach(registerConditionSources);
-            } else if (layer.type === 'image' || layer.type === 'video' || layer.type === 'url') {
-                const overlay = layer.overlay;
-                if (layer.type === 'image') {
-                    sources[`${layer.id}_imageSrc`] = layer.imageSrc || '';
-                }
-                if (layer.type === 'url') {
-                    sources[`${layer.id}_urlSrc`] = layer.urlSrc || '';
-                }
-                sources[`${layer.id}_colorText`] = overlay.colorText || '';
-                sources[`${layer.id}_sizeSource`] = overlay.sizeSource || '';
-                (overlay.variableColors || []).forEach(registerConditionSources);
-                (overlay.sizeVariableValues || []).forEach(registerConditionSources);
-            }
-        }
-
-        sources.opacitySource = boxData.opacitySource || '';
-        sources.borderColorTextSource = boxData.borderColorText || '';
-        (boxData.opacityVariableValues || []).forEach(registerConditionSources);
-        (boxData.borderVariableColors || []).forEach(registerConditionSources);
-
-        return sources;
-    }, [boxData]);
+    const fetcherSources = useMemo(() => buildBoxSources(boxData), [boxData]);
 
     // Use the enhanced variable fetcher
     const fetchedVariables = useVariableFetcher(companionBaseUrl, fetcherSources, connections, refreshRateMs, isDragging, centralVariableValues);
 
     const variableValues = fetchedVariables.values;
     const variableHtmlValues = fetchedVariables.htmlValues;
-
-    // Compute opacity from variable or fallback to stored value
-    const computedOpacity = () => {
-        // 1. Variable opacity conditions first
-        if (boxData.opacityVariableValues && Array.isArray(boxData.opacityVariableValues)) {
-            for (const varOpacity of boxData.opacityVariableValues) {
-                if (varOpacity && varOpacity.variable && varOpacity.value) {
-                    const leftValue = resolveOperand(varOpacity.variable, variableValues);
-                    const rightValue = resolveOperand(varOpacity.value, variableValues);
-                    if (evaluateComparison(leftValue, varOpacity.operator, rightValue)) {
-                        return varOpacity.opacity / 100;
-                    }
-                }
-            }
-        }
-
-        // 2. opacitySource contains a variable pattern
-        const hasVariable = boxData.opacitySource && boxData.opacitySource.includes('$(') && boxData.opacitySource.includes(')');
-
-        if (hasVariable && variableValues.opacitySource) {
-            const parsed = parseInt(variableValues.opacitySource);
-            if (!isNaN(parsed)) {
-                return Math.max(0, Math.min(100, parsed)) / 100;
-            }
-        }
-
-        // 3. Stored opacity
-        return boxData.opacity / 100;
-    };
 
     // Helper to send Companion button press
     const sendCompanionButtonPress = async () => {
@@ -1090,7 +1021,7 @@ export default React.memo(function Box({
                             WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
                             zIndex: boxData.zIndex,
-                            opacity: computedOpacity(),
+                            opacity: computeBoxOpacity(boxData, variableValues),
                             pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
                             ...(colorAnimation === 'fade' && !boxData.noBorder ? { transition: `border-color ${animationDuration}ms ease` } : {}),
                         }}
@@ -1278,8 +1209,9 @@ export default React.memo(function Box({
                     }}
                     connections={connections}
                     pages={pages}
-                    variableValues={variableValues}
-                    variableHtmlValues={variableHtmlValues}
+                    companionBaseUrl={companionBaseUrl}
+                    refreshRateMs={refreshRateMs}
+                    isDragging={isDragging}
                     variableLookup={centralVariableValues}
                 />
             )}

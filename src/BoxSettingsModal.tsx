@@ -10,6 +10,8 @@ import ROIModal from './ROIModal';
 import BoxPreview from './BoxPreview';
 import { createDefaultLayer } from './boxMigration';
 import { resolveLayerRadius } from './layerUtils';
+import { useVariableFetcher } from './useVariableFetcher';
+import { buildBoxSources } from './boxSources';
 
 import { FaX } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
@@ -24,8 +26,9 @@ type BoxSettingsModalProps = {
     onDuplicate: (boxData: BoxData) => void;
     connections?: CompanionConnection[];
     pages?: PageData[];
-    variableValues?: { [key: string]: string };
-    variableHtmlValues?: { [key: string]: string };
+    companionBaseUrl?: string;
+    refreshRateMs?: number;
+    isDragging?: boolean;
     variableLookup?: { [key: string]: string };
 };
 
@@ -490,7 +493,7 @@ const layerDisplayLabel = (layer: BoxLayer): string => {
     }
 };
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], variableValues, variableHtmlValues, variableLookup }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], companionBaseUrl = '', refreshRateMs = 250, isDragging = false, variableLookup }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -535,6 +538,20 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         opacitySource: boxData.opacitySource || boxData.opacity.toString(),
         layers: (boxData.layers || []).map(layer => ({ ...layer }))
     }));
+
+    // Live preview variables: fetch from the form's current values so comparisons
+    // and variable-driven content update as the user edits, before saving.
+    const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+    const previewSources = useMemo(() => buildBoxSources(formData), [formData]);
+    const previewVariables = useVariableFetcher(
+        isWebClient ? '' : companionBaseUrl,
+        previewSources,
+        connections,
+        refreshRateMs,
+        isDragging,
+        isWebClient ? variableLookup : undefined
+    );
+
     const [activePane, setActivePane] = useState<'box' | string>('box');
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showROIModal, setShowROIModal] = useState(false);
@@ -1891,7 +1908,12 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 style={{ width: '40vw', flexShrink: 0 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <BoxPreview boxData={formData} variableValues={variableValues} variableHtmlValues={variableHtmlValues} variableLookup={variableLookup} />
+                <BoxPreview
+                    boxData={formData}
+                    variableValues={previewVariables.values}
+                    variableHtmlValues={previewVariables.htmlValues}
+                    variableLookup={previewVariables.values}
+                />
             </div>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
