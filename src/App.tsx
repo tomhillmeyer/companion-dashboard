@@ -11,6 +11,7 @@ import dashboardLogo from './assets/dashboard.png';
 import { useVariableFetcher } from './useVariableFetcher';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
+import { isWebClient as isBrowserClient, isNative } from './platform';
 import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor, PageData, AnimationSettings, AnimationType } from './types';
 import Moveable from 'react-moveable';
@@ -431,7 +432,7 @@ export default function App() {
     }, [isDragging]);
     const [companionBaseUrl, setCompanionBaseUrl] = useState<string>(() => {
         // Web clients don't fetch directly - they get URL via WebSocket
-        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const isWebClient = isBrowserClient();
         if (isWebClient) {
             return '';
         }
@@ -441,7 +442,7 @@ export default function App() {
     const [additionalConnectionValidities, setAdditionalConnectionValidities] = useState<{ [key: string]: boolean | null }>({});
     const [connections, setConnections] = useState<CompanionConnection[]>(() => {
         // Web clients don't fetch directly - they get connections via WebSocket
-        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const isWebClient = isBrowserClient();
         if (isWebClient) {
             return [];
         }
@@ -782,8 +783,16 @@ export default function App() {
 
     // Handle canvas video stream setup and cleanup
     useEffect(() => {
-        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const isWebClient = isBrowserClient();
         const canvasStreamId = 'canvas-background'; // Unique ID for canvas video stream
+
+        // Native app: video is not supported, silently skip
+        if (isNative()) {
+            if (canvasVideoRef.current) {
+                canvasVideoRef.current.srcObject = null;
+            }
+            return;
+        }
 
         console.log('[Canvas Video Effect] Running - isWebClient:', isWebClient, 'deviceId:', canvasBackgroundVideoDeviceId, 'videoRelayManagerReady:', videoRelayManagerReady);
 
@@ -898,8 +907,9 @@ export default function App() {
         }
     }, []);
 
-    // Collect canvas variable names for fetching
-    const getCanvasVariableNames = () => {
+    // Collect canvas variable names for fetching (memoized - otherwise a new object
+    // is built on every render, because renders fire on every variable update)
+    const canvasVariableNames = useMemo(() => {
         const allVariables: { [key: string]: string } = {};
 
         // Add canvas background color text if it exists
@@ -915,15 +925,15 @@ export default function App() {
         }
 
         return allVariables;
-    };
+    }, [canvasBackgroundColorText, canvasBackgroundVariableColors]);
 
 
     // Collect all variable names from all boxes and canvas
-    const getAllVariableNames = () => {
+    const allVariableNames = useMemo(() => {
         const allVariables: { [key: string]: string } = {};
 
         // Add canvas variable names
-        Object.assign(allVariables, getCanvasVariableNames());
+        Object.assign(allVariables, canvasVariableNames);
 
         // Add box variable names
         boxes.forEach(box => {
@@ -971,10 +981,10 @@ export default function App() {
         });
 
         return allVariables;
-    };
+    }, [boxes, canvasVariableNames]);
 
-    // Detect if running in web client mode (not Electron)
-    const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+    // Detect if running in web client mode (not Electron, not native app)
+    const isWebClient = isBrowserClient();
 
     // State for variables received via WebSocket (web clients only)
     const [receivedVariableValues, setReceivedVariableValues] = useState<{ [key: string]: string }>({});
@@ -983,7 +993,7 @@ export default function App() {
     // Use variable fetcher for all variables (Electron only - web clients get variables via WebSocket)
     const fetchedVariables = useVariableFetcher(
         isWebClient ? '' : companionBaseUrl, // Web clients don't fetch directly
-        isWebClient ? {} : getAllVariableNames(), // Web clients don't fetch - pass empty sources
+        isWebClient ? {} : allVariableNames, // Web clients don't fetch - pass empty sources
         isWebClient ? [] : connections, // Web clients don't use connections
         refreshRateMs,
         isDragging
@@ -1920,7 +1930,7 @@ export default function App() {
             <TitleBar />
 
             {/* Canvas background video */}
-            {canvasBackgroundVideoDeviceId && (() => {
+            {!isNative() && canvasBackgroundVideoDeviceId && (() => {
                 const roi = canvasBackgroundVideoROI;
 
                 if (!roi) {

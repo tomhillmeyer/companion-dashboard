@@ -315,7 +315,8 @@ declare global {
                 sendWebRTCSignal: (data: WebRTCSignalData) => Promise<any>;
             };
             onSyncStateFromBrowser: (callback: (data: any) => void) => void;
-            onWebRTCSignaling: (callback: (data: WebRTCSignalData) => void) => void;
+            onWebRTCSignaling: (callback: (data: WebRTCSignalData) => void) => any;
+            offWebRTCSignaling: (handler: any) => void;
             onMDNSStatusChanged: (callback: () => void) => void;
             openExternal: (url: string) => Promise<any>;
             getSystemFonts: () => Promise<FontInfo[]>;

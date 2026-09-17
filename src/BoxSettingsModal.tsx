@@ -12,6 +12,7 @@ import { createDefaultLayer } from './boxMigration';
 import { resolveLayerRadius } from './layerUtils';
 import { useVariableFetcher } from './useVariableFetcher';
 import { buildBoxSources } from './boxSources';
+import { isWebClient as isBrowserClient, isNative } from './platform';
 
 import { FaX } from "react-icons/fa6";
 import { FaAlignLeft, FaAlignCenter, FaAlignRight } from "react-icons/fa6";
@@ -541,7 +542,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     // Live preview variables: fetch from the form's current values so comparisons
     // and variable-driven content update as the user edits, before saving.
-    const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+    const isWebClient = isBrowserClient();
     const previewSources = useMemo(() => buildBoxSources(formData), [formData]);
     const previewVariables = useVariableFetcher(
         isWebClient ? '' : companionBaseUrl,
@@ -665,8 +666,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
 
             img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
                 let { width, height } = img;
                 if (width > height) {
                     if (width > maxWidth) {
@@ -693,8 +696,11 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 resolve(base64DataUrl);
             };
 
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = URL.createObjectURL(file);
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Failed to load image'));
+            };
+            img.src = objectUrl;
         });
     };
 
@@ -1398,8 +1404,19 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         </>
     );
 
-    const renderVideoEditor = (layer: VideoLayer) => (
-        <>
+    const renderVideoEditor = (layer: VideoLayer) => {
+        if (isNative()) {
+            return (
+                <>
+                    {renderLayerHeader(layer)}
+                    <div className="layer-editor-empty">
+                        <p>Video layers are not supported in the iPad app. Use the trash button above to remove this layer.</p>
+                    </div>
+                </>
+            );
+        }
+        return (
+            <>
             {renderLayerHeader(layer)}
             {videoDevices.length > 0 && (
                 <div className='setting-container'>
@@ -1569,7 +1586,8 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 onOverlayChange={(patch) => updateLayerOverlay(layer.id, patch)}
             />
         </>
-    );
+        );
+    };
 
     const renderTextEditor = (layer: TextLayer) => (
         <>
@@ -1862,9 +1880,11 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className="layers-add-area">
                 {showAddMenu && (
                     <div className="add-layer-menu">
-                        <button type="button" onClick={() => { addLayer('video'); setShowAddMenu(false); }}>
-                            <FaVideo /> Video
-                        </button>
+                        {!isNative() && (
+                            <button type="button" onClick={() => { addLayer('video'); setShowAddMenu(false); }}>
+                                <FaVideo /> Video
+                            </button>
+                        )}
                         <button type="button" onClick={() => { addLayer('color'); setShowAddMenu(false); }}>
                             <FaPalette /> Color
                         </button>

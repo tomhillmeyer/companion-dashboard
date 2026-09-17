@@ -13,6 +13,7 @@ import type { VideoRelayManager } from './VideoRelayManager';
 import { isImageUrl, duplicateLayers } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
 import { buildBoxSources } from './boxSources';
+import { isWebClient as isBrowserClient, isNative } from './platform';
 
 // ============================================================================
 // Component for rendering markdown content
@@ -304,8 +305,11 @@ const VideoLayerView = React.memo(({
 
     // Handle video stream setup and cleanup
     useEffect(() => {
-        const isWebClient = typeof window !== 'undefined' && !(window as any).electronAPI;
+        const isWebClient = isBrowserClient();
         const currentDeviceId = layer.deviceId;
+
+        // Native app: video is not supported, silently skip
+        if (isNative()) return;
 
         const setupVideoStream = async () => {
             // If no device ID is set, clean up and stop here
@@ -385,6 +389,9 @@ const VideoLayerView = React.memo(({
             videoRef.current.srcObject = currentStreamRef.current;
         }
     }, [layer.roi, layer.deviceId]);
+
+    // Native app: video layers are not supported, silently skip rendering
+    if (isNative()) return null;
 
     if (!layer.deviceId) return null;
 

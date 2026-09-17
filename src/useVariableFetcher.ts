@@ -4,6 +4,19 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 // so it can't hammer the server or slow down the fetches that are working.
 const VARIABLE_SKIP_MS = 5000;
 
+// Shallow equality for the flat { key: string } maps used here. Equivalent to the
+// previous JSON-compare change detection, but without serializing the whole map
+// on every poll (which is GC-heavy with many boxes/variables).
+const shallowEqual = (a: { [key: string]: string }, b: { [key: string]: string }): boolean => {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    for (const key of bKeys) {
+        if (a[key] !== b[key]) return false;
+    }
+    return true;
+};
+
 interface CompanionConnection {
     id: string;
     url: string;
@@ -358,18 +371,9 @@ export const useVariableFetcher = (
             }
 
             // Only update if values have actually changed
-            setValues(prevValues => {
-                const hasChanged = JSON.stringify(prevValues) !== JSON.stringify(newValues);
-                return hasChanged ? newValues : prevValues;
-            });
-            setHtmlValues(prevHtmlValues => {
-                const hasChanged = JSON.stringify(prevHtmlValues) !== JSON.stringify(newHtmlValues);
-                return hasChanged ? newHtmlValues : prevHtmlValues;
-            });
-            setRawValues(prevRawValues => {
-                const hasChanged = JSON.stringify(prevRawValues) !== JSON.stringify(newRawValues);
-                return hasChanged ? newRawValues : prevRawValues;
-            });
+            setValues(prevValues => (shallowEqual(prevValues, newValues) ? prevValues : newValues));
+            setHtmlValues(prevHtmlValues => (shallowEqual(prevHtmlValues, newHtmlValues) ? prevHtmlValues : newHtmlValues));
+            setRawValues(prevRawValues => (shallowEqual(prevRawValues, newRawValues) ? prevRawValues : newRawValues));
             } catch (error) {
                 console.error('Variable fetch cycle error:', error);
             } finally {

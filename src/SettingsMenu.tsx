@@ -16,6 +16,7 @@ import ROIModal from './ROIModal';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { Capacitor } from '@capacitor/core';
+import { isNative } from './platform';
 
 import './SettingsMenu.css';
 // Import the image directly - this is the most reliable approach
@@ -179,13 +180,13 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
     const [inputUrl, setInputUrl] = useState('');
     const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
-    // Use prop values for web clients, local state for Electron
-    const effectiveIsValidUrl = isElectron ? isValidUrl : (mainConnectionValid ?? null);
+    // Use prop values for web clients, local state for Electron/native
+    const effectiveIsValidUrl = (isElectron || isNative()) ? isValidUrl : (mainConnectionValid ?? null);
 
     // Helper to update validity and notify parent
     const updateIsValidUrl = (valid: boolean | null) => {
         setIsValidUrl(valid);
-        if (isElectron && onMainConnectionValidChange) {
+        if ((isElectron || isNative()) && onMainConnectionValidChange) {
             onMainConnectionValidChange(valid);
         }
     };
@@ -194,13 +195,13 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     const connectionsRef = useRef<CompanionConnection[]>([]); // Track current connections for comparison
     const [connectionInputs, setConnectionInputs] = useState<{ [key: string]: string }>({});
     const [connectionValidities, setConnectionValidities] = useState<{ [key: string]: boolean | null }>({});
-    // Use prop values for web clients, local state for Electron
-    const effectiveConnectionValidities = isElectron ? connectionValidities : (additionalConnectionValidities ?? {});
+    // Use prop values for web clients, local state for Electron/native
+    const effectiveConnectionValidities = (isElectron || isNative()) ? connectionValidities : (additionalConnectionValidities ?? {});
 
     // Helper to update connection validities and notify parent
     const updateConnectionValidities = (validities: { [key: string]: boolean | null }) => {
         setConnectionValidities(validities);
-        if (isElectron && onAdditionalConnectionValiditiesChange) {
+        if ((isElectron || isNative()) && onAdditionalConnectionValiditiesChange) {
             onAdditionalConnectionValiditiesChange(validities);
         }
     };
@@ -485,6 +486,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     }, [connections]);
 
     useEffect(() => {
+        if (isNative()) return;
         fetch('https://api.github.com/repos/tomhillmeyer/companion-dashboard/releases/latest')
             .then(res => res.ok ? res.json() : Promise.reject())
             .then(data => {
@@ -687,12 +689,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
         // Web clients are just remote views - they should only use the connectionUrl prop from Electron
-        if (!isElectron) {
+        if (!isElectron && !isNative()) {
             setInputUrl(connectionUrl);
             return;
         }
 
-        // Electron: Load from localStorage
+        // Electron/native: Load from localStorage
         const cachedUrl = localStorage.getItem(STORAGE_KEY);
         if (cachedUrl) {
             setInputUrl(cachedUrl);
@@ -733,7 +735,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
         // Web clients don't check connections - they're just remote controls
-        if (!isElectron) {
+        if (!isElectron && !isNative()) {
             return;
         }
 
@@ -757,7 +759,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 
         // Web clients don't check connections - they're just remote controls
-        if (!isElectron) {
+        if (!isElectron && !isNative()) {
             return;
         }
 
@@ -890,7 +892,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         // If field is empty, disconnect
         if (!trimmedUrl) {
             setInputUrl('');
-            if (isElectron) localStorage.setItem(STORAGE_KEY, '');
+            if (isElectron || isNative()) localStorage.setItem(STORAGE_KEY, '');
             onConnectionUrlChange('');
             updateIsValidUrl(null);
             return;
@@ -905,7 +907,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             const url = new URL(urlToParse);
             const baseUrl = `${url.protocol}//${url.host}`;
             setInputUrl(baseUrl);
-            if (isElectron) localStorage.setItem(STORAGE_KEY, baseUrl);
+            if (isElectron || isNative()) localStorage.setItem(STORAGE_KEY, baseUrl);
             onConnectionUrlChange(baseUrl);
         } catch (error) {
             console.error('Invalid URL:', error);
@@ -931,7 +933,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         setConnectionInputs(prev => ({ ...prev, [newConnection.id]: '' }));
 
         // Save to localStorage (Electron only)
-        if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        if (isElectron || isNative()) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
         onConnectionsChange(updatedConnections);
     };
 
@@ -954,7 +956,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
         });
 
         // Save to localStorage (Electron only)
-        if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+        if (isElectron || isNative()) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
         onConnectionsChange(updatedConnections);
     };
 
@@ -976,7 +978,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             setConnectionInputs(prev => ({ ...prev, [connectionId]: '' }));
             setConnectionValidities(prev => ({ ...prev, [connectionId]: null }));
 
-            if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+            if (isElectron || isNative()) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
             onConnectionsChange(updatedConnections);
             return;
         }
@@ -996,7 +998,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             setConnections(updatedConnections);
             setConnectionInputs(prev => ({ ...prev, [connectionId]: baseUrl }));
 
-            if (isElectron) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
+            if (isElectron || isNative()) localStorage.setItem(CONNECTIONS_STORAGE_KEY, JSON.stringify(updatedConnections));
             onConnectionsChange(updatedConnections);
         } catch (error) {
             console.error('Invalid URL:', error);
@@ -1048,8 +1050,10 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
 
             img.onload = () => {
+                URL.revokeObjectURL(objectUrl);
                 // Calculate new dimensions while maintaining aspect ratio
                 let { width, height } = img;
                 if (width > height) {
@@ -1080,8 +1084,11 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                 resolve(base64DataUrl);
             };
 
-            img.onerror = () => reject(new Error('Failed to load image'));
-            img.src = URL.createObjectURL(file);
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('Failed to load image'));
+            };
+            img.src = objectUrl;
         });
     };
 
@@ -2300,44 +2307,50 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                         style={{ display: 'none' }}
                     />
                     <div className='footer'>
-                        <div className='license-status'>
-                            {effectiveHasLicense ? (
-                                <div className='license-active'>
-                                    <span className='license-text-active'>Pro License Active</span>
-                                </div>
-                            ) : (
-                                <div className='license-inactive'>
-                                    <span className='license-badge personal'>Personal-use only</span>
-                                    <div className='license-actions'>
-                                        <button className='license-btn purchase' onClick={handlePurchaseLicense}>
-                                            Purchase License
-                                        </button>
-                                        <button className='license-btn apply' onClick={handleApplyLicense}>
-                                            Apply License
-                                        </button>
+                        {!isNative() && (
+                            <div className='license-status'>
+                                {effectiveHasLicense ? (
+                                    <div className='license-active'>
+                                        <span className='license-text-active'>Pro License Active</span>
                                     </div>
-                                </div>
-                            )}
-                        </div>
+                                ) : (
+                                    <div className='license-inactive'>
+                                        <span className='license-badge personal'>Personal-use only</span>
+                                        <div className='license-actions'>
+                                            <button className='license-btn purchase' onClick={handlePurchaseLicense}>
+                                                Purchase License
+                                            </button>
+                                            <button className='license-btn apply' onClick={handleApplyLicense}>
+                                                Apply License
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <div className='version-update-row'>
                             <span className='version-info-number'>v{packageJson.version}</span>
-                            {versionCheckDone && latestVersion && latestVersion === packageJson.version && (
-                                <span className='license-text-active'>✓ Up to date</span>
-                            )}
-                            {versionCheckDone && latestVersion && latestVersion !== packageJson.version && (
-                                <span
-                                    className='license-text-active'
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={() => {
-                                        if (isElectron && (window as any).electronAPI?.openExternal) {
-                                            (window as any).electronAPI.openExternal(
-                                                'https://github.com/tomhillmeyer/companion-dashboard/releases'
-                                            );
-                                        } else {
-                                            window.open('https://github.com/tomhillmeyer/companion-dashboard/releases', '_blank');
-                                        }
-                                    }}
-                                >Update available (v{latestVersion})</span>
+                            {!isNative() && (
+                                <>
+                                    {versionCheckDone && latestVersion && latestVersion === packageJson.version && (
+                                        <span className='license-text-active'>✓ Up to date</span>
+                                    )}
+                                    {versionCheckDone && latestVersion && latestVersion !== packageJson.version && (
+                                        <span
+                                            className='license-text-active'
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => {
+                                                if (isElectron && (window as any).electronAPI?.openExternal) {
+                                                    (window as any).electronAPI.openExternal(
+                                                        'https://github.com/tomhillmeyer/companion-dashboard/releases'
+                                                    );
+                                                } else {
+                                                    window.open('https://github.com/tomhillmeyer/companion-dashboard/releases', '_blank');
+                                                }
+                                            }}
+                                        >Update available (v{latestVersion})</span>
+                                    )}
+                                </>
                             )}
                         </div>
                         <span className='version-info'>Companion Dashboard is created by Tom Hillmeyer / Creativeland, LLC and

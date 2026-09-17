@@ -15,6 +15,8 @@ export class VideoRelayManager {
     private isElectronHost: boolean;
     private ws: WebSocket | null = null;
     private requestedDevices: Set<string> = new Set(); // Track which devices have been requested
+    private wsMessageHandler: ((event: MessageEvent) => void) | null = null;
+    private webrtcSignalHandler: any = null;
 
     constructor(isElectronHost: boolean) {
         this.isElectronHost = isElectronHost;
@@ -24,6 +26,11 @@ export class VideoRelayManager {
      * Set WebSocket for signaling (web clients only)
      */
     setWebSocket(ws: WebSocket) {
+        // Detach from any previous socket before re-binding, so reconnects
+        // don't leave orphaned message listeners behind.
+        if (this.ws && this.wsMessageHandler) {
+            this.ws.removeEventListener('message', this.wsMessageHandler);
+        }
         this.ws = ws;
         this.setupWebSocketHandlers();
     }
@@ -37,8 +44,14 @@ export class VideoRelayManager {
             return;
         }
 
+        // Remove any previously registered signaling handler first
+        if (this.webrtcSignalHandler) {
+            (window as any).electronAPI?.offWebRTCSignaling?.(this.webrtcSignalHandler);
+            this.webrtcSignalHandler = null;
+        }
+
         // Listen for WebRTC signaling from web clients via IPC
-        (window as any).electronAPI?.onWebRTCSignaling(async (data: any) => {
+        this.webrtcSignalHandler = (window as any).electronAPI?.onWebRTCSignaling(async (data: any) => {
             console.log('[Electron Host] Received WebRTC signal from web client:', data.type, 'clientId:', data.clientId);
 
             switch (data.type) {
@@ -217,7 +230,7 @@ export class VideoRelayManager {
     private setupWebSocketHandlers() {
         if (!this.ws) return;
 
-        this.ws.addEventListener('message', async (event) => {
+        const handler = async (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
 
@@ -243,7 +256,10 @@ export class VideoRelayManager {
             } catch (error) {
                 console.error('Error handling WebSocket message:', error);
             }
-        });
+        };
+
+        this.wsMessageHandler = handler;
+        this.ws.addEventListener('message', handler);
     }
 
     /**
@@ -427,6 +443,17 @@ export class VideoRelayManager {
      * Cleanup all connections and streams
      */
     cleanup() {
+        // Detach signaling listeners so a discarded manager can't keep firing
+        if (this.ws && this.wsMessageHandler) {
+            this.ws.removeEventListener('message', this.wsMessageHandler);
+        }
+        this.wsMessageHandler = null;
+        if (this.webrtcSignalHandler) {
+            (window as any).electronAPI?.offWebRTCSignaling?.(this.webrtcSignalHandler);
+            this.webrtcSignalHandler = null;
+        }
+        this.ws = null;
+
         // Stop all local streams
         this.localStreams.forEach(stream => {
             stream.getTracks().forEach(track => track.stop());

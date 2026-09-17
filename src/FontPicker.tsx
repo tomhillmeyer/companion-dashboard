@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isNative } from './platform';
 import './FontPicker.css';
 
 interface FontPickerProps {
@@ -54,9 +55,48 @@ const categorizeSystemFont = (font: FontInfo): 'serif' | 'sans-serif' | 'monospa
     return 'sans-serif';
 };
 
+// Curated families available in the iOS/iPadOS WebView; used when the native
+// app has no system-font enumeration API and no web-server /api/fonts endpoint.
+const NATIVE_FALLBACK_FAMILIES: { name: string; monospace?: boolean }[] = [
+    { name: 'Work Sans' },
+    { name: 'Helvetica' },
+    { name: 'Helvetica Neue' },
+    { name: 'Arial' },
+    { name: 'Avenir Next' },
+    { name: 'Futura' },
+    { name: 'Gill Sans' },
+    { name: 'Optima' },
+    { name: 'Verdana' },
+    { name: 'Trebuchet MS' },
+    { name: 'Georgia' },
+    { name: 'Times New Roman' },
+    { name: 'Palatino' },
+    { name: 'Baskerville' },
+    { name: 'Didot' },
+    { name: 'Courier New' },
+    { name: 'Menlo', monospace: true },
+    { name: 'Monaco', monospace: true },
+];
+
+const getNativeFallbackFonts = (): FontInfo[] =>
+    NATIVE_FALLBACK_FAMILIES.map(({ name, monospace }) => ({
+        name,
+        familyName: name,
+        postScriptName: name,
+        weight: '400',
+        style: 'normal',
+        width: 'normal',
+        monospace: !!monospace,
+    }));
+
 // Get system fonts using font-list via Electron IPC or web server API
 const getSystemFonts = async (): Promise<FontInfo[]> => {
     try {
+        // Native app: no font enumeration API; use a curated fallback list
+        if (isNative()) {
+            return getNativeFallbackFonts();
+        }
+
         // Check if running in Electron
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
 

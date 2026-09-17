@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { isNative } from './platform';
 
 export interface VideoDevice {
     deviceId: string;
@@ -9,6 +10,11 @@ export function useVideoDevices(): { devices: VideoDevice[]; refresh: () => Prom
     const [devices, setDevices] = useState<VideoDevice[]>([]);
 
     const getDevices = useCallback(async () => {
+        // Native app: video capture is not supported, don't request camera access
+        if (isNative()) {
+            setDevices([]);
+            return;
+        }
         try {
             // Check if mediaDevices API is available (not available in non-secure contexts)
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -47,8 +53,8 @@ export function useVideoDevices(): { devices: VideoDevice[]; refresh: () => Prom
     useEffect(() => {
         getDevices();
 
-        // Listen for device changes (only if mediaDevices API is available)
-        if (!navigator.mediaDevices) {
+        // Listen for device changes (skip on native and if mediaDevices API is unavailable)
+        if (isNative() || !navigator.mediaDevices) {
             return;
         }
 

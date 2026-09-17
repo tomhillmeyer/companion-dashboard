@@ -29,7 +29,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('sync-state-from-browser', (event, stateData) => callback(stateData));
     },
     onWebRTCSignaling: (callback) => {
-        ipcRenderer.on('webrtc-signaling', (event, data) => callback(data));
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on('webrtc-signaling', handler);
+        return handler;
+    },
+    offWebRTCSignaling: (handler) => {
+        if (handler) ipcRenderer.removeListener('webrtc-signaling', handler);
     },
     onMDNSStatusChanged: (callback) => {
         ipcRenderer.on('mdns-status-changed', () => callback());
