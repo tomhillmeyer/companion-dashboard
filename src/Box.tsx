@@ -1042,7 +1042,7 @@ export default React.memo(function Box({
                                         layer={layer}
                                         variableValues={variableValues}
                                         colorAnimation={layer.colorAnimation ?? colorAnimation}
-                                        animationDuration={animationDuration}
+                                        animationDuration={layer.animationDuration ?? animationDuration}
                                         borderRadius={boxData.borderRadius ?? 15}
                                     />
                                 );
@@ -1056,7 +1056,7 @@ export default React.memo(function Box({
                                         variableValues={variableValues}
                                         backgroundImageAnimation={layer.backgroundImageAnimation ?? backgroundImageAnimation}
                                         colorAnimation={colorAnimation}
-                                        animationDuration={animationDuration}
+                                        animationDuration={layer.animationDuration ?? animationDuration}
                                         borderRadius={boxData.borderRadius ?? 15}
                                     />
                                 );
@@ -1098,7 +1098,7 @@ export default React.memo(function Box({
                                     variableHtmlValues={variableHtmlValues}
                                     textAnimation={layer.textAnimation ?? textAnimation}
                                     colorAnimation={colorAnimation}
-                                    animationDuration={animationDuration}
+                                    animationDuration={layer.animationDuration ?? animationDuration}
                                     boxesLocked={boxesLocked}
                                 />
                             );
@@ -1220,6 +1220,7 @@ export default React.memo(function Box({
                     refreshRateMs={refreshRateMs}
                     isDragging={isDragging}
                     variableLookup={centralVariableValues}
+                    animationSettings={animationSettings}
                 />
             )}
         </div>

@@ -1,5 +1,5 @@
 import { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
-import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, LayerOverlay } from './types';
+import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, LayerOverlay, AnimationSettings } from './types';
 import { isImageUrl } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
 import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
@@ -12,6 +12,7 @@ interface BoxPreviewProps {
     variableValues?: { [key: string]: string };
     variableHtmlValues?: { [key: string]: string };
     variableLookup?: { [key: string]: string };
+    animationSettings?: AnimationSettings;
 }
 
 const windowId = (window as any).electronAPI?.windowId || '1';
@@ -31,15 +32,16 @@ const justifyMap: { [key: string]: 'flex-start' | 'center' | 'flex-end' } = {
 // Memoized HTML container: guards dangerouslySetInnerHTML against re-sets when the
 // resolved content is unchanged (React 19 diffs the __html object by reference, so a
 // fresh object every render would wipe and re-create iframes on idle re-renders).
-const MemoContent = memo(({ html, style }: { html: string; style: React.CSSProperties }) => (
-    <div className="content" style={style} dangerouslySetInnerHTML={{ __html: html }} />
+const MemoContent = memo(({ html, style, className, onAnimationEnd }: { html: string; style: React.CSSProperties; className?: string; onAnimationEnd?: (e: React.AnimationEvent<HTMLDivElement>) => void }) => (
+    <div className={`content${className ? ` ${className}` : ''}`} style={style} onAnimationEnd={onAnimationEnd} dangerouslySetInnerHTML={{ __html: html }} />
 ), (prevProps, nextProps) =>
     prevProps.html === nextProps.html &&
+    prevProps.className === nextProps.className &&
     JSON.stringify(prevProps.style) === JSON.stringify(nextProps.style)
 );
 
 // ---- Color layer -----------------------------------------------------------
-const ColorLayerPreview = ({ layer, variableValues, borderRadius }: { layer: ColorLayer; variableValues?: { [key: string]: string }; borderRadius: number }) => {
+const ColorLayerPreview = ({ layer, variableValues, borderRadius, colorAnimation, animationDuration }: { layer: ColorLayer; variableValues?: { [key: string]: string }; borderRadius: number; colorAnimation: AnimationSettings['colorAnimation']; animationDuration: number }) => {
     const values = variableValues || {};
     const resolvedColor = resolveLayerColor(layer.variableColors, layer.colorText, layer.color || '#262626', values, `${layer.id}_colorText`);
 
@@ -62,12 +64,13 @@ const ColorLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Col
                 ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                 : {}),
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+            ...(colorAnimation === 'fade' ? { transition: `background-color ${animationDuration}ms ease` } : {}),
         }} />
     );
 };
 
 // ---- Image layer -----------------------------------------------------------
-const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }: { layer: ImageLayer; variableValues?: { [key: string]: string }; variableLookup?: { [key: string]: string }; borderRadius: number }) => {
+const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius, backgroundImageAnimation, animationDuration }: { layer: ImageLayer; variableValues?: { [key: string]: string }; variableLookup?: { [key: string]: string }; borderRadius: number; backgroundImageAnimation: AnimationSettings['backgroundImageAnimation']; animationDuration: number }) => {
     const [loadedImage, setLoadedImage] = useState<string>('');
     const values = variableValues || {};
 
@@ -122,6 +125,28 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
         loadImage();
     }, [effectiveSrc]);
 
+    // Change-detection for the image URL (same animation pattern as the live box).
+    // Starts at null (not yet seeded): first non-empty value is the baseline without animation.
+    const prevRef = useRef<string | null>(null);
+    const [animating, setAnimating] = useState(false);
+    const currentUrl = loadedImage || '';
+    const prev = prevRef.current;
+    const didChange = prev !== null && prev !== currentUrl && !!currentUrl;
+    prevRef.current = (prev !== null || !!currentUrl) ? currentUrl : null;
+
+    const shouldAnimate = didChange && backgroundImageAnimation !== 'none' && !!currentUrl;
+    useLayoutEffect(() => {
+        if (shouldAnimate) setAnimating(true);
+    }, [shouldAnimate]);
+
+    const handleEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.animationName?.startsWith('box-')) {
+            setAnimating(false);
+        }
+    };
+
+    const animate = animating && backgroundImageAnimation !== 'none';
+
     if (!loadedImage) return null;
 
     const radius = resolveLayerRadius(layer.radius, borderRadius);
@@ -138,19 +163,24 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
             pointerEvents: 'none',
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
         }}>
-            <div style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                backgroundImage: `url("${loadedImage}")`,
-                backgroundSize: layer.imageSize || 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                opacity: (layer.imageOpacity ?? 100) / 100,
-                pointerEvents: 'none',
-                ...(needsClip
-                    ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
-                    : {}),
-            }} />
+            <div
+                className={animate ? `anim-${backgroundImageAnimation}` : undefined}
+                onAnimationEnd={handleEnd}
+                style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundImage: `url("${loadedImage}")`,
+                    backgroundSize: layer.imageSize || 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    opacity: (layer.imageOpacity ?? 100) / 100,
+                    pointerEvents: 'none',
+                    ...(needsClip
+                        ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                        : {}),
+                    ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
+                }}
+            />
             <OverlayPreview overlay={layer.overlay} layerId={layer.id} variableValues={values} />
         </div>
     );
@@ -412,8 +442,29 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
 };
 
 // ---- Text layer ------------------------------------------------------------
-const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableLookup }: { layer: TextLayer; variableValues?: { [key: string]: string }; variableHtmlValues?: { [key: string]: string }; variableLookup?: { [key: string]: string } }) => {
+const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableLookup, textAnimation, colorAnimation, animationDuration }: { layer: TextLayer; variableValues?: { [key: string]: string }; variableHtmlValues?: { [key: string]: string }; variableLookup?: { [key: string]: string }; textAnimation: AnimationSettings['textAnimation']; colorAnimation: AnimationSettings['colorAnimation']; animationDuration: number }) => {
     const values = variableValues || {};
+
+    // Change-detection for animations (same pattern as the live box)
+    const current = (variableHtmlValues?.[`${layer.id}_label`] || '').trim();
+    const prevRef = useRef<string | null>(null);
+    const [animating, setAnimating] = useState(false);
+    const prev = prevRef.current;
+    const didChange = prev !== null && prev !== current && !!current;
+    prevRef.current = (prev !== null || !!current) ? current : null;
+
+    const shouldAnimate = didChange && textAnimation !== 'none' && !!current;
+    useLayoutEffect(() => {
+        if (shouldAnimate) setAnimating(true);
+    }, [shouldAnimate]);
+
+    const handleEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+        if (e.animationName?.startsWith('box-')) {
+            setAnimating(false);
+        }
+    };
+
+    const animate = animating && textAnimation !== 'none' && !!current;
 
     const rawSource = layer.source || '';
     const htmlValue = variableHtmlValues?.[`${layer.id}_label`];
@@ -483,6 +534,8 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
                 html={isTextOnly(html)
                     ? `<span class="text-only-content">${html}</span>`
                     : html}
+                className={animate ? `anim-${textAnimation}` : undefined}
+                onAnimationEnd={handleEnd}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -495,6 +548,10 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
                     textAlign: align as 'left' | 'center' | 'right',
                     ...wrapStyle,
                     ...areaStyle,
+                    ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
+                    ...(colorAnimation === 'fade' ? {
+                        transition: `color ${animationDuration}ms ease`
+                    } : {}),
                 }}
             />
         </div>
@@ -527,7 +584,7 @@ const OverlayPreview = ({ overlay, layerId, variableValues }: { overlay: LayerOv
 // ============================================================================
 // BoxPreview
 // ============================================================================
-export default function BoxPreview({ boxData, variableValues, variableHtmlValues, variableLookup }: BoxPreviewProps) {
+export default function BoxPreview({ boxData, variableValues, variableHtmlValues, variableLookup, animationSettings }: BoxPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(() => window.innerWidth * 0.4);
 
@@ -543,6 +600,8 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
     const scaledHeight = Math.round(height * scale);
 
     const borderRadius = boxData.borderRadius ?? 15;
+
+    const { textAnimation = 'none', backgroundImageAnimation = 'none', colorAnimation = 'none', animationDuration = 300 } = animationSettings || {};
 
     const borderColor = resolveLayerColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues || {}, 'borderColorTextSource');
 
@@ -567,14 +626,15 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
                         transform: `scale(${scale})`,
                         transformOrigin: 'top left',
                         cursor: 'default',
+                        ...(colorAnimation === 'fade' && !boxData.noBorder ? { transition: `border-color ${animationDuration}ms ease` } : {}),
                     }}
                 >
                     {(boxData.layers || []).slice().reverse().map(layer => {
                         if (layer.type === 'color') {
-                            return <ColorLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
+                            return <ColorLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} colorAnimation={layer.colorAnimation ?? colorAnimation} animationDuration={layer.animationDuration ?? animationDuration} />;
                         }
                         if (layer.type === 'image') {
-                            return <ImageLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} />;
+                            return <ImageLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} backgroundImageAnimation={layer.backgroundImageAnimation ?? backgroundImageAnimation} animationDuration={layer.animationDuration ?? animationDuration} />;
                         }
                         if (layer.type === 'video') {
                             return <VideoLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
@@ -582,7 +642,7 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
                         if (layer.type === 'url') {
                             return <UrlLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} />;
                         }
-                        return <TextLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableHtmlValues={variableHtmlValues} variableLookup={variableLookup} />;
+                        return <TextLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableHtmlValues={variableHtmlValues} variableLookup={variableLookup} textAnimation={layer.textAnimation ?? textAnimation} colorAnimation={colorAnimation} animationDuration={layer.animationDuration ?? animationDuration} />;
                     })}
                 </div>
             </div>

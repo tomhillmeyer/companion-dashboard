@@ -90,6 +90,7 @@ export interface ColorLayer extends BaseLayer {
     mask: LayerMask;
     radius?: LayerRadius;
     colorAnimation?: 'none' | 'fade'; // undefined = follow global
+    animationDuration?: number; // undefined = follow global
 }
 
 export interface ImageLayer extends BaseLayer {
@@ -101,6 +102,7 @@ export interface ImageLayer extends BaseLayer {
     mask?: LayerMask;
     radius?: LayerRadius;
     backgroundImageAnimation?: AnimationType; // undefined = follow global
+    animationDuration?: number; // undefined = follow global
 }
 
 export interface VideoLayer extends BaseLayer {
@@ -129,6 +131,7 @@ export interface TextLayer extends BaseLayer {
     variableColors: VariableColor[];
     visible: boolean;
     textAnimation?: AnimationType; // undefined = follow global
+    animationDuration?: number; // undefined = follow global
 }
 
 export interface UrlLayer extends BaseLayer {

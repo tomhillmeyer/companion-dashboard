@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerMask, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerMask, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType, AnimationSettings } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -32,6 +32,7 @@ type BoxSettingsModalProps = {
     refreshRateMs?: number;
     isDragging?: boolean;
     variableLookup?: { [key: string]: string };
+    animationSettings?: AnimationSettings;
 };
 
 // ============================================================================
@@ -307,6 +308,86 @@ const AnimationOverrideSelect = ({
     </div>
 );
 
+// Per-layer animation duration override. Undefined = follow the dashboard-wide
+// duration (shown as a placeholder); a reset button clears the override.
+const AnimationDurationOverrideInput = ({
+    label,
+    value,
+    globalValue,
+    onChange,
+}: {
+    label: string;
+    value: number | undefined;
+    globalValue: number;
+    onChange: (value: number | undefined) => void;
+}) => (
+    <div className="setting-row">
+        <div className="setting-label">
+            <span className="setting-header">{label}</span>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%' }}>
+                <input
+                    type="number"
+                    min={100}
+                    max={5000}
+                    step={50}
+                    value={value ?? ''}
+                    placeholder={`Global (${globalValue} ms)`}
+                    onChange={(e) => {
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v >= 0) onChange(v);
+                    }}
+                    style={{
+                        flex: '1 1 0%',
+                        minWidth: 0,
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        minHeight: 56,
+                        padding: '0 12px',
+                        lineHeight: 1.4,
+                        textAlign: 'left',
+                        backgroundColor: '#1a1a1a',
+                        color: 'white',
+                        border: '1px solid #61BAFA',
+                        borderRadius: '4px',
+                        fontSize: 21
+                    }}
+                />
+                {value !== undefined && (
+                    <button
+                        type="button"
+                        title="Use global duration"
+                        onClick={() => onChange(undefined)}
+                        style={{
+                            flexShrink: 0,
+                            width: 26,
+                            height: 26,
+                            minWidth: 0,
+                            minHeight: 0,
+                            maxWidth: 'none',
+                            maxHeight: 'none',
+                            padding: 0,
+                            margin: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxSizing: 'border-box',
+                            backgroundColor: '#1a1a1a',
+                            color: '#ff6b6b',
+                            border: '1px solid #C63E37',
+                            borderRadius: '4px',
+                            fontSize: 12,
+                            lineHeight: 1,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        ✕
+                    </button>
+                )}
+            </div>
+        </div>
+    </div>
+);
+
 const VariableSizeEditor = ({ sizes, onSizesChange }: {
     sizes: VariableOverlaySize[] | undefined;
     onSizesChange: (sizes: VariableOverlaySize[]) => void;
@@ -495,7 +576,7 @@ const layerDisplayLabel = (layer: BoxLayer): string => {
     }
 };
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], companionBaseUrl = '', refreshRateMs = 250, isDragging = false, variableLookup }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], companionBaseUrl = '', refreshRateMs = 250, isDragging = false, variableLookup, animationSettings }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -1247,6 +1328,12 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         { value: 'fade' as AnimationType, label: 'Fade' },
                     ]}
                 />
+                <AnimationDurationOverrideInput
+                    label="Duration (ms)"
+                    value={layer.animationDuration}
+                    globalValue={animationSettings?.animationDuration ?? 300}
+                    onChange={(value) => updateLayerField(layer.id, { animationDuration: value })}
+                />
                 
             </div>
         </>
@@ -1353,6 +1440,12 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     label="Animation"
                     value={layer.backgroundImageAnimation}
                     onChange={(value) => updateLayerField(layer.id, { backgroundImageAnimation: value })}
+                />
+                <AnimationDurationOverrideInput
+                    label="Duration (ms)"
+                    value={layer.animationDuration}
+                    globalValue={animationSettings?.animationDuration ?? 300}
+                    onChange={(value) => updateLayerField(layer.id, { animationDuration: value })}
                 />
                 
             </div>
@@ -1802,6 +1895,12 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         value={layer.textAnimation}
                         onChange={(value) => updateLayerField(layer.id, { textAnimation: value })}
                     />
+                    <AnimationDurationOverrideInput
+                        label="Duration (ms)"
+                        value={layer.animationDuration}
+                        globalValue={animationSettings?.animationDuration ?? 300}
+                        onChange={(value) => updateLayerField(layer.id, { animationDuration: value })}
+                    />
                     
                 </div>
                 <div className='setting-container'>
@@ -1956,6 +2055,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     variableValues={previewVariables.values}
                     variableHtmlValues={previewVariables.htmlValues}
                     variableLookup={previewVariables.values}
+                    animationSettings={animationSettings}
                 />
             </div>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
