@@ -6,7 +6,7 @@
  * factories used by createNewBox and the BoxSettingsModal "+" add menu.
  */
 
-import type { BoxData, BoxLayer, ColorLayer, ImageLayer, LayerMask, LayerOverlay, LayerType, TextLayer, UrlLayer, VariableColor, VariableOverlaySize, VideoLayer } from './types';
+import type { BoxData, BoxLayer, ColorLayer, ImageLayer, LayerMask, LayerOverlay, LayerRadius, LayerType, TextLayer, UrlLayer, VariableColor, VariableOverlaySize, VideoLayer } from './types';
 import { v4 as uuid } from 'uuid';
 
 // ============================================================================
@@ -29,6 +29,47 @@ export const isImageUrl = (str?: string): boolean => {
     if (trimmed.startsWith('data:image/')) return true;
     if (/\.(jpe?g|png|gif|bmp|webp|svg)(\?.*)?$/i.test(trimmed)) return true;
     return false;
+};
+
+// ============================================================================
+// Pixel scaling relative to the default box size
+// ============================================================================
+
+// Dimensions of a brand-new box (see App.tsx createNewBox / migrateBoxData
+// fallback). Migrated pixel values are scaled against this reference so a box
+// of any size keeps the visual proportions of the default. At the reference
+// size the scale factors are 1 and migration is a no-op.
+export const REFERENCE_BOX_WIDTH = 600;
+export const REFERENCE_BOX_HEIGHT = 105;
+
+const roundPx = (value: number): number => Math.round(value * 100) / 100;
+
+/**
+ * Scale every pixel-based value in a layer relative to the reference box size.
+ * X offsets follow width; Y offsets, text sizes, and radii follow height so the
+ * text keeps tracking the percentage-based header band as the box grows.
+ */
+export const scaleLayerPx = <T extends BoxLayer>(layer: T, sx: number, sy: number): T => {
+    const scaled: any = {
+        ...layer,
+        offsetX: roundPx((layer.offsetX ?? 0) * sx),
+        offsetY: roundPx((layer.offsetY ?? 0) * sy),
+    };
+    if (layer.type === 'text') {
+        scaled.size = roundPx(layer.size * sy);
+    } else {
+        const radius = (layer as any).radius as LayerRadius | undefined;
+        if (radius) {
+            const r = Math.min(sx, sy);
+            scaled.radius = {
+                topLeft: roundPx(radius.topLeft * r),
+                topRight: roundPx(radius.topRight * r),
+                bottomLeft: roundPx(radius.bottomLeft * r),
+                bottomRight: roundPx(radius.bottomRight * r),
+            };
+        }
+    }
+    return scaled as T;
 };
 
 // ============================================================================
@@ -249,7 +290,7 @@ export function migrateBoxData(raw: any): BoxData {
             return l as BoxLayer;
         });
     } else {
-        layers = buildLayersFromLegacy(source);
+        layers = buildLayersFromLegacy(source, base.frame);
     }
 
     const migrated: BoxData = {
@@ -265,10 +306,29 @@ export function migrateBoxData(raw: any): BoxData {
     return migrated;
 }
 
-function buildLayersFromLegacy(raw: any): BoxLayer[] {
+function buildLayersFromLegacy(raw: any, frame: BoxData['frame']): BoxLayer[] {
     // Build bottom-first (this is the true paint order), then reverse so the
     // returned array reads top-first (index 0 paints on top).
     const bottomFirst: BoxLayer[] = [];
+
+    // Size-aware pixel scaling (no-op at the reference 600x105 box)
+    const sx = (frame?.width || REFERENCE_BOX_WIDTH) / REFERENCE_BOX_WIDTH;
+    const sy = (frame?.height || REFERENCE_BOX_HEIGHT) / REFERENCE_BOX_HEIGHT;
+
+    // Legacy visibility gating: hidden header/left/right labels are not
+    // recreated. Missing flags default to visible (older configs never stored them).
+    const headerVisible = raw.headerLabelVisible ?? true;
+    const leftVisible = raw.leftVisible ?? true;
+    const rightVisible = raw.rightVisible ?? true;
+
+    // Header band height follows the header text size using the legacy
+    // content-box formula (.header: line-height 1.5 + 10px padding top/bottom).
+    // The 20px padding is intentionally not scaled with the box.
+    const boxHeight = frame?.height || REFERENCE_BOX_HEIGHT;
+    const scaledHeaderSize = (raw.headerLabelSize ?? 16) * sy;
+    const bandPx = 1.5 * scaledHeaderSize + 20;
+    const bandMaskBottom = Math.max(0, Math.min(100, 100 - (bandPx / boxHeight) * 100));
+    const bodyOffsetY = headerVisible ? bandPx / 2 : 0;
 
     // Color layer (always present in legacy schema)
     bottomFirst.push({
@@ -340,7 +400,9 @@ function buildLayersFromLegacy(raw: any): BoxLayer[] {
     const hasHeaderColorText = raw.headerColorText;
     const hasHeaderVariables = (raw.headerVariableColors || []).length > 0;
     const hasHeaderBand = hasHeaderColor || hasHeaderColorText || hasHeaderVariables;
-    if (hasHeaderBand) {
+    // The legacy band was the header element's background, so hiding the header
+    // hid the band as well - only recreate it when the header is visible.
+    if (headerVisible && hasHeaderBand) {
         bottomFirst.push({
             id: uuid(),
             type: 'color',
@@ -349,58 +411,81 @@ function buildLayersFromLegacy(raw: any): BoxLayer[] {
             color: raw.headerColor ?? '#19325c',
             colorText: raw.headerColorText ?? '',
             variableColors: normalizeConditions(raw.headerVariableColors) as VariableColor[],
-            mask: { top: 0, bottom: 65, left: 0, right: 0 },
+            mask: { top: 0, bottom: bandMaskBottom, left: 0, right: 0 },
             radius: createDefaultRadius(),
         });
     }
 
     // Text layers (header, left, right).
     // Mapping: header -> top center, left -> middle left, right -> middle right.
-    // Migration backfill: legacy left/right labels sit below the header band on
-    // screen, so they get the same Y offset as the header layout when a band
-    // exists. Band-less legacy boxes keep their text at the default (0) position.
-    const bandOffset = hasHeaderBand ? 15 : 0;
+    // Visibility: hidden labels are not recreated. Legacy left/right labels sit
+    // below the header element, so their Y offset is half the band height (the
+    // center of the remaining body area); a hidden header collapses that space,
+    // leaving them at 0.
     const textLayers = [
         {
-            source: raw.headerLabelSource ?? '',
-            size: raw.headerLabelSize ?? 16,
-            align: (raw.headerLabelAlign ?? 'center') as TextLayer['align'],
-            alignVertical: 'top' as TextLayer['alignVertical'],
-            font: raw.headerLabelFont ?? '',
-            color: raw.headerLabelColor ?? '#ffffff',
-            colorText: raw.headerLabelColorText ?? '',
-            variableColors: normalizeConditions(raw.headerLabelVariableColors) as VariableColor[],
-            visible: raw.headerLabelVisible ?? true,
+            enabled: headerVisible,
+            isBody: false,
+            data: {
+                source: raw.headerLabelSource ?? '',
+                size: raw.headerLabelSize ?? 16,
+                align: (raw.headerLabelAlign ?? 'center') as TextLayer['align'],
+                alignVertical: 'top' as TextLayer['alignVertical'],
+                font: raw.headerLabelFont ?? '',
+                color: raw.headerLabelColor ?? '#ffffff',
+                colorText: raw.headerLabelColorText ?? '',
+                variableColors: normalizeConditions(raw.headerLabelVariableColors) as VariableColor[],
+                visible: true,
+            },
         },
         {
-            source: raw.leftLabelSource ?? '',
-            size: raw.leftLabelSize ?? 14,
-            align: (raw.leftLabelAlign ?? 'left') as TextLayer['align'],
-            alignVertical: 'middle' as TextLayer['alignVertical'],
-            font: raw.leftLabelFont ?? '',
-            color: raw.leftLabelColor ?? '#FFFFFF',
-            colorText: raw.leftLabelColorText ?? '',
-            variableColors: normalizeConditions(raw.leftLabelVariableColors) as VariableColor[],
-            visible: raw.leftVisible ?? true,
-            offsetY: bandOffset,
+            enabled: leftVisible,
+            isBody: true,
+            data: {
+                source: raw.leftLabelSource ?? '',
+                size: raw.leftLabelSize ?? 14,
+                align: (raw.leftLabelAlign ?? 'left') as TextLayer['align'],
+                alignVertical: 'middle' as TextLayer['alignVertical'],
+                font: raw.leftLabelFont ?? '',
+                color: raw.leftLabelColor ?? '#FFFFFF',
+                colorText: raw.leftLabelColorText ?? '',
+                variableColors: normalizeConditions(raw.leftLabelVariableColors) as VariableColor[],
+                visible: true,
+            },
         },
         {
-            source: raw.rightLabelSource ?? '',
-            size: raw.rightLabelSize ?? 20,
-            align: (raw.rightLabelAlign ?? 'right') as TextLayer['align'],
-            alignVertical: 'middle' as TextLayer['alignVertical'],
-            font: raw.rightLabelFont ?? '',
-            color: raw.rightLabelColor ?? '#FFFFFF',
-            colorText: raw.rightLabelColorText ?? '',
-            variableColors: normalizeConditions(raw.rightLabelVariableColors) as VariableColor[],
-            visible: raw.rightVisible ?? true,
-            offsetY: bandOffset,
+            enabled: rightVisible,
+            isBody: true,
+            data: {
+                source: raw.rightLabelSource ?? '',
+                size: raw.rightLabelSize ?? 20,
+                align: (raw.rightLabelAlign ?? 'right') as TextLayer['align'],
+                alignVertical: 'middle' as TextLayer['alignVertical'],
+                font: raw.rightLabelFont ?? '',
+                color: raw.rightLabelColor ?? '#FFFFFF',
+                colorText: raw.rightLabelColorText ?? '',
+                variableColors: normalizeConditions(raw.rightLabelVariableColors) as VariableColor[],
+                visible: true,
+            },
         },
     ];
 
-    for (const t of textLayers) {
-        bottomFirst.push({ id: uuid(), type: 'text', offsetX: 0, offsetY: 0, ...t });
+    const bodyTextIds = new Set<string>();
+    for (const { enabled, isBody, data } of textLayers) {
+        if (!enabled) continue;
+        const id = uuid();
+        if (isBody) bodyTextIds.add(id);
+        bottomFirst.push({ id, type: 'text', offsetX: 0, offsetY: 0, ...data });
     }
 
-    return bottomFirst.reverse();
+    // Scale px values, then apply the header-derived body offset. bandPx already
+    // reflects the scaled font size, so the offset must not be scaled a second time.
+    const scaledLayers = bottomFirst.reverse().map(layer => scaleLayerPx(layer, sx, sy));
+    for (const layer of scaledLayers) {
+        if (layer.type === 'text' && bodyTextIds.has(layer.id)) {
+            layer.offsetY = bodyOffsetY;
+        }
+    }
+
+    return scaledLayers;
 }
