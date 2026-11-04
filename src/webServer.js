@@ -83,6 +83,12 @@ class DashboardWebServer {
         
         // Enable CORS
         this.app.use(cors());
+
+        // Convenience redirect: the display view is the root URL. Older docs
+        // and links sometimes used /display (or /Display).
+        this.app.get('/display', (req, res) => {
+            res.redirect('/');
+        });
         
         // API endpoint to get current dashboard state
         this.app.get('/api/dashboard-state', (req, res) => {

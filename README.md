@@ -14,20 +14,24 @@ Read about getting started in the app docs [here](https://apps.wearecreativeland
 Download the latest releases [here](https://github.com/tomhillmeyer/companion-dashboard/releases) for Mac (ARM), Mac (Intel), Linux (amd64), Linux (arm64) and Windows (x64).
 
 
-### Linux Server (Raspberry Pi, NUC, etc.)
-Install a Debian Linux installation such as Raspberry Pi OS, Ubuntu Server, or Companion Pi. After installation, running this script will install the latest release of the app from GitHub, or update an already existing installation. Supports ARM (Raspberry Pi, etc.) and Intel (Intel NUC, etc.).
+### Linux Server (Raspberry Pi 4/5, NUC, etc.)
 
-Dashboard will launch full screen upon boot. It is the full version of the app, but also auto-starts the web server for remote configuration.
+Installs Companion Dashboard as a full-screen kiosk that starts automatically on boot.
 
-_NOTE: Currently does not support Raspberry Pi 5._
+- **Hardware:** Pi 4/5, Pi 400, or Intel/AMD NUC (64-bit OS required).
+- **OS:** CompanionPi, Raspberry Pi OS 64-bit (Bookworm/Trixie), Debian 12/13, Ubuntu 22.04/24.04.
 
-Run this script to install, either directly on the device or over SSH:
+Run the installer directly on the device or over SSH:
 
 `curl -fsSL https://raw.githubusercontent.com/tomhillmeyer/companion-dashboard/main/install.sh | bash`
 
 Requires a reboot after installation:
 
 `sudo reboot`
+
+After rebooting, open `http://dashboard.local/` for the display view and `http://dashboard.local/control` for the control view.
+
+See [docs/linux-install.md](docs/linux-install.md) for advanced options and troubleshooting.
 
 ### iOS TestFlight
 
