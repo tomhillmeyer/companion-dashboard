@@ -10,7 +10,7 @@ import { v4 as uuid } from 'uuid';
 import type { VariableColor, CompanionConnection, ROI, ComparisonOperator, PageData, AnimationType } from './types';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
-import { useVideoDevices } from './useVideoDevices';
+import type { VideoDevice } from './useVideoDevices';
 import ROIModal from './ROIModal';
 
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
@@ -96,12 +96,16 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundImageSizeChange?: (size: 'cover' | 'contain' | 'width') => void;
     canvasBackgroundImageWidth?: number;
     onCanvasBackgroundImageWidthChange?: (width: number) => void;
+    canvasBackgroundVideoEnabled?: boolean;
+    onCanvasBackgroundVideoEnabledChange?: (enabled: boolean) => void;
     canvasBackgroundVideoDeviceId?: string;
     onCanvasBackgroundVideoDeviceIdChange?: (deviceId: string) => void;
     canvasBackgroundVideoSize?: 'cover' | 'contain';
     onCanvasBackgroundVideoSizeChange?: (size: 'cover' | 'contain') => void;
     canvasBackgroundVideoROI?: { x: number; y: number; width: number; height: number };
     onCanvasBackgroundVideoROIChange?: (roi: { x: number; y: number; width: number; height: number } | undefined) => void;
+    videoDevices?: VideoDevice[];
+    refreshVideoDevices?: () => void;
     refreshRateMs?: number;
     onRefreshRateMsChange?: (refreshRate: number) => void;
     fontFamily?: string;
@@ -147,12 +151,16 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundImageSizeChange,
     canvasBackgroundImageWidth,
     onCanvasBackgroundImageWidthChange,
+    canvasBackgroundVideoEnabled,
+    onCanvasBackgroundVideoEnabledChange,
     canvasBackgroundVideoDeviceId,
     onCanvasBackgroundVideoDeviceIdChange,
     canvasBackgroundVideoSize,
     onCanvasBackgroundVideoSizeChange,
     canvasBackgroundVideoROI,
     onCanvasBackgroundVideoROIChange,
+    videoDevices = [],
+    refreshVideoDevices,
     refreshRateMs,
     onRefreshRateMsChange,
     fontFamily,
@@ -280,9 +288,6 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
 
     // Background image file input ref
     const backgroundImageInputRef = useRef<HTMLInputElement>(null);
-
-    // Video devices hook
-    const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices();
 
     // Config load dialog state
     const [showConfigDialog, setShowConfigDialog] = useState(false);
@@ -1736,105 +1741,130 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                 )}
                             </div>
 
-                            {videoDevices.length > 0 && (
+                            {!isNative() && (
                                 <div className="canvas-image-group">
-                                    <span className="canvas-color-label">Background Video</span>
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
-                                        <select
-                                            value={canvasBackgroundVideoDeviceId || ''}
-                                            onChange={(e) => onCanvasBackgroundVideoDeviceIdChange?.(e.target.value)}
-                                            style={{
-                                                flex: 1,
-                                                height: '40px',
-                                                padding: '0 8px',
-                                                backgroundColor: '#1a1a1a',
-                                                color: 'white',
-                                                border: '1px solid #61BAFA',
-                                                borderRadius: '4px',
-                                                fontSize: '14px',
-                                                boxSizing: 'border-box',
-                                                margin: 0
-                                            }}
-                                        >
-                                            <option value="">No Video</option>
-                                            {videoDevices.map(device => (
-                                                <option key={device.deviceId} value={device.deviceId}>
-                                                    {device.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <button
-                                            type="button"
-                                            onClick={refreshVideoDevices}
-                                            style={{
-                                                height: '40px',
-                                                padding: '0 16px',
-                                                backgroundColor: '#444',
-                                                color: 'white',
-                                                border: '1px solid #61BAFA',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '14px',
-                                                whiteSpace: 'nowrap',
-                                                boxSizing: 'border-box',
-                                                margin: 0
-                                            }}
-                                        >
-                                            Refresh
-                                        </button>
-                                    </div>
-                                    {canvasBackgroundVideoDeviceId && (
-                                        <>
-                                            <div className="canvas-image-size-controls" style={{ marginTop: '10px' }}>
-                                                <label htmlFor="canvas-video-size">Background Video Size</label>
-                                                <select
-                                                    id="canvas-video-size"
-                                                    value={canvasBackgroundVideoSize || 'cover'}
-                                                    onChange={(e) => onCanvasBackgroundVideoSizeChange?.(e.target.value as 'cover' | 'contain')}
-                                                >
-                                                    <option value="cover">Cover</option>
-                                                    <option value="contain">Contain</option>
-                                                </select>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowCanvasROIModal(true)}
-                                                style={{
-                                                    marginTop: '10px',
-                                                    height: '40px',
-                                                    padding: '0 16px',
-                                                    backgroundColor: '#444',
-                                                    color: 'white',
-                                                    border: '1px solid #61BAFA',
-                                                    borderRadius: '4px',
-                                                    cursor: 'pointer',
-                                                    fontSize: '14px',
-                                                    width: '100%',
-                                                    boxSizing: 'border-box'
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                                        <span className="canvas-color-label">Background Video</span>
+                                        <label className="nav-toggle" title={canvasBackgroundVideoEnabled ? 'Disable background video' : 'Enable background video'}>
+                                            <input
+                                                type="checkbox"
+                                                checked={!!canvasBackgroundVideoEnabled}
+                                                onChange={(e) => {
+                                                    const enabled = e.target.checked;
+                                                    onCanvasBackgroundVideoEnabledChange?.(enabled);
+                                                    // Turning this on is an explicit request for camera access.
+                                                    if (enabled) refreshVideoDevices?.();
                                                 }}
-                                            >
-                                                Set Region of Interest
-                                            </button>
-                                            {canvasBackgroundVideoROI && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onCanvasBackgroundVideoROIChange?.(undefined)}
+                                                aria-label="Enable background video"
+                                            />
+                                            <span className="nav-toggle-track" />
+                                        </label>
+                                    </div>
+                                    {canvasBackgroundVideoEnabled && (
+                                        <>
+                                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+                                                <select
+                                                    value={canvasBackgroundVideoDeviceId || ''}
+                                                    onChange={(e) => onCanvasBackgroundVideoDeviceIdChange?.(e.target.value)}
                                                     style={{
-                                                        marginTop: '5px',
+                                                        flex: 1,
                                                         height: '40px',
-                                                        padding: '0 16px',
-                                                        backgroundColor: '#333',
+                                                        padding: '0 8px',
+                                                        backgroundColor: '#1a1a1a',
                                                         color: 'white',
-                                                        border: '1px solid #666',
+                                                        border: '1px solid #61BAFA',
                                                         borderRadius: '4px',
-                                                        cursor: 'pointer',
-                                                        fontSize: '12px',
-                                                        width: '100%',
-                                                        boxSizing: 'border-box'
+                                                        fontSize: '14px',
+                                                        boxSizing: 'border-box',
+                                                        margin: 0
                                                     }}
                                                 >
-                                                    Clear Region of Interest
+                                                    <option value="">No Video</option>
+                                                    {videoDevices.map(device => (
+                                                        <option key={device.deviceId} value={device.deviceId}>
+                                                            {device.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => refreshVideoDevices?.()}
+                                                    style={{
+                                                        height: '40px',
+                                                        padding: '0 16px',
+                                                        backgroundColor: '#444',
+                                                        color: 'white',
+                                                        border: '1px solid #61BAFA',
+                                                        borderRadius: '4px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        whiteSpace: 'nowrap',
+                                                        boxSizing: 'border-box',
+                                                        margin: 0
+                                                    }}
+                                                >
+                                                    Refresh
                                                 </button>
+                                            </div>
+                                            {videoDevices.length === 0 && (
+                                                <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#999' }}>
+                                                    No cameras found. Use Refresh to grant camera access.
+                                                </p>
+                                            )}
+                                            {canvasBackgroundVideoDeviceId && (
+                                                <>
+                                                    <div className="canvas-image-size-controls" style={{ marginTop: '10px' }}>
+                                                        <label htmlFor="canvas-video-size">Background Video Size</label>
+                                                        <select
+                                                            id="canvas-video-size"
+                                                            value={canvasBackgroundVideoSize || 'cover'}
+                                                            onChange={(e) => onCanvasBackgroundVideoSizeChange?.(e.target.value as 'cover' | 'contain')}
+                                                        >
+                                                            <option value="cover">Cover</option>
+                                                            <option value="contain">Contain</option>
+                                                        </select>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCanvasROIModal(true)}
+                                                        style={{
+                                                            marginTop: '10px',
+                                                            height: '40px',
+                                                            padding: '0 16px',
+                                                            backgroundColor: '#444',
+                                                            color: 'white',
+                                                            border: '1px solid #61BAFA',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer',
+                                                            fontSize: '14px',
+                                                            width: '100%',
+                                                            boxSizing: 'border-box'
+                                                        }}
+                                                    >
+                                                        Set Region of Interest
+                                                    </button>
+                                                    {canvasBackgroundVideoROI && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onCanvasBackgroundVideoROIChange?.(undefined)}
+                                                            style={{
+                                                                marginTop: '5px',
+                                                                height: '40px',
+                                                                padding: '0 16px',
+                                                                backgroundColor: '#333',
+                                                                color: 'white',
+                                                                border: '1px solid #666',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '12px',
+                                                                width: '100%',
+                                                                boxSizing: 'border-box'
+                                                            }}
+                                                        >
+                                                            Clear Region of Interest
+                                                        </button>
+                                                    )}
+                                                </>
                                             )}
                                         </>
                                     )}

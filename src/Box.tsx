@@ -14,6 +14,7 @@ import { isImageUrl, duplicateLayers } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
 import { buildBoxSources } from './boxSources';
 import { isWebClient as isBrowserClient, isNative } from './platform';
+import type { VideoDevice } from './useVideoDevices';
 
 // ============================================================================
 // Component for rendering markdown content
@@ -808,6 +809,8 @@ export default React.memo(function Box({
     isMultiSelect = false,
     pages = [],
     animationSettings,
+    videoDevices = [],
+    refreshVideoDevices,
 }: {
     boxData: BoxData;
     isSelected: boolean;
@@ -831,6 +834,8 @@ export default React.memo(function Box({
     isMultiSelect?: boolean;
     pages?: PageData[];
     animationSettings?: AnimationSettings;
+    videoDevices?: VideoDevice[];
+    refreshVideoDevices?: () => void;
 }) {
 
     const { textAnimation = 'none', backgroundImageAnimation = 'none', colorAnimation = 'none', animationDuration = 300 } = animationSettings || {};
@@ -1221,6 +1226,8 @@ export default React.memo(function Box({
                     isDragging={isDragging}
                     variableLookup={centralVariableValues}
                     animationSettings={animationSettings}
+                    videoDevices={videoDevices}
+                    refreshVideoDevices={refreshVideoDevices}
                 />
             )}
         </div>

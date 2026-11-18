@@ -52,3 +52,5 @@ Companion Dashboard.code-workspace
 *.njsproj
 *.sln
 *.sw?
+
+scripts/

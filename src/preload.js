@@ -36,6 +36,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     offWebRTCSignaling: (handler) => {
         if (handler) ipcRenderer.removeListener('webrtc-signaling', handler);
     },
+    onRequestVideoDevices: (callback) => {
+        const handler = () => callback();
+        ipcRenderer.on('request-video-devices-from-browser', handler);
+        return handler;
+    },
+    offRequestVideoDevices: (handler) => {
+        if (handler) ipcRenderer.removeListener('request-video-devices-from-browser', handler);
+    },
     onMDNSStatusChanged: (callback) => {
         ipcRenderer.on('mdns-status-changed', () => callback());
     },

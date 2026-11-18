@@ -9,6 +9,8 @@ import './App.css';
 import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
 import { useVariableFetcher } from './useVariableFetcher';
+import { useVideoDevices } from './useVideoDevices';
+import type { VideoDevice } from './useVideoDevices';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
 import { isWebClient as isBrowserClient, isNative } from './platform';
@@ -170,6 +172,13 @@ export default function App() {
             if (canvasSettings.canvasBackgroundImageWidth !== undefined) {
                 setCanvasBackgroundImageWidth(canvasSettings.canvasBackgroundImageWidth);
             }
+            if (canvasSettings.canvasBackgroundVideoEnabled !== undefined) {
+                setCanvasBackgroundVideoEnabled(!!canvasSettings.canvasBackgroundVideoEnabled);
+            } else if (canvasSettings.canvasBackgroundVideoDeviceId !== undefined) {
+                // Imported configs predate the toggle: keep background video on
+                // if they had a camera selected.
+                setCanvasBackgroundVideoEnabled(!!canvasSettings.canvasBackgroundVideoDeviceId);
+            }
             if (canvasSettings.canvasBackgroundVideoDeviceId !== undefined) {
                 setCanvasBackgroundVideoDeviceId(canvasSettings.canvasBackgroundVideoDeviceId);
             }
@@ -314,6 +323,24 @@ export default function App() {
     const videoRelayManagerRef = useRef<VideoRelayManager | null>(null);
     const [videoRelayManagerReady, setVideoRelayManagerReady] = useState(false);
     const boxRefsMap = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // Video inputs: the Electron host owns the camera list. Web clients receive
+    // it from the host over the WebSocket state sync and never touch the media
+    // APIs themselves (which would trigger a browser permission prompt).
+    const [syncedVideoDevices, setSyncedVideoDevices] = useState<VideoDevice[]>([]);
+    const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices(syncedVideoDevices);
+
+    // UI-facing refresh: hosts re-enumerate locally, web clients ask the host.
+    const handleRefreshVideoDevices = useCallback(() => {
+        if (isBrowserClient()) {
+            const ws = (window as any).fullAppServerWS;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'request-video-devices' }));
+            }
+            return;
+        }
+        refreshVideoDevices();
+    }, [refreshVideoDevices]);
 
     // Mouse movement tracking for auto-hide page tabs
     const [showPageTabs, setShowPageTabs] = useState<boolean>(false);
@@ -532,6 +559,23 @@ export default function App() {
         }
         return 1920;
     });
+    const [canvasBackgroundVideoEnabled, setCanvasBackgroundVideoEnabled] = useState<boolean>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Migrate: an existing selected camera means background video
+                // was already in use, so keep it enabled.
+                if (parsed.canvasBackgroundVideoEnabled !== undefined) {
+                    return !!parsed.canvasBackgroundVideoEnabled;
+                }
+                return !!parsed.canvasBackgroundVideoDeviceId;
+            } catch (error) {
+                return false;
+            }
+        }
+        return false;
+    });
     const [canvasBackgroundVideoDeviceId, setCanvasBackgroundVideoDeviceId] = useState<string>(() => {
         const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
         if (saved) {
@@ -731,13 +775,14 @@ export default function App() {
             canvasBackgroundImageOpacity,
             canvasBackgroundImageSize,
             canvasBackgroundImageWidth,
+            canvasBackgroundVideoEnabled,
             canvasBackgroundVideoDeviceId,
             canvasBackgroundVideoSize,
             canvasBackgroundVideoROI,
             refreshRateMs
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
-    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs]);
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs]);
 
     // Save animation settings to localStorage whenever they change
     useEffect(() => {
@@ -788,6 +833,14 @@ export default function App() {
 
         // Native app: video is not supported, silently skip
         if (isNative()) {
+            if (canvasVideoRef.current) {
+                canvasVideoRef.current.srcObject = null;
+            }
+            return;
+        }
+
+        // Background video disabled: never touch the camera.
+        if (!canvasBackgroundVideoEnabled) {
             if (canvasVideoRef.current) {
                 canvasVideoRef.current.srcObject = null;
             }
@@ -870,7 +923,7 @@ export default function App() {
                 }
             }
         };
-    }, [canvasBackgroundVideoDeviceId, videoRelayManagerReady]);
+    }, [canvasBackgroundVideoDeviceId, canvasBackgroundVideoEnabled, videoRelayManagerReady]);
 
     // Update scale factor when window resizes or settings change
     useEffect(() => {
@@ -1041,6 +1094,7 @@ export default function App() {
                     canvasBackgroundImageOpacity,
                     canvasBackgroundImageSize,
                     canvasBackgroundImageWidth,
+                    canvasBackgroundVideoEnabled,
                     canvasBackgroundVideoDeviceId,
                     canvasBackgroundVideoSize,
                     canvasBackgroundVideoROI,
@@ -1084,6 +1138,7 @@ export default function App() {
                     variableValues: allVariableValues,
                     htmlVariableValues: allHtmlVariableValues,
                     imageData,
+                    videoDevices,
                     fontFamily,
                     scaleEnabled,
                     designWidth,
@@ -1107,7 +1162,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, videoDevices, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -1155,6 +1210,10 @@ export default function App() {
                     if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
                     if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                     if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
+                    if (cs.canvasBackgroundVideoEnabled !== undefined) setCanvasBackgroundVideoEnabled(!!cs.canvasBackgroundVideoEnabled);
+                    if (cs.canvasBackgroundVideoDeviceId !== undefined) setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
+                    if (cs.canvasBackgroundVideoSize !== undefined) setCanvasBackgroundVideoSize(cs.canvasBackgroundVideoSize);
+                    if (cs.canvasBackgroundVideoROI !== undefined) setCanvasBackgroundVideoROI(cs.canvasBackgroundVideoROI);
                     if (cs.refreshRateMs !== undefined) setRefreshRateMs(cs.refreshRateMs);
                     localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(cs));
                 }
@@ -1286,6 +1345,7 @@ export default function App() {
                                 if (cs.canvasBackgroundImageOpacity !== undefined) setCanvasBackgroundImageOpacity(cs.canvasBackgroundImageOpacity);
                                 if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                                 if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
+                                if (cs.canvasBackgroundVideoEnabled !== undefined) setCanvasBackgroundVideoEnabled(!!cs.canvasBackgroundVideoEnabled);
                                 if (cs.canvasBackgroundVideoDeviceId !== undefined) setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
                                 if (cs.canvasBackgroundVideoSize !== undefined) setCanvasBackgroundVideoSize(cs.canvasBackgroundVideoSize);
                                 if (cs.canvasBackgroundVideoROI !== undefined) setCanvasBackgroundVideoROI(cs.canvasBackgroundVideoROI);
@@ -1344,6 +1404,11 @@ export default function App() {
                             }
                             if (data.additionalConnectionValidities) {
                                 setAdditionalConnectionValidities(data.additionalConnectionValidities);
+                            }
+
+                            // Video inputs are owned by the host — mirror its device list.
+                            if (data.videoDevices) {
+                                setSyncedVideoDevices(data.videoDevices);
                             }
 
                             // Update license state (web clients are read-only views — do not write to localStorage)
@@ -1417,6 +1482,22 @@ export default function App() {
         }
     }, []);
 
+    // Electron host: a web client asked us to enumerate video devices (so its
+    // camera picker can list the host's cameras). The permission prompt, when
+    // still needed, appears on this machine.
+    useEffect(() => {
+        const api = (window as any).electronAPI;
+        if (!api?.onRequestVideoDevices) return;
+
+        const handler = api.onRequestVideoDevices(() => {
+            refreshVideoDevices();
+        });
+
+        return () => {
+            api.offRequestVideoDevices?.(handler);
+        };
+    }, [refreshVideoDevices]);
+
     // Send state changes from browser to Electron via WebSocket
     useEffect(() => {
         const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
@@ -1450,6 +1531,7 @@ export default function App() {
                         canvasBackgroundImageOpacity,
                         canvasBackgroundImageSize,
                         canvasBackgroundImageWidth,
+                        canvasBackgroundVideoEnabled,
                         canvasBackgroundVideoDeviceId,
                         canvasBackgroundVideoSize,
                         canvasBackgroundVideoROI,
@@ -1474,7 +1556,7 @@ export default function App() {
                 }));
             }
         }
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isDragging]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isDragging]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -1930,7 +2012,7 @@ export default function App() {
             <TitleBar />
 
             {/* Canvas background video */}
-            {!isNative() && canvasBackgroundVideoDeviceId && (() => {
+            {!isNative() && canvasBackgroundVideoEnabled && canvasBackgroundVideoDeviceId && (() => {
                 const roi = canvasBackgroundVideoROI;
 
                 if (!roi) {
@@ -2111,12 +2193,16 @@ export default function App() {
                 onCanvasBackgroundImageSizeChange={setCanvasBackgroundImageSize}
                 canvasBackgroundImageWidth={canvasBackgroundImageWidth}
                 onCanvasBackgroundImageWidthChange={setCanvasBackgroundImageWidth}
+                canvasBackgroundVideoEnabled={canvasBackgroundVideoEnabled}
+                onCanvasBackgroundVideoEnabledChange={setCanvasBackgroundVideoEnabled}
                 canvasBackgroundVideoDeviceId={canvasBackgroundVideoDeviceId}
                 onCanvasBackgroundVideoDeviceIdChange={setCanvasBackgroundVideoDeviceId}
                 canvasBackgroundVideoSize={canvasBackgroundVideoSize}
                 onCanvasBackgroundVideoSizeChange={setCanvasBackgroundVideoSize}
                 canvasBackgroundVideoROI={canvasBackgroundVideoROI}
                 onCanvasBackgroundVideoROIChange={setCanvasBackgroundVideoROI}
+                videoDevices={videoDevices}
+                refreshVideoDevices={handleRefreshVideoDevices}
                 refreshRateMs={refreshRateMs}
                 onRefreshRateMsChange={setRefreshRateMs}
                 fontFamily={fontFamily}
@@ -2217,6 +2303,8 @@ export default function App() {
                             centralVariableValues={allVariableValues}
                             videoRelayManager={videoRelayManagerRef.current}
                             videoRelayManagerReady={videoRelayManagerReady}
+                            videoDevices={videoDevices}
+                            refreshVideoDevices={handleRefreshVideoDevices}
                             animationSettings={animationSettings}
                             boxRef={(el) => {
                                 if (el) {

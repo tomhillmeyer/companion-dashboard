@@ -3,6 +3,7 @@ import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, 
 import { isImageUrl } from './boxMigration';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
 import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
+import { isElectron, isNative } from './platform';
 import { FaVideoSlash } from 'react-icons/fa6';
 import './Box.css';
 import './BoxPreview.css';
@@ -266,6 +267,16 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
             return;
         }
 
+        // Only the Electron host owns cameras. Web clients receive video over
+        // WebRTC relay and the native app has no video support, so never ask
+        // the browser/WebView for camera permission here.
+        if (!isElectron()) {
+            if (videoRef.current) videoRef.current.srcObject = null;
+            currentStreamRef.current = null;
+            setVideoError(true);
+            return;
+        }
+
         let cancelled = false;
         let acquiredStream: MediaStream | null = null;
 
@@ -318,7 +329,8 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
         return () => video.removeEventListener('loadedmetadata', onMetadata);
     }, [layer.roi, layer.deviceId]);
 
-    if (!layer.deviceId) return null;
+    // Native app: video layers render nothing (same as the live box)
+    if (!layer.deviceId || isNative()) return null;
 
     const roi = layer.roi;
     const radius = resolveLayerRadius(layer.radius, borderRadius);

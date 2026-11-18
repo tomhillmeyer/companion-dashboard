@@ -171,6 +171,11 @@ function createWindow(windowState = null) {
         if (!window.isDestroyed()) {
             window.webContents.send('license-activated-from-web', key);
         }
+    }, () => {
+        // A web client asked for the host's camera list
+        if (!window.isDestroyed()) {
+            window.webContents.send('request-video-devices-from-browser');
+        }
     }); // Pass window reference for WebRTC signaling
     windowWebServers.set(windowId, webServer);
 

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './ROIModal.css';
 import type { ROI } from './types';
+import { isElectron } from './platform';
 
 interface ROIModalProps {
     deviceId: string;
@@ -26,6 +27,10 @@ export default function ROIModal({ deviceId, initialROI, onSave, onCancel }: ROI
 
         const setupVideoStream = async () => {
             if (!deviceId) return;
+
+            // Camera capture is host-only — web clients and the native app must
+            // never trigger a permission prompt here.
+            if (!isElectron()) return;
 
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({

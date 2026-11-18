@@ -1,11 +1,11 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerMask, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType, AnimationSettings } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
 import FontPicker from './FontPicker';
-import { useVideoDevices } from './useVideoDevices';
+import type { VideoDevice } from './useVideoDevices';
 import ROIModal from './ROIModal';
 import BoxPreview from './BoxPreview';
 import { createDefaultLayer } from './boxMigration';
@@ -33,6 +33,8 @@ type BoxSettingsModalProps = {
     isDragging?: boolean;
     variableLookup?: { [key: string]: string };
     animationSettings?: AnimationSettings;
+    videoDevices?: VideoDevice[];
+    refreshVideoDevices?: () => void;
 };
 
 // ============================================================================
@@ -576,7 +578,7 @@ const layerDisplayLabel = (layer: BoxLayer): string => {
     }
 };
 
-export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], companionBaseUrl = '', refreshRateMs = 250, isDragging = false, variableLookup, animationSettings }: BoxSettingsModalProps) {
+export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, onDuplicate, connections = [], pages = [], companionBaseUrl = '', refreshRateMs = 250, isDragging = false, variableLookup, animationSettings, videoDevices = [], refreshVideoDevices }: BoxSettingsModalProps) {
     // Helper: Convert internal position (top-left) to display position (based on anchor point)
     const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
         const [x, y] = internalPos;
@@ -643,7 +645,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const imageInputRef = useRef<HTMLInputElement>(null);
     const pendingImageLayerRef = useRef<string | null>(null);
     const [uploadingLayerId, setUploadingLayerId] = useState<string | null>(null);
-    const { devices: videoDevices, refresh: refreshVideoDevices } = useVideoDevices();
 
     const selectedLayer = useMemo(
         () => (activePane === 'box') ? null : (formData.layers || []).find(l => l.id === activePane) || null,
@@ -654,6 +655,21 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const selectedUrlLayer = (selectedLayer && selectedLayer.type === 'url') ? selectedLayer as UrlLayer : null;
     const selectedTextLayer = (selectedLayer && selectedLayer.type === 'text') ? selectedLayer as TextLayer : null;
     const selectedColorLayer = (selectedLayer && selectedLayer.type === 'color') ? selectedLayer as ColorLayer : null;
+
+    // A video layer is the opt-in for camera access. Opening one on the host
+    // requests access once so the device list can populate; Refresh retries.
+    // Web clients never prompt — they ask the host explicitly via Refresh.
+    const videoAccessRequestedRef = useRef(false);
+    const selectedVideoLayerId = selectedVideoLayer?.id ?? null;
+    useEffect(() => {
+        if (!selectedVideoLayerId || videoAccessRequestedRef.current) return;
+        if (isNative() || isBrowserClient()) return;
+
+        videoAccessRequestedRef.current = true;
+        if (videoDevices.length === 0) {
+            refreshVideoDevices?.();
+        }
+    }, [selectedVideoLayerId, videoDevices.length, refreshVideoDevices]);
 
     // Get display position for showing in inputs - reactive to formData changes
     const displayPosition = useMemo(() =>
@@ -1534,9 +1550,8 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         return (
             <>
             {renderLayerHeader(layer)}
-            {videoDevices.length > 0 && (
-                <div className='setting-container'>
-                    <h3 className="section-heading">Video</h3>
+            <div className='setting-container'>
+                <h3 className="section-heading">Video</h3>
                     <div className="setting-row">
                         <div className="setting-label">
                             <span className="setting-header">Video Input</span>
@@ -1570,7 +1585,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        refreshVideoDevices();
+                                        refreshVideoDevices?.();
                                         if (layer.deviceId) {
                                             const currentId = layer.deviceId;
                                             updateLayerField(layer.id, { deviceId: undefined });
@@ -1597,6 +1612,11 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     Refresh
                                 </button>
                             </div>
+                            {videoDevices.length === 0 && (
+                                <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#999' }}>
+                                    No cameras found. Use Refresh to grant camera access.
+                                </p>
+                            )}
                             {layer.deviceId && (
                                 <>
                                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'flex-end' }}>
@@ -1670,7 +1690,6 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         </div>
                     </div>
                 </div>
-            )}
             <div className='setting-container'>
                 <h3 className="section-heading">Mask</h3>
                 <MaskEditor

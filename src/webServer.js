@@ -10,7 +10,7 @@ import { Bonjour } from 'bonjour-service';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 class DashboardWebServer {
-    constructor(onStateChange, electronWindow, onLicenseActivated = null) {
+    constructor(onStateChange, electronWindow, onLicenseActivated = null, onVideoDevicesRequest = null) {
         this.app = express();
         this.server = null;
         this.wss = null;
@@ -21,6 +21,7 @@ class DashboardWebServer {
         this.onStateChange = onStateChange; // Callback for bidirectional sync from full app
         this.electronWindow = electronWindow; // Reference to Electron window for WebRTC signaling
         this.onLicenseActivated = onLicenseActivated; // Callback when web client activates a license
+        this.onVideoDevicesRequest = onVideoDevicesRequest; // Callback when a web client asks for the host's camera list
         this.bonjour = null;
         this.bonjourService = null;
         this.mdnsConflict = false; // Track mDNS hostname conflicts
@@ -244,6 +245,12 @@ class DashboardWebServer {
                     // Handle state changes from full app clients
                     if (isFullAppClient && data.type === 'stateChange' && this.onStateChange) {
                         this.onStateChange(data.data);
+                    }
+
+                    // A full app client wants the host's camera list (the host
+                    // may show the OS permission prompt on this machine).
+                    if (isFullAppClient && data.type === 'request-video-devices' && this.onVideoDevicesRequest) {
+                        this.onVideoDevicesRequest();
                     }
 
                     // Handle WebRTC signaling for video relay

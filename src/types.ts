@@ -202,6 +202,7 @@ export interface CanvasSettings {
     canvasBackgroundImageOpacity: number;
     canvasBackgroundImageSize: 'cover' | 'contain';
     canvasBackgroundImageWidth: number;
+    canvasBackgroundVideoEnabled: boolean;
     canvasBackgroundVideoDeviceId: string;
     canvasBackgroundVideoSize: 'cover' | 'contain';
     canvasBackgroundVideoROI?: { x: number; y: number; width: number; height: number };
