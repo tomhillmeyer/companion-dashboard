@@ -741,6 +741,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
     const [activePane, setActivePane] = useState<'box' | string>('box');
     const [showAddMenu, setShowAddMenu] = useState(false);
     const [showROIModal, setShowROIModal] = useState(false);
+    const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -1713,9 +1714,10 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     value={layer.deviceId || ''}
                                     onChange={(e) => {
                                         const newDeviceId = e.target.value || undefined;
+                                        const device = videoDevices.find(d => d.deviceId === newDeviceId);
                                         updateLayerField(layer.id, {
                                             deviceId: newDeviceId,
-                                            ...(newDeviceId !== layer.deviceId ? { roi: undefined } : {})
+                                            deviceLabel: device?.label,
                                         });
                                     }}
                                     style={{
@@ -1729,6 +1731,11 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     }}
                                 >
                                     <option value="">No Video</option>
+                                    {layer.deviceId && !videoDevices.some(d => d.deviceId === layer.deviceId) && (
+                                        <option value={layer.deviceId}>
+                                            {layer.deviceLabel ? `${layer.deviceLabel} (not connected)` : 'Camera (not connected)'}
+                                        </option>
+                                    )}
                                     {videoDevices.map(device => (
                                         <option key={device.deviceId} value={device.deviceId}>
                                             {device.label}
@@ -1739,13 +1746,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                                     type="button"
                                     onClick={() => {
                                         refreshVideoDevices?.();
-                                        if (layer.deviceId) {
-                                            const currentId = layer.deviceId;
-                                            updateLayerField(layer.id, { deviceId: undefined });
-                                            setTimeout(() => {
-                                                updateLayerField(layer.id, { deviceId: currentId as any });
-                                            }, 100);
-                                        }
+                                        setPreviewRefreshKey(key => key + 1);
                                     }}
                                     style={{
                                         padding: '8px 16px',
@@ -2225,6 +2226,7 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     variableHtmlValues={previewVariables.htmlValues}
                     variableLookup={previewVariables.values}
                     animationSettings={animationSettings}
+                    refreshKey={previewRefreshKey}
                 />
             </div>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>

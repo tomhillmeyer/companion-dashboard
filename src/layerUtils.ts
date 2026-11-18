@@ -1,4 +1,4 @@
-import type { BaseLayer, BoxData, BoxNumberField, LayerMask, LayerNumberField, LayerOverlay, LayerRadius, VariableColor } from './types';
+import type { BaseLayer, BoxData, BoxNumberField, LayerMask, LayerNumberField, LayerOverlay, LayerRadius, ROI, VariableColor } from './types';
 import { evaluateComparison, isVariableRef, resolveOperand } from './variableComparison';
 
 // ----------------------------------------------------------------------------
@@ -66,6 +66,58 @@ export const resolveLayerOffset = (
     offsetX: resolveLayerNumber(layer, 'offsetX', variableValues, layer.offsetX ?? 0),
     offsetY: resolveLayerNumber(layer, 'offsetY', variableValues, layer.offsetY ?? 0),
 });
+
+// Compute the ROI crop box as percentages of the container, preserving aspect
+// ratio for both "contain" and "cover". The caller renders a centered box with
+// these percentages and places the full video inside it scaled by 100/roi.width
+// and 100/roi.height — that keeps the video's own aspect ratio exact.
+export const computeRoiCropLayout = (
+    containerWidth: number,
+    containerHeight: number,
+    videoWidth: number,
+    videoHeight: number,
+    roi: ROI,
+    fit: 'cover' | 'contain'
+): { left: number; top: number; width: number; height: number } => {
+    const cw = Math.max(1, containerWidth);
+    const ch = Math.max(1, containerHeight);
+    const vw = Math.max(1, videoWidth);
+    const vh = Math.max(1, videoHeight);
+    const rw = Math.max(0.01, roi.width);
+    const rh = Math.max(0.01, roi.height);
+
+    const containerAR = cw / ch;
+    const cropAR = (vw * (rw / 100)) / (vh * (rh / 100));
+
+    let width: number;
+    let height: number;
+
+    if (fit === 'contain') {
+        if (cropAR >= containerAR) {
+            // Crop is wider than the container: width is limiting.
+            width = 100;
+            height = (containerAR / cropAR) * 100;
+        } else {
+            // Crop is taller than the container: height is limiting.
+            height = 100;
+            width = (cropAR / containerAR) * 100;
+        }
+    } else if (cropAR >= containerAR) {
+        // Cover: crop is wider, so height must fill and width overflows.
+        height = 100;
+        width = (cropAR / containerAR) * 100;
+    } else {
+        width = 100;
+        height = (containerAR / cropAR) * 100;
+    }
+
+    return {
+        left: (100 - width) / 2,
+        top: (100 - height) / 2,
+        width,
+        height,
+    };
+};
 
 // Convert internal position (top-left) to display position (based on anchor point)
 export const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {

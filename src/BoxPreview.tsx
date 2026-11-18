@@ -1,7 +1,8 @@
 import { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
 import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, LayerOverlay, AnimationSettings } from './types';
 import { isImageUrl } from './boxMigration';
-import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources } from './layerUtils';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources, computeRoiCropLayout } from './layerUtils';
+import { useElementSize } from './useElementSize';
 import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
 import { isElectron, isNative } from './platform';
 import { FaVideoSlash } from 'react-icons/fa6';
@@ -14,6 +15,7 @@ interface BoxPreviewProps {
     variableHtmlValues?: { [key: string]: string };
     variableLookup?: { [key: string]: string };
     animationSettings?: AnimationSettings;
+    refreshKey?: number;
 }
 
 const windowId = (window as any).electronAPI?.windowId || '1';
@@ -248,9 +250,10 @@ const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }
 };
 
 // ---- Video layer -----------------------------------------------------------
-const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: VideoLayer; variableValues?: { [key: string]: string }; borderRadius: number }) => {
+const VideoLayerPreview = ({ layer, variableValues, borderRadius, refreshKey = 0 }: { layer: VideoLayer; variableValues?: { [key: string]: string }; borderRadius: number; refreshKey?: number }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const currentStreamRef = useRef<MediaStream | null>(null);
+    const [layerContainerRef, layerContainerSize] = useElementSize<HTMLDivElement>();
     const [videoError, setVideoError] = useState(false);
     const [videoNaturalSize, setVideoNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
@@ -305,7 +308,7 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
             if (videoRef.current) videoRef.current.srcObject = null;
             if (acquiredStream) acquiredStream.getTracks().forEach(t => t.stop());
         };
-    }, [layer.deviceId]);
+    }, [layer.deviceId, refreshKey]);
 
     // Reassign stream after ROI toggle recreates the <video> element
     useEffect(() => {
@@ -345,6 +348,17 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
     const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
     const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
+    const crop = roi
+        ? computeRoiCropLayout(
+            layerContainerSize.width || 1,
+            layerContainerSize.height || 1,
+            videoNaturalSize?.width ?? 1920,
+            videoNaturalSize?.height ?? 1080,
+            roi,
+            layer.videoSize || 'cover'
+        )
+        : null;
+
     const videoContent = (() => {
         if (videoError) {
             return (
@@ -364,7 +378,7 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
             );
         }
 
-        if (!roi) {
+        if (!roi || !crop) {
             return (
                 <video
                     key={`preview-${layer.id}-no-roi`}
@@ -385,56 +399,45 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
             );
         }
 
-        const videoWidth = videoNaturalSize?.width ?? 1920;
-        const videoHeight = videoNaturalSize?.height ?? 1080;
-        const roiAspectRatio = (videoWidth * roi.width / 100) / (videoHeight * roi.height / 100);
-
         return (
             <div style={{
                 position: 'absolute',
-                top: `${-maskTop / vFactor}%`,
-                left: `${-maskLeft / hFactor}%`,
-                width: `${100 / hFactor}%`,
-                height: `${100 / vFactor}%`,
+                left: `${(crop.left - maskLeft) / hFactor}%`,
+                top: `${(crop.top - maskTop) / vFactor}%`,
+                width: `${crop.width / hFactor}%`,
+                height: `${crop.height / vFactor}%`,
+                overflow: 'hidden',
                 pointerEvents: 'none',
             }}>
-                <div style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    aspectRatio: `${roiAspectRatio}`,
-                    ...(layer.videoSize === 'contain'
-                        ? { maxWidth: '100%', maxHeight: '100%', width: 'auto', height: '100%' }
-                        : { minWidth: '100%', minHeight: '100%' }),
-                    overflow: 'hidden',
-                }}>
-                    <video
-                        key={`preview-${layer.id}-roi`}
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        style={{
-                            position: 'absolute',
-                            width: `${100 / roi.width * 100}%`,
-                            height: `${100 / roi.height * 100}%`,
-                            left: `${-roi.x / roi.width * 100}%`,
-                            top: `${-roi.y / roi.height * 100}%`,
-                            objectFit: 'fill',
-                            pointerEvents: 'none',
-                        }}
-                    />
-                </div>
+                <video
+                    key={`preview-${layer.id}-roi`}
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                        position: 'absolute',
+                        width: `${100 / roi.width * 100}%`,
+                        height: `${100 / roi.height * 100}%`,
+                        left: `${-roi.x / roi.width * 100}%`,
+                        top: `${-roi.y / roi.height * 100}%`,
+                        objectFit: 'fill',
+                        pointerEvents: 'none',
+                    }}
+                />
             </div>
         );
     })();
 
     return (
-        <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            pointerEvents: 'none',
-            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
-        }}>
+        <div
+            ref={layerContainerRef}
+            style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                pointerEvents: 'none',
+                ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+            }}>
             <div style={{
                 position: 'absolute',
                 top: `${mask?.top || 0}%`,
@@ -594,7 +597,7 @@ const OverlayPreview = ({ overlay, layerId, variableValues }: { overlay: LayerOv
 // ============================================================================
 // BoxPreview
 // ============================================================================
-export default function BoxPreview({ boxData, variableValues, variableHtmlValues, variableLookup, animationSettings }: BoxPreviewProps) {
+export default function BoxPreview({ boxData, variableValues, variableHtmlValues, variableLookup, animationSettings, refreshKey = 0 }: BoxPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(() => window.innerWidth * 0.4);
 
@@ -648,7 +651,7 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
                             return <ImageLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} backgroundImageAnimation={layer.backgroundImageAnimation ?? backgroundImageAnimation} animationDuration={layer.animationDuration ?? animationDuration} />;
                         }
                         if (layer.type === 'video') {
-                            return <VideoLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} />;
+                            return <VideoLayerPreview key={layer.id} layer={layer} variableValues={variableValues} borderRadius={borderRadius} refreshKey={refreshKey} />;
                         }
                         if (layer.type === 'url') {
                             return <UrlLayerPreview key={layer.id} layer={layer} variableValues={variableValues} variableLookup={variableLookup} borderRadius={borderRadius} />;

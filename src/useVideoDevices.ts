@@ -4,6 +4,8 @@ import { isElectron } from './platform';
 export interface VideoDevice {
     deviceId: string;
     label: string;
+    // True when the browser did not expose a real label (we synthesized one).
+    labelIsFallback?: boolean;
 }
 
 // Stable empty list so the web-client sync effect can't re-run every render.
@@ -22,7 +24,8 @@ async function enumerateVideoDevices(): Promise<VideoDevice[]> {
         .filter(device => device.kind === 'videoinput' && !!device.deviceId)
         .map((device, index) => ({
             deviceId: device.deviceId,
-            label: device.label || `Camera ${index + 1}`
+            label: device.label || `Camera ${index + 1}`,
+            labelIsFallback: !device.label
         }));
 }
 

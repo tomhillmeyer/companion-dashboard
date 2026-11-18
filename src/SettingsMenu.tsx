@@ -155,6 +155,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundVideoEnabledChange?: (enabled: boolean) => void;
     canvasBackgroundVideoDeviceId?: string;
     onCanvasBackgroundVideoDeviceIdChange?: (deviceId: string) => void;
+    canvasBackgroundVideoDeviceLabel?: string;
+    onCanvasBackgroundVideoDeviceLabelChange?: (label?: string) => void;
     canvasBackgroundVideoSize?: 'cover' | 'contain';
     onCanvasBackgroundVideoSizeChange?: (size: 'cover' | 'contain') => void;
     canvasBackgroundVideoROI?: { x: number; y: number; width: number; height: number };
@@ -211,6 +213,8 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onCanvasBackgroundVideoEnabledChange,
     canvasBackgroundVideoDeviceId,
     onCanvasBackgroundVideoDeviceIdChange,
+    canvasBackgroundVideoDeviceLabel,
+    onCanvasBackgroundVideoDeviceLabelChange,
     canvasBackgroundVideoSize,
     onCanvasBackgroundVideoSizeChange,
     canvasBackgroundVideoROI,
@@ -1805,7 +1809,12 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                             <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
                                                 <select
                                                     value={canvasBackgroundVideoDeviceId || ''}
-                                                    onChange={(e) => onCanvasBackgroundVideoDeviceIdChange?.(e.target.value)}
+                                                    onChange={(e) => {
+                                                        const newDeviceId = e.target.value;
+                                                        const device = videoDevices.find(d => d.deviceId === newDeviceId);
+                                                        onCanvasBackgroundVideoDeviceIdChange?.(newDeviceId);
+                                                        onCanvasBackgroundVideoDeviceLabelChange?.(device?.label);
+                                                    }}
                                                     style={{
                                                         flex: 1,
                                                         height: '40px',
@@ -1820,6 +1829,11 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                                     }}
                                                 >
                                                     <option value="">No Video</option>
+                                                    {canvasBackgroundVideoDeviceId && !videoDevices.some(d => d.deviceId === canvasBackgroundVideoDeviceId) && (
+                                                        <option value={canvasBackgroundVideoDeviceId}>
+                                                            {canvasBackgroundVideoDeviceLabel ? `${canvasBackgroundVideoDeviceLabel} (not connected)` : 'Camera (not connected)'}
+                                                        </option>
+                                                    )}
                                                     {videoDevices.map(device => (
                                                         <option key={device.deviceId} value={device.deviceId}>
                                                             {device.label}

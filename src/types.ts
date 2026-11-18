@@ -124,6 +124,9 @@ export interface ImageLayer extends BaseLayer {
 export interface VideoLayer extends BaseLayer {
     type: 'video';
     deviceId: string;
+    // Camera label captured with the device id; used to re-link when Chromium
+    // rotates device ids between sessions.
+    deviceLabel?: string;
     videoSize: 'cover' | 'contain';
     roi?: { x: number; y: number; width: number; height: number };
     overlay: LayerOverlay;
@@ -227,6 +230,7 @@ export interface CanvasSettings {
     canvasBackgroundImageWidth: number;
     canvasBackgroundVideoEnabled: boolean;
     canvasBackgroundVideoDeviceId: string;
+    canvasBackgroundVideoDeviceLabel?: string;
     canvasBackgroundVideoSize: 'cover' | 'contain';
     canvasBackgroundVideoROI?: { x: number; y: number; width: number; height: number };
     refreshRateMs: number;

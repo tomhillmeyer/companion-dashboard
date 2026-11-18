@@ -94,10 +94,18 @@ export class VideoRelayManager {
             return;
         }
 
-        // Check if already broadcasting this device
-        if (this.localStreams.has(deviceId)) {
-            console.log(`Already broadcasting device: ${deviceId}, reusing existing stream`);
-            return;
+        // Check if already broadcasting this device. A cached stream whose
+        // tracks have ended (camera unplugged/slept) must be replaced.
+        const existing = this.localStreams.get(deviceId);
+        if (existing) {
+            const hasLiveVideo = existing.getVideoTracks().some(track => track.readyState === 'live');
+            if (hasLiveVideo) {
+                console.log(`Already broadcasting device: ${deviceId}, reusing existing stream`);
+                return;
+            }
+            existing.getTracks().forEach(track => track.stop());
+            this.localStreams.delete(deviceId);
+            console.log(`Discarded ended stream for device: ${deviceId}`);
         }
 
         console.log(`Starting to broadcast new device: ${deviceId}`);
@@ -105,6 +113,16 @@ export class VideoRelayManager {
             // Capture video from device
             const stream = await this.captureVideoDevice(deviceId);
             this.localStreams.set(deviceId, stream);
+
+            // Drop the cached stream when the camera goes away so a later
+            // startBroadcasting can acquire it again.
+            stream.getVideoTracks().forEach(track => {
+                track.addEventListener('ended', () => {
+                    if (this.localStreams.get(deviceId) === stream) {
+                        this.localStreams.delete(deviceId);
+                    }
+                });
+            });
 
             console.log(`✓ Successfully started broadcasting video device: ${deviceId}`);
         } catch (error) {

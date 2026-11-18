@@ -14,7 +14,7 @@ import { useVideoDevices } from './useVideoDevices';
 import type { VideoDevice } from './useVideoDevices';
 import { TitleBar } from './TitleBar.tsx';
 import { Capacitor } from '@capacitor/core';
-import { isWebClient as isBrowserClient, isNative } from './platform';
+import { isWebClient as isBrowserClient, isNative, isElectron as isElectronPlatform } from './platform';
 import { VideoRelayManager } from './VideoRelayManager';
 import type { BoxData, CompanionConnection, VariableColor, PageData, AnimationSettings, AnimationType } from './types';
 import Moveable from 'react-moveable';
@@ -22,7 +22,7 @@ import { evaluateComparison, isVariableRef, resolveOperand } from './variableCom
 import { parseVariables } from './useVariableFetcher';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
-import { getDisplayPosition, getInternalPosition } from './layerUtils';
+import { getDisplayPosition, getInternalPosition, computeRoiCropLayout } from './layerUtils';
 import { collectNumberSources } from './boxSources';
 import { pressCompanionButton } from './companionButton';
 
@@ -265,6 +265,7 @@ export default function App() {
             }
             if (canvasSettings.canvasBackgroundVideoDeviceId !== undefined) {
                 setCanvasBackgroundVideoDeviceId(canvasSettings.canvasBackgroundVideoDeviceId);
+                setCanvasBackgroundVideoDeviceLabel(canvasSettings.canvasBackgroundVideoDeviceLabel || undefined);
             }
             if (canvasSettings.canvasBackgroundVideoSize !== undefined) {
                 setCanvasBackgroundVideoSize(canvasSettings.canvasBackgroundVideoSize);
@@ -716,6 +717,23 @@ export default function App() {
         }
         return '';
     });
+    const [canvasBackgroundVideoDeviceLabel, setCanvasBackgroundVideoDeviceLabel] = useState<string | undefined>(() => {
+        const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return parsed.canvasBackgroundVideoDeviceLabel || undefined;
+            } catch (error) {
+                return undefined;
+            }
+        }
+        return undefined;
+    });
+    const [canvasVideoNaturalSize, setCanvasVideoNaturalSize] = useState<{ width: number; height: number } | null>(null);
+    const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>(() => ({
+        width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+        height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+    }));
     const [canvasBackgroundVideoSize, setCanvasBackgroundVideoSize] = useState<'cover' | 'contain'>(() => {
         const saved = localStorage.getItem(CANVAS_STORAGE_KEY);
         if (saved) {
@@ -1059,6 +1077,8 @@ export default function App() {
 
     const settingsMenuRef = useRef<{ toggle: () => void }>(null);
     const canvasVideoRef = useRef<HTMLVideoElement>(null);
+    const canvasStreamRef = useRef<MediaStream | null>(null);
+    const canvasRecoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Save boxes to localStorage whenever boxes state changes
     useEffect(() => {
@@ -1086,12 +1106,13 @@ export default function App() {
             canvasBackgroundImageWidth,
             canvasBackgroundVideoEnabled,
             canvasBackgroundVideoDeviceId,
+            canvasBackgroundVideoDeviceLabel,
             canvasBackgroundVideoSize,
             canvasBackgroundVideoROI,
             refreshRateMs
         };
         localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasSettings));
-    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs]);
+    }, [canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoDeviceLabel, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs]);
 
     // Save animation settings to localStorage whenever they change
     useEffect(() => {
@@ -1158,7 +1179,11 @@ export default function App() {
 
         console.log('[Canvas Video Effect] Running - isWebClient:', isWebClient, 'deviceId:', canvasBackgroundVideoDeviceId, 'videoRelayManagerReady:', videoRelayManagerReady);
 
-        const setupVideoStream = async () => {
+        let cancelled = false;
+
+        const setupVideoStream = async (acquireRef = true) => {
+            if (cancelled) return;
+
             // If no device ID is set, clean up and stop here
             if (!canvasBackgroundVideoDeviceId) {
                 console.log('[Canvas Video Effect] No device ID set, skipping');
@@ -1183,6 +1208,7 @@ export default function App() {
                 console.log(`[Web Client] Requesting canvas video stream for device: ${canvasBackgroundVideoDeviceId}`);
                 videoRelayManagerRef.current.requestVideoStream(canvasBackgroundVideoDeviceId, canvasStreamId, (stream) => {
                     console.log(`[Web Client] Received canvas video stream for device: ${canvasBackgroundVideoDeviceId}`);
+                    canvasStreamRef.current = stream;
                     if (canvasVideoRef.current) {
                         canvasVideoRef.current.srcObject = stream;
                     }
@@ -1194,28 +1220,64 @@ export default function App() {
             if (videoRelayManagerRef.current) {
                 console.log(`[Electron Host] Requesting canvas stream for device: ${canvasBackgroundVideoDeviceId}`);
 
-                // Increment reference count for this device
-                videoRelayManagerRef.current.incrementDeviceRef(canvasBackgroundVideoDeviceId);
+                // Increment reference count for this device (initial acquisition only)
+                if (acquireRef) {
+                    videoRelayManagerRef.current.incrementDeviceRef(canvasBackgroundVideoDeviceId);
+                }
 
                 // Start broadcasting (will only capture once if not already broadcasting)
-                await videoRelayManagerRef.current.startBroadcasting(canvasBackgroundVideoDeviceId);
+                try {
+                    await videoRelayManagerRef.current.startBroadcasting(canvasBackgroundVideoDeviceId);
+                } catch (error) {
+                    console.error('[Electron Host] Failed to start canvas video:', error);
+                    return;
+                }
 
                 // Get the stream from VideoRelayManager
                 const stream = videoRelayManagerRef.current.getLocalStream(canvasBackgroundVideoDeviceId);
 
                 if (stream && canvasVideoRef.current) {
+                    canvasStreamRef.current = stream;
                     canvasVideoRef.current.srcObject = stream;
                     console.log(`[Electron Host] Set canvas video stream`);
+
+                    // Retry once if the camera drops out (unplug/sleep).
+                    stream.getVideoTracks().forEach(track => {
+                        track.addEventListener('ended', () => {
+                            if (cancelled || canvasRecoveryTimerRef.current) return;
+                            canvasRecoveryTimerRef.current = setTimeout(() => {
+                                canvasRecoveryTimerRef.current = null;
+                                void setupVideoStream(false);
+                            }, 1000);
+                        }, { once: true });
+                    });
                 } else {
                     console.error(`[Electron Host] Failed to get stream for canvas device: ${canvasBackgroundVideoDeviceId}`);
                 }
             }
         };
 
-        setupVideoStream();
+        setupVideoStream(true);
+
+        // Reacquire when the device list changes (camera plugged back in, etc.).
+        const handleCanvasDeviceChange = () => {
+            void setupVideoStream(false);
+        };
+        if (!isWebClient && navigator.mediaDevices) {
+            navigator.mediaDevices.addEventListener('devicechange', handleCanvasDeviceChange);
+        }
 
         // Cleanup function
         return () => {
+            cancelled = true;
+            if (canvasRecoveryTimerRef.current) {
+                clearTimeout(canvasRecoveryTimerRef.current);
+                canvasRecoveryTimerRef.current = null;
+            }
+            if (!isWebClient && navigator.mediaDevices) {
+                navigator.mediaDevices.removeEventListener('devicechange', handleCanvasDeviceChange);
+            }
+            canvasStreamRef.current = null;
             // Clear video element
             if (canvasVideoRef.current) {
                 canvasVideoRef.current.srcObject = null;
@@ -1234,6 +1296,13 @@ export default function App() {
         };
     }, [canvasBackgroundVideoDeviceId, canvasBackgroundVideoEnabled, videoRelayManagerReady]);
 
+    // Changing the ROI recreates the canvas <video>; reattach the stream.
+    useEffect(() => {
+        if (canvasVideoRef.current && canvasStreamRef.current && !canvasVideoRef.current.srcObject) {
+            canvasVideoRef.current.srcObject = canvasStreamRef.current;
+        }
+    }, [canvasBackgroundVideoROI]);
+
     // Update scale factor when window resizes or settings change
     useEffect(() => {
         const updateScale = () => {
@@ -1248,6 +1317,90 @@ export default function App() {
         window.addEventListener('resize', updateScale);
         return () => window.removeEventListener('resize', updateScale);
     }, [effectiveScaleEnabled, effectiveDesignWidth]);
+
+    // Keep canvas video crop math in sync with the viewport size.
+    useEffect(() => {
+        const updateViewport = () => {
+            setViewportSize({ width: window.innerWidth, height: window.innerHeight });
+        };
+        updateViewport();
+        window.addEventListener('resize', updateViewport);
+        return () => window.removeEventListener('resize', updateViewport);
+    }, []);
+
+    // Forget the previous camera's dimensions when the canvas device changes.
+    useEffect(() => {
+        setCanvasVideoNaturalSize(null);
+    }, [canvasBackgroundVideoDeviceId]);
+
+    // Chromium device ids can change between sessions. On the host, re-link a
+    // saved camera by its unique label while keeping the ROI intact.
+    useEffect(() => {
+        if (!isElectronPlatform() || videoDevices.length === 0) return;
+
+        const hasLayerWork = boxes.some(box => (box.layers || []).some(layer => {
+            if (layer.type !== 'video' || !layer.deviceId) return false;
+            if (!videoDevices.some(device => device.deviceId === layer.deviceId)) {
+                return !!layer.deviceLabel;
+            }
+            // Backfill a label for ids saved before labels existed.
+            return !layer.deviceLabel;
+        }));
+        const canvasMatch = videoDevices.find(device => device.deviceId === canvasBackgroundVideoDeviceId);
+        const hasCanvasWork = !!canvasBackgroundVideoDeviceId && (
+            (!!canvasBackgroundVideoDeviceLabel &&
+                !videoDevices.some(device => device.deviceId === canvasBackgroundVideoDeviceId)) ||
+            (!canvasBackgroundVideoDeviceLabel && !!canvasMatch)
+        );
+
+        if (!hasLayerWork && !hasCanvasWork) return;
+
+        if (hasLayerWork) {
+            setBoxes(prev => {
+                let anyChanged = false;
+                const next = prev.map(box => {
+                    let boxChanged = false;
+                    const layers = (box.layers || []).map(layer => {
+                        if (layer.type !== 'video' || !layer.deviceId) return layer;
+                        const current = videoDevices.find(device => device.deviceId === layer.deviceId);
+
+                        if (current) {
+                            if (layer.deviceLabel) return layer;
+                            boxChanged = true;
+                            return { ...layer, deviceLabel: current.label };
+                        }
+
+                        if (!layer.deviceLabel) return layer;
+                        const matches = videoDevices.filter(device =>
+                            !device.labelIsFallback && device.label === layer.deviceLabel
+                        );
+                        if (matches.length !== 1) return layer;
+
+                        boxChanged = true;
+                        return { ...layer, deviceId: matches[0].deviceId };
+                    });
+
+                    if (!boxChanged) return box;
+                    anyChanged = true;
+                    return { ...box, layers } as BoxData;
+                });
+                return anyChanged ? next : prev;
+            });
+        }
+
+        if (hasCanvasWork) {
+            if (canvasMatch && !canvasBackgroundVideoDeviceLabel) {
+                setCanvasBackgroundVideoDeviceLabel(canvasMatch.label);
+            } else {
+                const matches = videoDevices.filter(device =>
+                    !device.labelIsFallback && device.label === canvasBackgroundVideoDeviceLabel
+                );
+                if (matches.length === 1) {
+                    setCanvasBackgroundVideoDeviceId(matches[0].deviceId);
+                }
+            }
+        }
+    }, [boxes, videoDevices, canvasBackgroundVideoDeviceId, canvasBackgroundVideoDeviceLabel]);
 
     // Wrapper for setBoxesLocked that prevents changes in display mode
     const handleBoxesLockedChange = (locked: boolean) => {
@@ -1411,6 +1564,7 @@ export default function App() {
                     canvasBackgroundImageWidth,
                     canvasBackgroundVideoEnabled,
                     canvasBackgroundVideoDeviceId,
+                    canvasBackgroundVideoDeviceLabel,
                     canvasBackgroundVideoSize,
                     canvasBackgroundVideoROI,
                     refreshRateMs
@@ -1477,7 +1631,7 @@ export default function App() {
         };
 
         updateWebServer();
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, videoDevices, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoDeviceLabel, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, videoDevices, fontFamily, scaleEnabled, designWidth, mainConnectionValid, additionalConnectionValidities, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isLicensed]);
 
     // WebSocket sync for full app server (when running in browser)
     useEffect(() => {
@@ -1526,7 +1680,10 @@ export default function App() {
                     if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                     if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
                     if (cs.canvasBackgroundVideoEnabled !== undefined) setCanvasBackgroundVideoEnabled(!!cs.canvasBackgroundVideoEnabled);
-                    if (cs.canvasBackgroundVideoDeviceId !== undefined) setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
+                    if (cs.canvasBackgroundVideoDeviceId !== undefined) {
+                        setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
+                        setCanvasBackgroundVideoDeviceLabel(cs.canvasBackgroundVideoDeviceLabel || undefined);
+                    }
                     if (cs.canvasBackgroundVideoSize !== undefined) setCanvasBackgroundVideoSize(cs.canvasBackgroundVideoSize);
                     if (cs.canvasBackgroundVideoROI !== undefined) setCanvasBackgroundVideoROI(cs.canvasBackgroundVideoROI);
                     if (cs.refreshRateMs !== undefined) setRefreshRateMs(cs.refreshRateMs);
@@ -1661,7 +1818,10 @@ export default function App() {
                                 if (cs.canvasBackgroundImageSize !== undefined) setCanvasBackgroundImageSize(cs.canvasBackgroundImageSize);
                                 if (cs.canvasBackgroundImageWidth !== undefined) setCanvasBackgroundImageWidth(cs.canvasBackgroundImageWidth);
                                 if (cs.canvasBackgroundVideoEnabled !== undefined) setCanvasBackgroundVideoEnabled(!!cs.canvasBackgroundVideoEnabled);
-                                if (cs.canvasBackgroundVideoDeviceId !== undefined) setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
+                                if (cs.canvasBackgroundVideoDeviceId !== undefined) {
+                        setCanvasBackgroundVideoDeviceId(cs.canvasBackgroundVideoDeviceId);
+                        setCanvasBackgroundVideoDeviceLabel(cs.canvasBackgroundVideoDeviceLabel || undefined);
+                    }
                                 if (cs.canvasBackgroundVideoSize !== undefined) setCanvasBackgroundVideoSize(cs.canvasBackgroundVideoSize);
                                 if (cs.canvasBackgroundVideoROI !== undefined) setCanvasBackgroundVideoROI(cs.canvasBackgroundVideoROI);
                                 if (cs.refreshRateMs !== undefined) setRefreshRateMs(cs.refreshRateMs);
@@ -1878,6 +2038,7 @@ export default function App() {
                         canvasBackgroundImageWidth,
                         canvasBackgroundVideoEnabled,
                         canvasBackgroundVideoDeviceId,
+                        canvasBackgroundVideoDeviceLabel,
                         canvasBackgroundVideoSize,
                         canvasBackgroundVideoROI,
                         refreshRateMs
@@ -1901,7 +2062,7 @@ export default function App() {
                 }));
             }
         }
-    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isDragging]);
+    }, [boxes, pages, canvasBackgroundColor, canvasBackgroundColorText, canvasBackgroundVariableColors, canvasBackgroundImageOpacity, canvasBackgroundImageSize, canvasBackgroundImageWidth, canvasBackgroundVideoEnabled, canvasBackgroundVideoDeviceId, canvasBackgroundVideoDeviceLabel, canvasBackgroundVideoSize, canvasBackgroundVideoROI, refreshRateMs, connections, companionBaseUrl, fontFamily, scaleEnabled, designWidth, textAnimation, backgroundImageAnimation, colorAnimation, animationDuration, isDragging]);
 
     // Canvas color resolution function (same as Box component)
     const resolveCanvasColor = (variableColors: VariableColor[], colorText: string, fallbackColor: string) => {
@@ -2339,6 +2500,13 @@ export default function App() {
             {!isNative() && canvasBackgroundVideoEnabled && canvasBackgroundVideoDeviceId && (() => {
                 const roi = canvasBackgroundVideoROI;
 
+                const handleLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+                    const video = event.currentTarget;
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                        setCanvasVideoNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+                    }
+                };
+
                 if (!roi) {
                     // No ROI - simple case, use objectFit directly
                     return (
@@ -2347,6 +2515,7 @@ export default function App() {
                             autoPlay
                             playsInline
                             muted
+                            onLoadedMetadata={handleLoadedMetadata}
                             style={{
                                 position: 'fixed',
                                 top: 0,
@@ -2361,21 +2530,14 @@ export default function App() {
                     );
                 }
 
-                // With ROI:
-                // Step 1: Create a "cropped video" container with ROI aspect ratio
-                // Step 2: Position/scale the actual video to show only the ROI region
-                // Step 3: Apply cover/contain to the cropped container
-
-                // Get video dimensions to calculate actual ROI aspect ratio
-                const videoWidth = canvasVideoRef.current?.videoWidth || 1920;
-                const videoHeight = canvasVideoRef.current?.videoHeight || 1080;
-
-                // Calculate actual pixel dimensions of ROI
-                const roiPixelWidth = videoWidth * (roi.width / 100);
-                const roiPixelHeight = videoHeight * (roi.height / 100);
-
-                // Calculate actual aspect ratio of the ROI region
-                const roiAspectRatio = roiPixelWidth / roiPixelHeight;
+                const crop = computeRoiCropLayout(
+                    viewportSize.width,
+                    viewportSize.height,
+                    canvasVideoNaturalSize?.width ?? 1920,
+                    canvasVideoNaturalSize?.height ?? 1080,
+                    roi,
+                    canvasBackgroundVideoSize || 'cover'
+                );
 
                 return (
                     <div style={{
@@ -2387,38 +2549,25 @@ export default function App() {
                         pointerEvents: 'none',
                         zIndex: 0
                     }}>
-                        {/* Container with ROI aspect ratio that applies cover/contain */}
                         <div style={{
                             position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            aspectRatio: `${roiAspectRatio}`,
-                            ...(canvasBackgroundVideoSize === 'contain' ? {
-                                // Contain: fit inside box - let aspect ratio determine actual size
-                                maxWidth: '100%',
-                                maxHeight: '100%',
-                                width: 'auto',
-                                height: '100%'
-                            } : {
-                                // Cover: fill entire box
-                                minWidth: '100%',
-                                minHeight: '100%'
-                            }),
-                            overflow: 'hidden'
+                            left: `${crop.left}%`,
+                            top: `${crop.top}%`,
+                            width: `${crop.width}%`,
+                            height: `${crop.height}%`,
+                            overflow: 'hidden',
+                            pointerEvents: 'none'
                         }}>
-                            {/* The actual video, scaled to fit ROI dimensions */}
                             <video
                                 ref={canvasVideoRef}
                                 autoPlay
                                 playsInline
                                 muted
+                                onLoadedMetadata={handleLoadedMetadata}
                                 style={{
                                     position: 'absolute',
-                                    // Scale video so ROI region fills container
                                     width: `${100 / roi.width * 100}%`,
                                     height: `${100 / roi.height * 100}%`,
-                                    // Position video so ROI region is at top-left of container
                                     left: `${-roi.x / roi.width * 100}%`,
                                     top: `${-roi.y / roi.height * 100}%`,
                                     objectFit: 'fill',
@@ -2521,6 +2670,8 @@ export default function App() {
                 onCanvasBackgroundVideoEnabledChange={setCanvasBackgroundVideoEnabled}
                 canvasBackgroundVideoDeviceId={canvasBackgroundVideoDeviceId}
                 onCanvasBackgroundVideoDeviceIdChange={setCanvasBackgroundVideoDeviceId}
+                canvasBackgroundVideoDeviceLabel={canvasBackgroundVideoDeviceLabel}
+                onCanvasBackgroundVideoDeviceLabelChange={setCanvasBackgroundVideoDeviceLabel}
                 canvasBackgroundVideoSize={canvasBackgroundVideoSize}
                 onCanvasBackgroundVideoSizeChange={setCanvasBackgroundVideoSize}
                 canvasBackgroundVideoROI={canvasBackgroundVideoROI}

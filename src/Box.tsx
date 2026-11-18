@@ -12,7 +12,8 @@ import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
 import { isImageUrl, duplicateLayers } from './boxMigration';
 import { pressCompanionButton } from './companionButton';
-import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources } from './layerUtils';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources, computeRoiCropLayout } from './layerUtils';
+import { useElementSize } from './useElementSize';
 import { buildBoxSources } from './boxSources';
 import { isWebClient as isBrowserClient, isNative } from './platform';
 import type { VideoDevice } from './useVideoDevices';
@@ -287,6 +288,9 @@ const VideoLayerView = React.memo(({
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const currentStreamRef = useRef<MediaStream | null>(null);
+    const recoveryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [layerContainerRef, layerContainerSize] = useElementSize<HTMLDivElement>();
+    const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
     // Unique stream ID per layer so multiple video layers in one box don't collide
     const streamId = `${boxId}_${layer.id}`;
@@ -311,7 +315,11 @@ const VideoLayerView = React.memo(({
         // Native app: video is not supported, silently skip
         if (isNative()) return;
 
-        const setupVideoStream = async () => {
+        let cancelled = false;
+
+        const setupVideoStream = async (acquireRef = false) => {
+            if (cancelled) return;
+
             // If no device ID is set, clean up and stop here
             if (!currentDeviceId) {
                 if (videoRef.current) {
@@ -345,9 +353,16 @@ const VideoLayerView = React.memo(({
             if (videoRelayManager) {
                 console.log(`[Electron Host] Requesting stream for device: ${currentDeviceId}, layer: ${layer.id}, box: ${boxId}`);
 
-                videoRelayManager.incrementDeviceRef(currentDeviceId);
+                if (acquireRef) {
+                    videoRelayManager.incrementDeviceRef(currentDeviceId);
+                }
 
-                await videoRelayManager.startBroadcasting(currentDeviceId);
+                try {
+                    await videoRelayManager.startBroadcasting(currentDeviceId);
+                } catch (error) {
+                    console.error(`[Electron Host] Failed to start broadcasting ${currentDeviceId}:`, error);
+                    return;
+                }
 
                 const stream = videoRelayManager.getLocalStream(currentDeviceId);
 
@@ -355,16 +370,43 @@ const VideoLayerView = React.memo(({
                     currentStreamRef.current = stream;
                     videoRef.current.srcObject = stream;
                     console.log(`[Electron Host] Set video stream for box: ${boxId}, layer: ${layer.id}`);
+
+                    // If the camera drops, retry once it may be available again.
+                    stream.getVideoTracks().forEach(track => {
+                        track.addEventListener('ended', () => {
+                            if (cancelled || recoveryTimerRef.current) return;
+                            recoveryTimerRef.current = setTimeout(() => {
+                                recoveryTimerRef.current = null;
+                                void setupVideoStream(false);
+                            }, 1000);
+                        }, { once: true });
+                    });
                 } else {
                     console.error(`[Electron Host] Failed to get stream for device: ${currentDeviceId}`);
                 }
             }
         };
 
-        setupVideoStream();
+        setupVideoStream(true);
+
+        // Reacquire when the device list changes (camera plugged back in, etc.).
+        const handleDeviceChange = () => {
+            void setupVideoStream(false);
+        };
+        if (!isWebClient && navigator.mediaDevices) {
+            navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+        }
 
         // Cleanup - uses captured currentDeviceId
         return () => {
+            cancelled = true;
+            if (recoveryTimerRef.current) {
+                clearTimeout(recoveryTimerRef.current);
+                recoveryTimerRef.current = null;
+            }
+            if (!isWebClient && navigator.mediaDevices) {
+                navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+            }
             currentStreamRef.current = null;
             if (videoRef.current) {
                 videoRef.current.srcObject = null;
@@ -390,6 +432,11 @@ const VideoLayerView = React.memo(({
         }
     }, [layer.roi, layer.deviceId]);
 
+    // Forget the previous camera's dimensions when the device changes.
+    useEffect(() => {
+        setNaturalSize(null);
+    }, [layer.deviceId]);
+
     // Native app: video layers are not supported, silently skip rendering
     if (isNative()) return null;
 
@@ -397,8 +444,26 @@ const VideoLayerView = React.memo(({
 
     const roi = layer.roi;
 
+    const handleLoadedMetadata = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+        const video = event.currentTarget;
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+            setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+        }
+    };
+
+    const crop = roi
+        ? computeRoiCropLayout(
+            layerContainerSize.width || 1,
+            layerContainerSize.height || 1,
+            naturalSize?.width ?? 1920,
+            naturalSize?.height ?? 1080,
+            roi,
+            layer.videoSize || 'cover'
+        )
+        : null;
+
     const videoContent = (() => {
-        if (!roi) {
+        if (!roi || !crop) {
             // No ROI - simple case, use objectFit directly
             return (
                 <video
@@ -407,6 +472,7 @@ const VideoLayerView = React.memo(({
                     autoPlay
                     playsInline
                     muted
+                    onLoadedMetadata={handleLoadedMetadata}
                     style={{
                         position: 'absolute',
                         top: `${-maskTop / vFactor}%`,
@@ -421,69 +487,48 @@ const VideoLayerView = React.memo(({
             );
         }
 
-        // With ROI: create a "cropped container" with the ROI's aspect ratio, then scale
-        // the actual video so only the ROI region shows.
-        const videoWidth = videoRef.current?.videoWidth || 1920;
-        const videoHeight = videoRef.current?.videoHeight || 1080;
-
-        const roiPixelWidth = videoWidth * (roi.width / 100);
-        const roiPixelHeight = videoHeight * (roi.height / 100);
-        const roiAspectRatio = roiPixelWidth / roiPixelHeight;
-
+        // With ROI: place an aspect-correct crop box inside the masked window,
+        // then scale the full video so only the ROI region shows.
         return (
             <div style={{
                 position: 'absolute',
-                top: `${-maskTop / vFactor}%`,
-                left: `${-maskLeft / hFactor}%`,
-                width: `${100 / hFactor}%`,
-                height: `${100 / vFactor}%`,
+                left: `${(crop.left - maskLeft) / hFactor}%`,
+                top: `${(crop.top - maskTop) / vFactor}%`,
+                width: `${crop.width / hFactor}%`,
+                height: `${crop.height / vFactor}%`,
+                overflow: 'hidden',
                 pointerEvents: 'none',
-                zIndex: 0
+                zIndex: 0,
             }}>
-                <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    aspectRatio: `${roiAspectRatio}`,
-                    ...(layer.videoSize === 'contain' ? {
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        width: 'auto',
-                        height: '100%'
-                    } : {
-                        minWidth: '100%',
-                        minHeight: '100%'
-                    }),
-                    overflow: 'hidden',
-                }}>
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        style={{
-                            position: 'absolute',
-                            width: `${100 / roi.width * 100}%`,
-                            height: `${100 / roi.height * 100}%`,
-                            left: `${-roi.x / roi.width * 100}%`,
-                            top: `${-roi.y / roi.height * 100}%`,
-                            objectFit: 'fill',
-                            pointerEvents: 'none'
-                        }}
-                    />
-                </div>
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    onLoadedMetadata={handleLoadedMetadata}
+                    style={{
+                        position: 'absolute',
+                        width: `${100 / roi.width * 100}%`,
+                        height: `${100 / roi.height * 100}%`,
+                        left: `${-roi.x / roi.width * 100}%`,
+                        top: `${-roi.y / roi.height * 100}%`,
+                        objectFit: 'fill',
+                        pointerEvents: 'none'
+                    }}
+                />
             </div>
         );
     })();
 
     return (
-        <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            pointerEvents: 'none',
-            ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
-        }}>
+        <div
+            ref={layerContainerRef}
+            style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                pointerEvents: 'none',
+                ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
+            }}>
             <div style={{
                 position: 'absolute',
                 top: `${mask?.top || 0}%`,
