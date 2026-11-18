@@ -1,5 +1,71 @@
-import type { BoxData, LayerOverlay, LayerRadius, VariableColor } from './types';
+import type { BaseLayer, BoxData, BoxNumberField, LayerMask, LayerNumberField, LayerOverlay, LayerRadius, VariableColor } from './types';
 import { evaluateComparison, isVariableRef, resolveOperand } from './variableComparison';
+
+// ----------------------------------------------------------------------------
+// Variable-driven numeric fields
+// ----------------------------------------------------------------------------
+
+// Resolve a numeric field that may carry a "$(connection:variable)" override.
+// The fetcher's resolved value map is keyed by the field's namespaced source key
+// (e.g. "${layerId}_maskTop" or "box_frameWidth"). Unresolved/non-numeric values
+// fall back to the stored number; the result is always clamped.
+export const resolveNumberSource = (
+    source: string | undefined,
+    fallback: number,
+    variableValues: { [key: string]: string } | undefined,
+    sourceKey: string,
+    min = -Infinity,
+    max = Infinity
+): number => {
+    let value = fallback;
+
+    if (source) {
+        const resolved = variableValues?.[sourceKey];
+        const raw = resolved !== undefined && resolved !== '' ? resolved : source;
+        const parsed = parseFloat(raw);
+        if (!isNaN(parsed)) value = parsed;
+    }
+
+    return Math.min(max, Math.max(min, value));
+};
+
+export const resolveLayerNumber = (
+    layer: BaseLayer,
+    field: LayerNumberField,
+    variableValues: { [key: string]: string } | undefined,
+    fallback: number,
+    min = -Infinity,
+    max = Infinity
+): number => resolveNumberSource(layer.numberSources?.[field], fallback, variableValues, `${layer.id}_${field}`, min, max);
+
+export const resolveBoxNumber = (
+    boxData: BoxData,
+    field: BoxNumberField,
+    variableValues: { [key: string]: string } | undefined,
+    fallback: number,
+    min = -Infinity,
+    max = Infinity
+): number => resolveNumberSource(boxData.numberSources?.[field], fallback, variableValues, `box_${field}`, min, max);
+
+// Resolved (0-100) mask percentages for a maskable layer.
+export const resolveLayerMask = (
+    layer: BaseLayer & { mask?: LayerMask },
+    variableValues: { [key: string]: string } | undefined
+): { top: number; right: number; bottom: number; left: number } => ({
+    top: resolveLayerNumber(layer, 'maskTop', variableValues, layer.mask?.top ?? 0, 0, 100),
+    right: resolveLayerNumber(layer, 'maskRight', variableValues, layer.mask?.right ?? 0, 0, 100),
+    bottom: resolveLayerNumber(layer, 'maskBottom', variableValues, layer.mask?.bottom ?? 0, 0, 100),
+    left: resolveLayerNumber(layer, 'maskLeft', variableValues, layer.mask?.left ?? 0, 0, 100),
+});
+
+// Resolved (px) offsets for any layer.
+export const resolveLayerOffset = (
+    layer: BaseLayer,
+    variableValues: { [key: string]: string } | undefined
+): { offsetX: number; offsetY: number } => ({
+    offsetX: resolveLayerNumber(layer, 'offsetX', variableValues, layer.offsetX ?? 0),
+    offsetY: resolveLayerNumber(layer, 'offsetY', variableValues, layer.offsetY ?? 0),
+});
 
 // Convert internal position (top-left) to display position (based on anchor point)
 export const getDisplayPosition = (internalPos: [number, number], width: number, height: number, anchor: BoxData['anchorPoint']): [number, number] => {
@@ -27,16 +93,27 @@ export const getInternalPosition = (displayPos: [number, number], width: number,
     }
 };
 
-// Resolve a layer's per-corner radius; unset corners fall back to the box radius.
+// Resolve a layer's per-corner radius (px). Unset corners fall back to the box
+// radius; any corner may be overridden by a variable source.
 export const resolveLayerRadius = (
-    radius: LayerRadius | undefined,
-    boxRadius: number
+    layer: BaseLayer & { radius?: LayerRadius },
+    boxRadius: number,
+    variableValues?: { [key: string]: string }
 ): LayerRadius => ({
-    topLeft: radius?.topLeft ?? boxRadius,
-    topRight: radius?.topRight ?? boxRadius,
-    bottomLeft: radius?.bottomLeft ?? boxRadius,
-    bottomRight: radius?.bottomRight ?? boxRadius,
+    topLeft: resolveLayerNumber(layer, 'radiusTopLeft', variableValues, layer.radius?.topLeft ?? boxRadius, 0, 500),
+    topRight: resolveLayerNumber(layer, 'radiusTopRight', variableValues, layer.radius?.topRight ?? boxRadius, 0, 500),
+    bottomLeft: resolveLayerNumber(layer, 'radiusBottomLeft', variableValues, layer.radius?.bottomLeft ?? boxRadius, 0, 500),
+    bottomRight: resolveLayerNumber(layer, 'radiusBottomRight', variableValues, layer.radius?.bottomRight ?? boxRadius, 0, 500),
 });
+
+// True when any numeric field is variable-driven (used for clipping decisions).
+export const hasRadiusSources = (layer: BaseLayer): boolean => {
+    const sources = layer.numberSources;
+    return !!sources && !!(
+        sources.radiusTopLeft || sources.radiusTopRight ||
+        sources.radiusBottomLeft || sources.radiusBottomRight
+    );
+};
 
 // Resolve a color with priority: variable colors > colorText (fetched) > fallback.
 // sourceKey maps to the fetcher's resolved value for colorText (namespaced per layer).

@@ -51,11 +51,27 @@ export interface VariableOverlaySize {
 
 export type LayerType = 'video' | 'color' | 'image' | 'text' | 'url';
 
+// Numeric layer fields that can be driven by a Companion variable. The stored
+// number remains the fallback when the variable is missing/unresolved.
+export type LayerNumberField =
+    | 'offsetX' | 'offsetY'
+    | 'maskTop' | 'maskRight' | 'maskBottom' | 'maskLeft'
+    | 'radiusTopLeft' | 'radiusTopRight' | 'radiusBottomLeft' | 'radiusBottomRight'
+    | 'fontSize' | 'maxWidth' | 'maxHeight'
+    | 'imageOpacity' | 'urlOpacity';
+
+// Numeric box fields that can be driven by a Companion variable.
+export type BoxNumberField =
+    | 'frameX' | 'frameY' | 'frameWidth' | 'frameHeight'
+    | 'zIndex' | 'borderRadius';
+
 export interface BaseLayer {
     id: string;
     type: LayerType;
     offsetX: number;
     offsetY: number;
+    // Optional "$(connection:variable)" overrides per numeric field.
+    numberSources?: Partial<Record<LayerNumberField, string>>;
 }
 
 export interface LayerOverlay {
@@ -165,6 +181,9 @@ export interface BoxData {
     opacity: number;
     opacitySource: string;
     opacityVariableValues: VariableOpacity[];
+
+    // Optional "$(connection:variable)" overrides per numeric box field.
+    numberSources?: Partial<Record<BoxNumberField, string>>;
 
     // Layers (list order = top-first: index 0 paints on top)
     layers: BoxLayer[];

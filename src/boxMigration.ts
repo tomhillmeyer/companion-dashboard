@@ -242,6 +242,7 @@ export function migrateBoxData(raw: any): BoxData {
         borderVariableColors: normalizeConditions(source.borderVariableColors) as BoxData['borderVariableColors'],
         noBorder: source.noBorder ?? true,
         borderRadius: source.borderRadius ?? 15,
+        ...(source.numberSources ? { numberSources: source.numberSources } : {}),
     };
 
     let layers: BoxLayer[];

@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect, useState, useEffect, memo } from 'react';
 import type { BoxData, ColorLayer, ImageLayer, TextLayer, UrlLayer, VideoLayer, LayerOverlay, AnimationSettings } from './types';
 import { isImageUrl } from './boxMigration';
-import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources } from './layerUtils';
 import { parseMarkdown, resolveSourceValue } from './useVariableFetcher';
 import { isElectron, isNative } from './platform';
 import { FaVideoSlash } from 'react-icons/fa6';
@@ -48,12 +48,11 @@ const ColorLayerPreview = ({ layer, variableValues, borderRadius, colorAnimation
 
     const backgroundColor = isImageUrl(resolvedColor) || !resolvedColor ? 'transparent' : resolvedColor;
 
-    const mask = layer.mask;
-    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const needsClip = hasMask || !!layer.radius;
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
+    const mask = resolveLayerMask(layer, values);
+    const hasMask = mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0;
+    const radius = resolveLayerRadius(layer, borderRadius, values);
+    const needsClip = hasMask || !!layer.radius || hasRadiusSources(layer);
+    const { offsetX, offsetY } = resolveLayerOffset(layer, values);
 
     return (
         <div style={{
@@ -62,7 +61,7 @@ const ColorLayerPreview = ({ layer, variableValues, borderRadius, colorAnimation
             backgroundColor,
             pointerEvents: 'none',
             ...(needsClip
-                ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                ? { clipPath: `inset(${mask.top}% ${mask.right}% ${mask.bottom}% ${mask.left}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                 : {}),
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
             ...(colorAnimation === 'fade' ? { transition: `background-color ${animationDuration}ms ease` } : {}),
@@ -150,12 +149,12 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
 
     if (!loadedImage) return null;
 
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
-    const mask = layer.mask;
-    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
-    const needsClip = hasMask || !!layer.radius;
+    const radius = resolveLayerRadius(layer, borderRadius, values);
+    const { offsetX, offsetY } = resolveLayerOffset(layer, values);
+    const mask = resolveLayerMask(layer, values);
+    const hasMask = mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0;
+    const needsClip = hasMask || !!layer.radius || hasRadiusSources(layer);
+    const imageOpacity = resolveLayerNumber(layer, 'imageOpacity', values, layer.imageOpacity ?? 100, 0, 100);
 
     return (
         <div style={{
@@ -174,10 +173,10 @@ const ImageLayerPreview = ({ layer, variableValues, variableLookup, borderRadius
                     backgroundSize: layer.imageSize || 'cover',
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
-                    opacity: (layer.imageOpacity ?? 100) / 100,
+                    opacity: imageOpacity / 100,
                     pointerEvents: 'none',
                     ...(needsClip
-                        ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                        ? { clipPath: `inset(${mask.top}% ${mask.right}% ${mask.bottom}% ${mask.left}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                         : {}),
                     ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
                 }}
@@ -199,16 +198,16 @@ const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }
 
     if (!effectiveUrl) return null;
 
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
-    const mask = layer.mask;
-    const maskTop = mask?.top || 0;
-    const maskRight = mask?.right || 0;
-    const maskBottom = mask?.bottom || 0;
-    const maskLeft = mask?.left || 0;
+    const radius = resolveLayerRadius(layer, borderRadius, values);
+    const { offsetX, offsetY } = resolveLayerOffset(layer, values);
+    const mask = resolveLayerMask(layer, values);
+    const maskTop = mask.top;
+    const maskRight = mask.right;
+    const maskBottom = mask.bottom;
+    const maskLeft = mask.left;
     const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
     const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
+    const urlOpacity = resolveLayerNumber(layer, 'urlOpacity', values, layer.urlOpacity ?? 100, 0, 100);
 
     return (
         <div style={{
@@ -219,13 +218,13 @@ const UrlLayerPreview = ({ layer, variableValues, variableLookup, borderRadius }
         }}>
             <div style={{
                 position: 'absolute',
-                top: `${mask?.top || 0}%`,
-                right: `${mask?.right || 0}%`,
-                bottom: `${mask?.bottom || 0}%`,
-                left: `${mask?.left || 0}%`,
+                top: `${mask.top}%`,
+                right: `${mask.right}%`,
+                bottom: `${mask.bottom}%`,
+                left: `${mask.left}%`,
                 overflow: 'hidden',
-                opacity: (layer.urlOpacity ?? 100) / 100,
-                ...(layer.radius
+                opacity: urlOpacity / 100,
+                ...((layer.radius || hasRadiusSources(layer))
                     ? { borderRadius: `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px` }
                     : {}),
             }}>
@@ -333,17 +332,16 @@ const VideoLayerPreview = ({ layer, variableValues, borderRadius }: { layer: Vid
     if (!layer.deviceId || isNative()) return null;
 
     const roi = layer.roi;
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const videoRadius = layer.radius
+    const radius = resolveLayerRadius(layer, borderRadius, variableValues || {});
+    const videoRadius = (layer.radius || hasRadiusSources(layer))
         ? `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px`
         : undefined;
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
-    const mask = layer.mask;
-    const maskTop = mask?.top || 0;
-    const maskRight = mask?.right || 0;
-    const maskBottom = mask?.bottom || 0;
-    const maskLeft = mask?.left || 0;
+    const { offsetX, offsetY } = resolveLayerOffset(layer, variableValues || {});
+    const mask = resolveLayerMask(layer, variableValues || {});
+    const maskTop = mask.top;
+    const maskRight = mask.right;
+    const maskBottom = mask.bottom;
+    const maskLeft = mask.left;
     const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
     const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
@@ -489,8 +487,8 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
 
     const color = resolveLayerColor(layer.variableColors, layer.colorText, layer.color || '#ffffff', values, `${layer.id}_colorText`);
 
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
+    const { offsetX, offsetY } = resolveLayerOffset(layer, values);
+    const fontSize = resolveLayerNumber(layer, 'fontSize', values, layer.size, 1, 1000);
 
     const align = layer.align || 'center';
     const alignVertical = layer.alignVertical || 'middle';
@@ -512,8 +510,8 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
             }
             : { whiteSpace: 'normal' as const, overflowWrap: 'normal' as const };
 
-    const maxWidth = layer.maxWidth ?? 100;
-    const maxHeight = layer.maxHeight ?? 100;
+    const maxWidth = resolveLayerNumber(layer, 'maxWidth', values, layer.maxWidth ?? 100, 0, 100);
+    const maxHeight = resolveLayerNumber(layer, 'maxHeight', values, layer.maxHeight ?? 100, 0, 100);
     const hasArea = maxWidth < 100 || maxHeight < 100;
     const isWrapMode = wrap === 'word' || wrap === 'letter';
     const scrollable = layer.scrollable === true && isWrapMode;
@@ -555,7 +553,7 @@ const TextLayerPreview = ({ layer, variableValues, variableHtmlValues, variableL
                     maxWidth: '100%',
                     boxSizing: 'border-box',
                     color,
-                    fontSize: `${layer.size}px`,
+                    fontSize: `${fontSize}px`,
                     fontFamily: layer.font || undefined,
                     textAlign: align as 'left' | 'center' | 'right',
                     ...wrapStyle,
@@ -606,12 +604,13 @@ export default function BoxPreview({ boxData, variableValues, variableHtmlValues
         }
     }, []);
 
-    const { width, height } = boxData.frame;
+    const width = resolveBoxNumber(boxData, 'frameWidth', variableValues, boxData.frame.width, 10);
+    const height = resolveBoxNumber(boxData, 'frameHeight', variableValues, boxData.frame.height, 10);
     const scale = Math.min(1, containerWidth / width, MAX_PREVIEW_HEIGHT() / height);
     const scaledWidth = Math.round(width * scale);
     const scaledHeight = Math.round(height * scale);
 
-    const borderRadius = boxData.borderRadius ?? 15;
+    const borderRadius = resolveBoxNumber(boxData, 'borderRadius', variableValues, boxData.borderRadius ?? 15, 0, 500);
 
     const { textAnimation = 'none', backgroundImageAnimation = 'none', colorAnimation = 'none', animationDuration = 300 } = animationSettings || {};
 

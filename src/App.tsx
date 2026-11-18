@@ -22,6 +22,7 @@ import { parseVariables } from './useVariableFetcher';
 import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
 import { getDisplayPosition, getInternalPosition } from './layerUtils';
+import { collectNumberSources } from './boxSources';
 
 
 // Register both operands of a comparison condition as fetch sources when they
@@ -34,6 +35,15 @@ const registerConditionVariables = (
     if (isVariableRef(condition.variable)) target[condition.variable] = condition.variable;
     if (isVariableRef(condition.value)) target[condition.value] = condition.value;
 };
+
+// Variable-driven box geometry can't be moved/resized interactively — the
+// variable owns the value. Numeric fallbacks are kept, so removing the source
+// restores direct editing.
+const isBoxTranslateDriven = (box: BoxData): boolean =>
+    !!(box.numberSources?.frameX || box.numberSources?.frameY);
+
+const isBoxGeometryDriven = (box: BoxData): boolean =>
+    isBoxTranslateDriven(box) || !!(box.numberSources?.frameWidth || box.numberSources?.frameHeight);
 
 // Get window ID for isolated storage
 const getWindowId = () => {
@@ -1023,6 +1033,12 @@ export default function App() {
             if (box.borderVariableColors && Array.isArray(box.borderVariableColors)) {
                 box.borderVariableColors.forEach(varColor => registerConditionVariables(allVariables, varColor));
             }
+
+            // Add variable-driven numeric field sources (mask, radius, offsets,
+            // font size, opacity, box frame, …)
+            collectNumberSources(box).forEach(source => {
+                allVariables[source] = source;
+            });
         });
 
         // Register every individual variable reference parsed out of the collected sources,
@@ -1944,7 +1960,7 @@ export default function App() {
                 const deltaY = event.key === 'ArrowUp' ? -distance : event.key === 'ArrowDown' ? distance : 0;
 
                 setBoxes(prev => prev.map(b => {
-                    if (!selectedBoxIds.includes(b.id)) {
+                    if (!selectedBoxIds.includes(b.id) || isBoxTranslateDriven(b)) {
                         return b;
                     }
                     const displayPos = getDisplayPosition(b.frame.translate, b.frame.width, b.frame.height, b.anchorPoint);
@@ -1994,6 +2010,12 @@ export default function App() {
 
     const canvasStyle = getCanvasBackgroundStyle();
     const hasBackgroundImage = isImageUrl(actualCanvasBackgroundColor) || (loadedBackgroundImage && typeof loadedBackgroundImage === 'string');
+
+    // Boxes that can participate in group drag/resize. Variable-driven geometry
+    // stays selected but is excluded — the variables own those values.
+    const groupMoveableBoxes = selectedBoxIds
+        .map(id => boxes.find(b => b.id === id))
+        .filter((b): b is BoxData => !!b && !isBoxGeometryDriven(b));
 
     // Check if we're running in browser (for disconnection overlay)
     // Show overlay when running in browser (both / and /control) and disconnected
@@ -2319,11 +2341,11 @@ export default function App() {
                 )}
 
                 {/* Group Moveable for multi-select */}
-                {!boxesLocked && selectedBoxIds.length > 1 && (
+                {!boxesLocked && selectedBoxIds.length > 1 && groupMoveableBoxes.length >= 1 && (
                     <Moveable
                         className={isModifierHeld ? 'pointer-passthrough' : ''}
-                        target={selectedBoxIds
-                            .map(id => boxRefsMap.current[id])
+                        target={groupMoveableBoxes
+                            .map(box => boxRefsMap.current[box.id])
                             .filter((el): el is HTMLDivElement => el !== null)}
                         draggable
                         resizable

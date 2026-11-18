@@ -11,7 +11,7 @@ import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
 import { isImageUrl, duplicateLayers } from './boxMigration';
-import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB } from './layerUtils';
+import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources } from './layerUtils';
 import { buildBoxSources } from './boxSources';
 import { isWebClient as isBrowserClient, isNative } from './platform';
 import type { VideoDevice } from './useVideoDevices';
@@ -105,12 +105,11 @@ const ColorLayerView = React.memo(({
     // separate image layers during migration, but guard here to be safe.
     const backgroundColor = isImageUrl(resolvedColor) || !resolvedColor ? 'transparent' : resolvedColor;
 
-    const mask = layer.mask;
-    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const needsClip = hasMask || !!layer.radius;
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
+    const mask = resolveLayerMask(layer, variableValues);
+    const hasMask = mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0;
+    const radius = resolveLayerRadius(layer, borderRadius, variableValues);
+    const needsClip = hasMask || !!layer.radius || hasRadiusSources(layer);
+    const { offsetX, offsetY } = resolveLayerOffset(layer, variableValues);
 
     return (
         <div style={{
@@ -119,7 +118,7 @@ const ColorLayerView = React.memo(({
             backgroundColor,
             pointerEvents: 'none',
             ...(needsClip
-                ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                ? { clipPath: `inset(${mask.top}% ${mask.right}% ${mask.bottom}% ${mask.left}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                 : {}),
             ...((offsetX || offsetY) ? { transform: `translate(${offsetX}px, ${offsetY}px)` } : {}),
             ...(colorAnimation === 'fade' ? { transition: `background-color ${animationDuration}ms ease` } : {}),
@@ -223,12 +222,12 @@ const ImageLayerView = React.memo(({
 
     if (!currentUrl) return null;
 
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
-    const mask = layer.mask;
-    const hasMask = !!mask && (mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0);
-    const needsClip = hasMask || !!layer.radius;
+    const radius = resolveLayerRadius(layer, borderRadius, variableValues);
+    const { offsetX, offsetY } = resolveLayerOffset(layer, variableValues);
+    const mask = resolveLayerMask(layer, variableValues);
+    const hasMask = mask.top > 0 || mask.bottom > 0 || mask.left > 0 || mask.right > 0;
+    const needsClip = hasMask || !!layer.radius || hasRadiusSources(layer);
+    const imageOpacity = resolveLayerNumber(layer, 'imageOpacity', variableValues, layer.imageOpacity ?? 100, 0, 100);
 
     return (
         <div style={{
@@ -247,10 +246,10 @@ const ImageLayerView = React.memo(({
                     backgroundSize: layer.imageSize,
                     backgroundPosition: 'center',
                     backgroundRepeat: 'no-repeat',
-                    opacity: (layer.imageOpacity ?? 100) / 100,
+                    opacity: imageOpacity / 100,
                     pointerEvents: 'none',
                     ...(needsClip
-                        ? { clipPath: `inset(${mask?.top || 0}% ${mask?.right || 0}% ${mask?.bottom || 0}% ${mask?.left || 0}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
+                        ? { clipPath: `inset(${mask.top}% ${mask.right}% ${mask.bottom}% ${mask.left}% round ${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px)` }
                         : {}),
                     ...(animate ? { animationDuration: `${animationDuration}ms` } : {}),
                 }}
@@ -290,17 +289,16 @@ const VideoLayerView = React.memo(({
 
     // Unique stream ID per layer so multiple video layers in one box don't collide
     const streamId = `${boxId}_${layer.id}`;
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const videoRadius = layer.radius
+    const radius = resolveLayerRadius(layer, borderRadius, variableValues);
+    const videoRadius = (layer.radius || hasRadiusSources(layer))
         ? `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px`
         : undefined;
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
-    const mask = layer.mask;
-    const maskTop = mask?.top || 0;
-    const maskRight = mask?.right || 0;
-    const maskBottom = mask?.bottom || 0;
-    const maskLeft = mask?.left || 0;
+    const { offsetX, offsetY } = resolveLayerOffset(layer, variableValues);
+    const mask = resolveLayerMask(layer, variableValues);
+    const maskTop = mask.top;
+    const maskRight = mask.right;
+    const maskBottom = mask.bottom;
+    const maskLeft = mask.left;
     const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
     const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
@@ -528,21 +526,21 @@ const UrlLayerView = React.memo(({
 }) => {
     const resolvedUrl = (variableValues[`${layer.id}_urlSrc`] || '').trim();
     const effectiveUrl = resolvedUrl || layer.urlSrc || '';
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
-    const radius = resolveLayerRadius(layer.radius, borderRadius);
-    const boxRadius = layer.radius
+    const { offsetX, offsetY } = resolveLayerOffset(layer, variableValues);
+    const radius = resolveLayerRadius(layer, borderRadius, variableValues);
+    const boxRadius = (layer.radius || hasRadiusSources(layer))
         ? `${radius.topLeft}px ${radius.topRight}px ${radius.bottomRight}px ${radius.bottomLeft}px`
         : undefined;
-    const mask = layer.mask;
-    const topInset = `${mask?.top || 0}%`;
-    const rightInset = `${mask?.right || 0}%`;
-    const bottomInset = `${mask?.bottom || 0}%`;
-    const leftInset = `${mask?.left || 0}%`;
-    const maskTop = mask?.top || 0;
-    const maskRight = mask?.right || 0;
-    const maskBottom = mask?.bottom || 0;
-    const maskLeft = mask?.left || 0;
+    const mask = resolveLayerMask(layer, variableValues);
+    const topInset = `${mask.top}%`;
+    const rightInset = `${mask.right}%`;
+    const bottomInset = `${mask.bottom}%`;
+    const leftInset = `${mask.left}%`;
+    const maskTop = mask.top;
+    const maskRight = mask.right;
+    const maskBottom = mask.bottom;
+    const maskLeft = mask.left;
+    const urlOpacity = resolveLayerNumber(layer, 'urlOpacity', variableValues, layer.urlOpacity ?? 100, 0, 100);
     const vFactor = (100 - (maskTop + maskBottom)) / 100 || 1;
     const hFactor = (100 - (maskLeft + maskRight)) / 100 || 1;
 
@@ -573,7 +571,7 @@ const UrlLayerView = React.memo(({
                 bottom: bottomInset,
                 left: leftInset,
                 overflow: 'hidden',
-                opacity: (layer.urlOpacity ?? 100) / 100,
+                opacity: urlOpacity / 100,
                 ...(boxRadius ? { borderRadius: boxRadius } : {}),
             }}>
                 <iframe
@@ -660,8 +658,8 @@ const TextLayerView = React.memo(({
 
     const color = resolveLayerColor(layer.variableColors, layer.colorText, layer.color || '#ffffff', variableValues, `${layer.id}_colorText`);
 
-    const offsetX = layer.offsetX ?? 0;
-    const offsetY = layer.offsetY ?? 0;
+    const { offsetX, offsetY } = resolveLayerOffset(layer, variableValues);
+    const fontSize = resolveLayerNumber(layer, 'fontSize', variableValues, layer.size, 1, 1000);
 
     const wrap = layer.wrap || 'word';
     const wrapStyle = wrap === 'letter'
@@ -675,8 +673,8 @@ const TextLayerView = React.memo(({
             }
             : { whiteSpace: 'normal' as const, overflowWrap: 'normal' as const };
 
-    const maxWidth = layer.maxWidth ?? 100;
-    const maxHeight = layer.maxHeight ?? 100;
+    const maxWidth = resolveLayerNumber(layer, 'maxWidth', variableValues, layer.maxWidth ?? 100, 0, 100);
+    const maxHeight = resolveLayerNumber(layer, 'maxHeight', variableValues, layer.maxHeight ?? 100, 0, 100);
     const hasArea = maxWidth < 100 || maxHeight < 100;
     const isWrapMode = wrap === 'word' || wrap === 'letter';
     const scrollable = layer.scrollable === true && isWrapMode;
@@ -716,7 +714,7 @@ const TextLayerView = React.memo(({
                     maxWidth: '100%',
                     boxSizing: 'border-box',
                     color,
-                    fontSize: `${layer.size}px`,
+                    fontSize: `${fontSize}px`,
                     fontFamily: layer.font || undefined,
                     textAlign: align as 'left' | 'center' | 'right',
                     ...wrapStyle,
@@ -907,6 +905,19 @@ export default React.memo(function Box({
     const variableValues = fetchedVariables.values;
     const variableHtmlValues = fetchedVariables.htmlValues;
 
+    // Resolve variable-driven box geometry. The numeric frame values remain the
+    // fallback when a variable is missing or unresolved.
+    const resolvedFrame = {
+        x: resolveBoxNumber(boxData, 'frameX', variableValues, frame.translate[0]),
+        y: resolveBoxNumber(boxData, 'frameY', variableValues, frame.translate[1]),
+        width: resolveBoxNumber(boxData, 'frameWidth', variableValues, frame.width, 10),
+        height: resolveBoxNumber(boxData, 'frameHeight', variableValues, frame.height, 10),
+        zIndex: resolveBoxNumber(boxData, 'zIndex', variableValues, boxData.zIndex),
+        borderRadius: resolveBoxNumber(boxData, 'borderRadius', variableValues, boxData.borderRadius ?? 15, 0, 500),
+    };
+    const translateDriven = !!(boxData.numberSources?.frameX || boxData.numberSources?.frameY);
+    const geometryDriven = translateDriven || !!(boxData.numberSources?.frameWidth || boxData.numberSources?.frameHeight);
+
     // Helper to send Companion button press
     const sendCompanionButtonPress = async () => {
         console.log('sendCompanionButtonPress called', {
@@ -1024,15 +1035,16 @@ export default React.memo(function Box({
                             setShowModal(true);
                         }}
                         style={{
-                            width: `${frame.width}px`,
-                            height: `${frame.height}px`,
+                            width: `${resolvedFrame.width}px`,
+                            height: `${resolvedFrame.height}px`,
                             backgroundColor: 'transparent',
                             border: boxData.noBorder ? 'none' : `5px solid ${resolvedBorder}`,
-                            borderRadius: `${boxData.borderRadius ?? 15}px`,
-                            clipPath: `inset(0 round ${boxData.borderRadius ?? 15}px)`,
-                            WebkitTransform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
-                            transform: `translate(${frame.translate[0]}px, ${frame.translate[1]}px) translateZ(0)`,
-                            zIndex: boxData.zIndex,
+                            borderRadius: `${resolvedFrame.borderRadius}px`,
+                            clipPath: `inset(0 round ${resolvedFrame.borderRadius}px)`,
+                            WebkitTransform: `translate(${resolvedFrame.x}px, ${resolvedFrame.y}px) translateZ(0)`,
+                            transform: `translate(${resolvedFrame.x}px, ${resolvedFrame.y}px) translateZ(0)`,
+                            zIndex: resolvedFrame.zIndex,
+                            cursor: translateDriven ? 'default' : undefined,
                             opacity: computeBoxOpacity(boxData, variableValues),
                             pointerEvents: (boxesLocked && boxData.companionButtonLocation && boxData.companionButtonLocation.trim()) || !boxesLocked ? 'auto' : 'none',
                             ...(colorAnimation === 'fade' && !boxData.noBorder ? { transition: `border-color ${animationDuration}ms ease` } : {}),
@@ -1048,7 +1060,7 @@ export default React.memo(function Box({
                                         variableValues={variableValues}
                                         colorAnimation={layer.colorAnimation ?? colorAnimation}
                                         animationDuration={layer.animationDuration ?? animationDuration}
-                                        borderRadius={boxData.borderRadius ?? 15}
+                                        borderRadius={resolvedFrame.borderRadius}
                                     />
                                 );
                             }
@@ -1062,7 +1074,7 @@ export default React.memo(function Box({
                                         backgroundImageAnimation={layer.backgroundImageAnimation ?? backgroundImageAnimation}
                                         colorAnimation={colorAnimation}
                                         animationDuration={layer.animationDuration ?? animationDuration}
-                                        borderRadius={boxData.borderRadius ?? 15}
+                                        borderRadius={resolvedFrame.borderRadius}
                                     />
                                 );
                             }
@@ -1076,7 +1088,7 @@ export default React.memo(function Box({
                                         variableValues={variableValues}
                                         colorAnimation={colorAnimation}
                                         animationDuration={animationDuration}
-                                        borderRadius={boxData.borderRadius ?? 15}
+                                        borderRadius={resolvedFrame.borderRadius}
                                     />
                                 );
                             }
@@ -1089,7 +1101,7 @@ export default React.memo(function Box({
                                         variableValues={variableValues}
                                         colorAnimation={colorAnimation}
                                         animationDuration={animationDuration}
-                                        borderRadius={boxData.borderRadius ?? 15}
+                                        borderRadius={resolvedFrame.borderRadius}
                                         boxesLocked={boxesLocked}
                                     />
                                 );
@@ -1129,11 +1141,27 @@ export default React.memo(function Box({
                         )}
                     </div>
 
-                    {isSelected && !boxesLocked && !isMultiSelect && (
+                    {/* Unclipped selection cue for variable-driven geometry. The
+                        box's own outline is clipped by its clip-path, and Moveable
+                        isn't rendered when the variables own the position/size. */}
+                    {isSelected && !boxesLocked && geometryDriven && (
+                        <div
+                            className="box-selection-outline"
+                            style={{
+                                width: `${resolvedFrame.width}px`,
+                                height: `${resolvedFrame.height}px`,
+                                transform: `translate(${resolvedFrame.x}px, ${resolvedFrame.y}px)`,
+                                borderRadius: `${resolvedFrame.borderRadius}px`,
+                                zIndex: resolvedFrame.zIndex,
+                            }}
+                        />
+                    )}
+
+                    {isSelected && !boxesLocked && !isMultiSelect && (!translateDriven || !geometryDriven) && (
                         <Moveable
                             target={targetRef}
-                            draggable
-                            resizable
+                            draggable={!translateDriven}
+                            resizable={!geometryDriven}
                             snappable
                             snapThreshold={15}
                             snapDirections={{ top: true, left: true, bottom: true, right: true }}

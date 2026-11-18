@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, LayerOverlay, LayerMask, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType, AnimationSettings } from './types';
+import type { BoxData, VariableColor, VariableOpacity, VariableOverlaySize, ROI, CompanionConnection, ComparisonOperator, PageData, BoxLayer, BaseLayer, LayerOverlay, LayerMask, LayerType, TextLayer, ImageLayer, VideoLayer, ColorLayer, UrlLayer, LayerRadius, AnimationType, AnimationSettings, BoxNumberField, LayerNumberField } from './types';
 import { v4 as uuid } from 'uuid';
 import './BoxSettingsModal.css';
 import ColorPicker from './ColorPicker';
@@ -9,7 +9,7 @@ import type { VideoDevice } from './useVideoDevices';
 import ROIModal from './ROIModal';
 import BoxPreview from './BoxPreview';
 import { createDefaultLayer } from './boxMigration';
-import { resolveLayerRadius } from './layerUtils';
+import { resolveBoxNumber } from './layerUtils';
 import { useVariableFetcher } from './useVariableFetcher';
 import { buildBoxSources } from './boxSources';
 import { isWebClient as isBrowserClient, isNative } from './platform';
@@ -118,46 +118,136 @@ const VariableColorEditor = ({ title, colors, onColorsChange }: {
     );
 };
 
+// Numeric input that also accepts a "$(connection:variable)" override. The
+// stored number stays as the fallback; the variable source is kept separately.
+const VariableNumberInput = ({
+    value,
+    source,
+    onChangeNumber,
+    onChangeSource,
+    min,
+    max,
+    displayValue,
+    className,
+    style,
+    id,
+    title = 'Number or variable, e.g. $(main:progress)',
+}: {
+    value: number;
+    source?: string;
+    onChangeNumber: (value: number) => void;
+    onChangeSource: (source: string | undefined) => void;
+    min?: number;
+    max?: number;
+    displayValue?: string;
+    className?: string;
+    style?: React.CSSProperties;
+    id?: string;
+    title?: string;
+}) => {
+    const committed = source ? source : (displayValue !== undefined ? displayValue : String(value));
+    const [draft, setDraft] = useState<string | null>(null);
+
+    // Drop any uncommitted draft when the underlying field changes (e.g. the
+    // user switches to another layer).
+    useEffect(() => {
+        setDraft(null);
+    }, [source, value]);
+
+    const clamp = (n: number) => {
+        let out = n;
+        if (min !== undefined) out = Math.max(min, out);
+        if (max !== undefined) out = Math.min(max, out);
+        return out;
+    };
+
+    const handleChange = (text: string) => {
+        setDraft(text);
+
+        if (text.includes('$(')) {
+            onChangeSource(text);
+            return;
+        }
+
+        if (text.trim() === '') {
+            onChangeSource(undefined);
+            onChangeNumber(clamp(0));
+            return;
+        }
+
+        // Only commit complete numbers; partial input (e.g. "-", "5.") stays a draft.
+        if (/^-?\d+(\.\d+)?$/.test(text)) {
+            onChangeSource(undefined);
+            onChangeNumber(clamp(parseFloat(text)));
+        }
+    };
+
+    return (
+        <input
+            type="text"
+            inputMode="decimal"
+            title={title}
+            id={id}
+            className={['number-input', className].filter(Boolean).join(' ')}
+            style={style}
+            value={draft ?? committed}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={() => setDraft(null)}
+        />
+    );
+};
+
 // Shared per-side mask editor for color/image/video/url layers.
 const MaskEditor = ({
-    mask,
+    layer,
     onMaskChange,
+    onNumberSourceChange,
 }: {
-    mask: LayerMask | undefined;
+    layer: BaseLayer & { mask?: LayerMask };
     onMaskChange: (mask: LayerMask) => void;
+    onNumberSourceChange: (field: LayerNumberField, source: string | undefined) => void;
 }) => (
-    <div className="setting-row">
-        {(['top', 'bottom', 'left', 'right'] as const).map(side => (
-            <div key={side} className="mask-side-input">
-                <span className="setting-header">{side}</span>
-                <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={mask?.[side] ?? 0}
-                    onChange={(e) => onMaskChange({
-                        ...(mask || { top: 0, bottom: 0, left: 0, right: 0 }),
-                        [side]: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
-                    })}
-                    className="content-text-input"
-                />
-            </div>
-        ))}
-    </div>
+    <>
+        <div className="setting-row">
+            {(['top', 'bottom', 'left', 'right'] as const).map(side => {
+                const field = `mask${side.charAt(0).toUpperCase()}${side.slice(1)}` as LayerNumberField;
+                return (
+                    <div key={side} className="mask-side-input">
+                        <span className="setting-header">{side}</span>
+                        <VariableNumberInput
+                            value={layer.mask?.[side] ?? 0}
+                            source={layer.numberSources?.[field]}
+                            min={0}
+                            max={100}
+                            className="content-text-input"
+                            onChangeNumber={(value) => onMaskChange({
+                                ...(layer.mask || { top: 0, bottom: 0, left: 0, right: 0 }),
+                                [side]: value,
+                            })}
+                            onChangeSource={(source) => onNumberSourceChange(field, source)}
+                        />
+                    </div>
+                );
+            })}
+        </div>
+        <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#999' }}>
+            Values accept numbers or variables, e.g. $(main:progress).
+        </p>
+    </>
 );
 
 // Shared per-corner radius editor for color/image/video layers.
 const CornerRadiusEditor = ({
-    radius,
+    layer,
     boxRadius,
     onRadiusChange,
+    onNumberSourceChange,
 }: {
-    radius: LayerRadius | undefined;
+    layer: BaseLayer & { radius?: LayerRadius };
     boxRadius: number;
     onRadiusChange: (radius: LayerRadius) => void;
+    onNumberSourceChange: (field: LayerNumberField, source: string | undefined) => void;
 }) => {
-    const resolved = resolveLayerRadius(radius, boxRadius);
-
     const labels: { [key in keyof LayerRadius]: string } = {
         topLeft: 'Top Left',
         topRight: 'Top Right',
@@ -167,57 +257,66 @@ const CornerRadiusEditor = ({
 
     return (
         <div className="setting-row">
-            {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map(corner => (
-                <div key={corner} className="mask-side-input">
-                    <span className="setting-header">{labels[corner]}</span>
-                    <input
-                        type="number"
-                        min={0}
-                        max={500}
-                        value={resolved[corner]}
-                        onChange={(e) => onRadiusChange({
-                            ...resolved,
-                            [corner]: Math.max(0, Number(e.target.value) || 0),
-                        })}
-                        className="content-text-input"
-                    />
-                </div>
-            ))}
+            {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map(corner => {
+                const field = `radius${corner.charAt(0).toUpperCase()}${corner.slice(1)}` as LayerNumberField;
+                return (
+                    <div key={corner} className="mask-side-input">
+                        <span className="setting-header">{labels[corner]}</span>
+                        <VariableNumberInput
+                            value={layer.radius?.[corner] ?? boxRadius}
+                            source={layer.numberSources?.[field]}
+                            min={0}
+                            max={500}
+                            className="content-text-input"
+                            onChangeNumber={(value) => onRadiusChange({
+                                topLeft: layer.radius?.topLeft ?? boxRadius,
+                                topRight: layer.radius?.topRight ?? boxRadius,
+                                bottomLeft: layer.radius?.bottomLeft ?? boxRadius,
+                                bottomRight: layer.radius?.bottomRight ?? boxRadius,
+                                [corner]: value,
+                            })}
+                            onChangeSource={(source) => onNumberSourceChange(field, source)}
+                        />
+                    </div>
+                );
+            })}
         </div>
     );
 };
 
 // Shared X/Y offset editor for all layer types.
 const LayerPositionEditor = ({
-    offsetX,
-    offsetY,
+    layer,
     onOffsetChange,
+    onNumberSourceChange,
 }: {
-    offsetX: number | undefined;
-    offsetY: number | undefined;
+    layer: BaseLayer;
     onOffsetChange: (offset: { offsetX: number; offsetY: number }) => void;
+    onNumberSourceChange: (field: LayerNumberField, source: string | undefined) => void;
 }) => (
     <div className="setting-row">
         <div className="mask-side-input">
             <span className="setting-header">X Offset</span>
-            <input
-                type="number"
+            <VariableNumberInput
+                value={layer.offsetX ?? 0}
+                source={layer.numberSources?.offsetX}
                 min={-1000}
                 max={1000}
-                value={offsetX ?? 0}
-                onChange={(e) => onOffsetChange({ offsetX: Number(e.target.value) || 0, offsetY: offsetY ?? 0 })}
                 className="content-text-input"
+                onChangeNumber={(value) => onOffsetChange({ offsetX: value, offsetY: layer.offsetY ?? 0 })}
+                onChangeSource={(source) => onNumberSourceChange('offsetX', source)}
             />
         </div>
         <div className="mask-side-input">
             <span className="setting-header">Y Offset</span>
-            <input
-                type="number"
+            <VariableNumberInput
+                value={layer.offsetY ?? 0}
+                source={layer.numberSources?.offsetY}
                 min={-1000}
                 max={1000}
-                value={offsetY ?? 0}
-                onChange={(e) => onOffsetChange({ offsetX: offsetX ?? 0, offsetY: Number(e.target.value) || 0 })}
                 className="content-text-input"
+                onChangeNumber={(value) => onOffsetChange({ offsetX: layer.offsetX ?? 0, offsetY: value })}
+                onChangeSource={(source) => onNumberSourceChange('offsetY', source)}
             />
         </div>
     </div>
@@ -225,35 +324,37 @@ const LayerPositionEditor = ({
 
 // Shared max width/height (% of box) editor for text layers.
 const MaxSizeEditor = ({
-    maxWidth,
-    maxHeight,
+    layer,
     onMaxSizeChange,
+    onNumberSourceChange,
 }: {
-    maxWidth: number | undefined;
-    maxHeight: number | undefined;
+    layer: BaseLayer & { maxWidth?: number; maxHeight?: number };
     onMaxSizeChange: (size: { maxWidth?: number; maxHeight?: number }) => void;
+    onNumberSourceChange: (field: LayerNumberField, source: string | undefined) => void;
 }) => (
     <div className="setting-row">
         <div className="mask-side-input">
             <span className="setting-header">Max Width</span>
-            <input
-                type="number"
+            <VariableNumberInput
+                value={layer.maxWidth ?? 100}
+                source={layer.numberSources?.maxWidth}
                 min={0}
                 max={100}
-                value={maxWidth ?? 100}
-                onChange={(e) => onMaxSizeChange({ maxWidth: Math.max(0, Math.min(100, Number(e.target.value) || 0)), maxHeight })}
                 className="content-text-input"
+                onChangeNumber={(value) => onMaxSizeChange({ maxWidth: value, maxHeight: layer.maxHeight })}
+                onChangeSource={(source) => onNumberSourceChange('maxWidth', source)}
             />
         </div>
         <div className="mask-side-input">
             <span className="setting-header">Max Height</span>
-            <input
-                type="number"
+            <VariableNumberInput
+                value={layer.maxHeight ?? 100}
+                source={layer.numberSources?.maxHeight}
                 min={0}
                 max={100}
-                value={maxHeight ?? 100}
-                onChange={(e) => onMaxSizeChange({ maxWidth, maxHeight: Math.max(0, Math.min(100, Number(e.target.value) || 0)) })}
                 className="content-text-input"
+                onChangeNumber={(value) => onMaxSizeChange({ maxWidth: layer.maxWidth, maxHeight: value })}
+                onChangeSource={(source) => onNumberSourceChange('maxHeight', source)}
             />
         </div>
     </div>
@@ -671,15 +772,24 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
         }
     }, [selectedVideoLayerId, videoDevices.length, refreshVideoDevices]);
 
+    // Resolved box geometry (variable sources applied) so the display-position
+    // math keeps working when width/height/X/Y are variable-driven.
+    const resolvedFormFrame = useMemo(() => ({
+        x: resolveBoxNumber(formData, 'frameX', previewVariables.values, formData.frame.translate[0]),
+        y: resolveBoxNumber(formData, 'frameY', previewVariables.values, formData.frame.translate[1]),
+        width: resolveBoxNumber(formData, 'frameWidth', previewVariables.values, formData.frame.width, 10),
+        height: resolveBoxNumber(formData, 'frameHeight', previewVariables.values, formData.frame.height, 10),
+    }), [formData.frame, formData.numberSources, previewVariables.values]);
+
     // Get display position for showing in inputs - reactive to formData changes
     const displayPosition = useMemo(() =>
         getDisplayPosition(
-            formData.frame.translate,
-            formData.frame.width,
-            formData.frame.height,
+            [resolvedFormFrame.x, resolvedFormFrame.y],
+            resolvedFormFrame.width,
+            resolvedFormFrame.height,
             formData.anchorPoint
         ),
-        [formData.frame.translate, formData.frame.width, formData.frame.height, formData.anchorPoint]
+        [resolvedFormFrame, formData.anchorPoint]
     );
 
     const handleSave = () => {
@@ -692,6 +802,34 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
 
     const updateField = (field: keyof BoxData, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const updateBoxNumberSource = (field: BoxNumberField, source: string | undefined) => {
+        setFormData(prev => {
+            const nextSources = { ...(prev.numberSources || {}) };
+            if (source && source.trim()) {
+                nextSources[field] = source;
+            } else {
+                delete nextSources[field];
+            }
+            return { ...prev, numberSources: nextSources };
+        });
+    };
+
+    const updateLayerNumberSource = (layerId: string, field: LayerNumberField, source: string | undefined) => {
+        setFormData(prev => ({
+            ...prev,
+            layers: prev.layers.map(layer => {
+                if (layer.id !== layerId) return layer;
+                const nextSources = { ...(layer.numberSources || {}) };
+                if (source && source.trim()) {
+                    nextSources[field] = source;
+                } else {
+                    delete nextSources[field];
+                }
+                return { ...layer, numberSources: nextSources };
+            })
+        }));
     };
 
     const handleDuplicate = () => {
@@ -965,16 +1103,16 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     <div className='box-settings-row'>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">X-Position</span>
-                            <input
-                                type="number"
-                                value={displayPosition[0]}
-                                onChange={(e) => {
-                                    const newDisplayX = parseInt(e.target.value) || 0;
-                                    const newDisplayPos: [number, number] = [newDisplayX, displayPosition[1]];
+                            <VariableNumberInput
+                                value={formData.frame.translate[0]}
+                                source={formData.numberSources?.frameX}
+                                displayValue={String(displayPosition[0])}
+                                onChangeSource={(source) => updateBoxNumberSource('frameX', source)}
+                                onChangeNumber={(value) => {
                                     const newInternalPos = getInternalPosition(
-                                        newDisplayPos,
-                                        formData.frame.width,
-                                        formData.frame.height,
+                                        [value, displayPosition[1]],
+                                        resolvedFormFrame.width,
+                                        resolvedFormFrame.height,
                                         formData.anchorPoint
                                     );
                                     updateField('frame', {
@@ -986,16 +1124,16 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         </div>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">Y-Position</span>
-                            <input
-                                type="number"
-                                value={displayPosition[1]}
-                                onChange={(e) => {
-                                    const newDisplayY = parseInt(e.target.value) || 0;
-                                    const newDisplayPos: [number, number] = [displayPosition[0], newDisplayY];
+                            <VariableNumberInput
+                                value={formData.frame.translate[1]}
+                                source={formData.numberSources?.frameY}
+                                displayValue={String(displayPosition[1])}
+                                onChangeSource={(source) => updateBoxNumberSource('frameY', source)}
+                                onChangeNumber={(value) => {
                                     const newInternalPos = getInternalPosition(
-                                        newDisplayPos,
-                                        formData.frame.width,
-                                        formData.frame.height,
+                                        [displayPosition[0], value],
+                                        resolvedFormFrame.width,
+                                        resolvedFormFrame.height,
                                         formData.anchorPoint
                                     );
                                     updateField('frame', {
@@ -1028,59 +1166,65 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </select>
                         </div>
                     </div>
+                    {formData.anchorPoint !== 'top-left' && (formData.numberSources?.frameX || formData.numberSources?.frameY) && (
+                        <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#999' }}>
+                            Variable X/Y positions use the box's internal top-left coordinate.
+                        </p>
+                    )}
 
                     <div className='box-settings-row'>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">Width</span>
-                            <input
-                                type="number"
+                            <VariableNumberInput
                                 value={formData.frame.width}
-                                onChange={(e) => {
-                                    const newWidth = parseInt(e.target.value) || 100;
+                                source={formData.numberSources?.frameWidth}
+                                min={10}
+                                onChangeSource={(source) => updateBoxNumberSource('frameWidth', source)}
+                                onChangeNumber={(value) => {
                                     const newInternalPos = getInternalPosition(
                                         displayPosition,
-                                        newWidth,
-                                        formData.frame.height,
+                                        value,
+                                        resolvedFormFrame.height,
                                         formData.anchorPoint
                                     );
                                     updateField('frame', {
                                         ...formData.frame,
-                                        width: newWidth,
+                                        width: value,
                                         translate: newInternalPos
                                     });
                                 }}
-                                min="10"
                             />
                         </div>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">Height</span>
-                            <input
-                                type="number"
+                            <VariableNumberInput
                                 value={formData.frame.height}
-                                onChange={(e) => {
-                                    const newHeight = parseInt(e.target.value) || 100;
+                                source={formData.numberSources?.frameHeight}
+                                min={10}
+                                onChangeSource={(source) => updateBoxNumberSource('frameHeight', source)}
+                                onChangeNumber={(value) => {
                                     const newInternalPos = getInternalPosition(
                                         displayPosition,
-                                        formData.frame.width,
-                                        newHeight,
+                                        resolvedFormFrame.width,
+                                        value,
                                         formData.anchorPoint
                                     );
                                     updateField('frame', {
                                         ...formData.frame,
-                                        height: newHeight,
+                                        height: value,
                                         translate: newInternalPos
                                     });
                                 }}
-                                min="10"
                             />
                         </div>
                         <div className="setting-label box-settings-item">
                             <span className="setting-header">Layer</span>
-                            <input
-                                type="number"
+                            <VariableNumberInput
                                 value={formData.zIndex}
-                                onChange={(e) => updateField('zIndex', parseInt(e.target.value) || 1)}
-                                min="1"
+                                source={formData.numberSources?.zIndex}
+                                min={1}
+                                onChangeNumber={(value) => updateField('zIndex', value)}
+                                onChangeSource={(source) => updateBoxNumberSource('zIndex', source)}
                             />
                         </div>
                     </div>
@@ -1205,12 +1349,13 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                             </div>
                             <div style={{ marginTop: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <span className="setting-header">Border Radius (px)</span>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
+                                <VariableNumberInput
                                     value={formData.borderRadius ?? 15}
-                                    onChange={(e) => updateField('borderRadius', parseInt(e.target.value) || 0)}
+                                    source={formData.numberSources?.borderRadius}
+                                    min={0}
+                                    max={500}
+                                    onChangeNumber={(value) => updateField('borderRadius', value)}
+                                    onChangeSource={(source) => updateBoxNumberSource('borderRadius', source)}
                                     style={{ width: '80px' }}
                                 />
                             </div>
@@ -1310,26 +1455,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className='setting-container'>
                 <h3 className="section-heading">Mask</h3>
                 <MaskEditor
-                    mask={layer.mask}
+                    layer={layer}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
                 <CornerRadiusEditor
-                    radius={layer.radius}
+                    layer={layer}
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
                 <LayerPositionEditor
-                    offsetX={layer.offsetX}
-                    offsetY={layer.offsetY}
+                    layer={layer}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
@@ -1410,13 +1557,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                         </div>
                         <div className="opacity-controls">
                             <label htmlFor={`image-opacity-${layer.id}`}>Image Opacity (%)</label>
-                            <input
+                            <VariableNumberInput
                                 id={`image-opacity-${layer.id}`}
-                                type="number"
-                                min="0"
-                                max="100"
                                 value={layer.imageOpacity ?? 100}
-                                onChange={(e) => updateLayerField(layer.id, { imageOpacity: parseInt(e.target.value) || 100 })}
+                                source={layer.numberSources?.imageOpacity}
+                                min={0}
+                                max={100}
+                                onChangeNumber={(value) => updateLayerField(layer.id, { imageOpacity: value })}
+                                onChangeSource={(source) => updateLayerNumberSource(layer.id, 'imageOpacity', source)}
                                 style={{ width: '100%' }}
                                 className="opacity-input"
                             />
@@ -1427,26 +1575,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className='setting-container'>
                 <h3 className="section-heading">Mask</h3>
                 <MaskEditor
-                    mask={layer.mask}
+                    layer={layer}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
                 <CornerRadiusEditor
-                    radius={layer.radius}
+                    layer={layer}
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
                 <LayerPositionEditor
-                    offsetX={layer.offsetX}
-                    offsetY={layer.offsetY}
+                    layer={layer}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
@@ -1491,13 +1641,14 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 </div>
                 <div className="opacity-controls">
                     <label htmlFor={`url-opacity-${layer.id}`}>URL Opacity (%)</label>
-                    <input
+                    <VariableNumberInput
                         id={`url-opacity-${layer.id}`}
-                        type="number"
-                        min="0"
-                        max="100"
                         value={layer.urlOpacity ?? 100}
-                        onChange={(e) => updateLayerField(layer.id, { urlOpacity: parseInt(e.target.value) || 100 })}
+                        source={layer.numberSources?.urlOpacity}
+                        min={0}
+                        max={100}
+                        onChangeNumber={(value) => updateLayerField(layer.id, { urlOpacity: value })}
+                        onChangeSource={(source) => updateLayerNumberSource(layer.id, 'urlOpacity', source)}
                         style={{ width: '100%' }}
                         className="opacity-input"
                     />
@@ -1506,26 +1657,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className='setting-container'>
                 <h3 className="section-heading">Mask</h3>
                 <MaskEditor
-                    mask={layer.mask}
+                    layer={layer}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
                 <CornerRadiusEditor
-                    radius={layer.radius}
+                    layer={layer}
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
                 <LayerPositionEditor
-                    offsetX={layer.offsetX}
-                    offsetY={layer.offsetY}
+                    layer={layer}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
@@ -1693,26 +1846,28 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
             <div className='setting-container'>
                 <h3 className="section-heading">Mask</h3>
                 <MaskEditor
-                    mask={layer.mask}
+                    layer={layer}
                     onMaskChange={(mask) => updateLayerField(layer.id, { mask })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Corner Radius</h3>
                 <CornerRadiusEditor
-                    radius={layer.radius}
+                    layer={layer}
                     boxRadius={formData.borderRadius ?? 15}
                     onRadiusChange={(radius) => updateLayerField(layer.id, { radius })}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
             <div className='setting-container'>
                 <h3 className="section-heading">Position</h3>
                 <LayerPositionEditor
-                    offsetX={layer.offsetX}
-                    offsetY={layer.offsetY}
+                    layer={layer}
                     onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
+                    onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                 />
                 
             </div>
@@ -1754,18 +1909,13 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                     <div className="setting-row">
                         <div className="setting-label">
                             <span className="setting-header">Font Size</span>
-                            <input
-                                type="text"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
+                            <VariableNumberInput
                                 value={layer.size}
-                                onChange={(e) => {
-                                    const raw = e.target.value;
-                                    if (raw === '' || /^\d*$/.test(raw)) {
-                                        const parsed = parseInt(raw, 10);
-                                        updateLayerField(layer.id, { size: isNaN(parsed) ? 0 : parsed });
-                                    }
-                                }}
+                                source={layer.numberSources?.fontSize}
+                                min={1}
+                                max={1000}
+                                onChangeNumber={(value) => updateLayerField(layer.id, { size: value })}
+                                onChangeSource={(source) => updateLayerNumberSource(layer.id, 'fontSize', source)}
                             />
                         </div>
                     </div>
@@ -1862,9 +2012,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 <div className='setting-container'>
                     <h3 className="section-heading">Text Area (Max Width & Height)</h3>
                     <MaxSizeEditor
-                        maxWidth={layer.maxWidth}
-                        maxHeight={layer.maxHeight}
+                        layer={layer}
                         onMaxSizeChange={(size) => updateLayerField(layer.id, size)}
+                        onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                     />
                     <div className="setting-row">
                         <div className="setting-label">
@@ -1925,9 +2075,9 @@ export default function BoxSettingsModal({ boxData, onSave, onCancel, onDelete, 
                 <div className='setting-container'>
                     <h3 className="section-heading">Position</h3>
                     <LayerPositionEditor
-                        offsetX={layer.offsetX}
-                        offsetY={layer.offsetY}
+                        layer={layer}
                         onOffsetChange={(offset) => updateLayerField(layer.id, offset)}
+                        onNumberSourceChange={(field, source) => updateLayerNumberSource(layer.id, field, source)}
                     />
                     
                 </div>

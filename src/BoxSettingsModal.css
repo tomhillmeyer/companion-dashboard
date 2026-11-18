@@ -491,6 +491,27 @@
     box-sizing: border-box;
 }
 
+/* Variable-capable numeric fields moved from number inputs to text inputs so
+   they can hold "$(connection:variable)". Keep the old compact footprint. */
+.modal-content input.number-input {
+    min-width: 0;
+    padding: 16px 12px;
+    text-align: center;
+}
+
+.setting-row .mask-side-input input.number-input {
+    height: 40px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.box-settings-row .box-settings-item input.number-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
 .setting-input-group {
     display: flex;
     align-items: center;

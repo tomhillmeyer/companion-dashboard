@@ -30,6 +30,18 @@
     outline-offset: 2px;
 }
 
+/* Selection cue for variable-driven boxes: drawn as a sibling so the box's
+   clip-path can't clip it, and used because Moveable handles are hidden. */
+.box-selection-outline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    outline: 2px solid #61BAFA;
+    outline-offset: 2px;
+    box-sizing: border-box;
+}
+
 /* Background image with opacity support */
 .box.has-background-image::before {
     content: '';

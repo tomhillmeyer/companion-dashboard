@@ -2,6 +2,36 @@ import type { BoxData } from './types';
 import { isVariableRef } from './variableComparison';
 import { parseVariables } from './useVariableFetcher';
 
+// Every "$(connection:variable)" used by a numeric field override (layer or box).
+// Used both to register fetcher sources and to feed App's central variable map.
+export const collectNumberSources = (boxData: BoxData): string[] => {
+    const sources: string[] = [];
+
+    for (const layer of boxData.layers || []) {
+        Object.values(layer.numberSources || {}).forEach(source => {
+            if (source) sources.push(source);
+        });
+    }
+    Object.values(boxData.numberSources || {}).forEach(source => {
+        if (source) sources.push(source);
+    });
+
+    return sources;
+};
+
+// Namespaced source keys for numeric overrides:
+//   "${layerId}_maskTop" ... for layers, "box_frameWidth" ... for the box.
+const addNumberSources = (sources: { [key: string]: string }, boxData: BoxData) => {
+    for (const layer of boxData.layers || []) {
+        for (const [field, source] of Object.entries(layer.numberSources || {})) {
+            if (source) sources[`${layer.id}_${field}`] = source;
+        }
+    }
+    for (const [field, source] of Object.entries(boxData.numberSources || {})) {
+        if (source) sources[`box_${field}`] = source;
+    }
+};
+
 /**
  * Build the map of variable sources a box needs fetched. Keys are the fetcher's
  * source keys (e.g. "${layerId}_label", "${layerId}_colorText", "opacitySource")
@@ -49,6 +79,9 @@ export const buildBoxSources = (boxData: BoxData): { [key: string]: string } => 
     sources.borderColorTextSource = boxData.borderColorText || '';
     (boxData.opacityVariableValues || []).forEach(registerConditionSources);
     (boxData.borderVariableColors || []).forEach(registerConditionSources);
+
+    // Numeric field overrides (mask, radius, offsets, font size, opacity, frame…)
+    addNumberSources(sources, boxData);
 
     // Add every individual "$(connection:name)" reference found in the sources above.
     // Snapshot the values first since we mutate the map while iterating.
