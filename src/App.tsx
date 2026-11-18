@@ -324,6 +324,8 @@ export default function App() {
             id: uuid(),
             name,
             order: pages.reduce((max, page) => Math.max(max, page.order), -1) + 1,
+            ...(sourcePage.scaleEnabled !== undefined ? { scaleEnabled: sourcePage.scaleEnabled } : {}),
+            ...(sourcePage.designWidth !== undefined ? { designWidth: sourcePage.designWidth } : {}),
         };
 
         // Deep snapshot so duplicated boxes never share nested objects with the source.
@@ -361,6 +363,16 @@ export default function App() {
 
         setPages(prev => prev.map(page =>
             page.id === pageId ? { ...page, name: newName } : page
+        ));
+    };
+
+    // Update a page's responsive-scaling override.
+    const handlePageScaleChange = (
+        pageId: string,
+        patch: { scaleEnabled?: boolean; designWidth?: number }
+    ) => {
+        setPages(prev => prev.map(page =>
+            page.id === pageId ? { ...page, ...patch } : page
         ));
     };
 
@@ -849,6 +861,21 @@ export default function App() {
     const effectiveCurrentPageId = pageIdFromSlug ||
         (isDisplayMode && pages.length > 0 ? (displayModePageId || pages[0]?.id) : currentPageId);
 
+    // Responsive scaling: a page-level setting overrides the global one.
+    const activePageScaling = useMemo(() => {
+        const page = pages.find(p => p.id === effectiveCurrentPageId);
+        return {
+            enabled: page?.scaleEnabled === true,
+            designWidth: page?.designWidth,
+        };
+    }, [pages, effectiveCurrentPageId]);
+
+    const effectiveScaleEnabled = activePageScaling.enabled || scaleEnabled;
+    const effectiveDesignWidth = Math.max(
+        1,
+        activePageScaling.enabled ? (activePageScaling.designWidth ?? designWidth) : designWidth
+    );
+
     // Boxes locked state - initialize from localStorage, but force true in display mode
     const [boxesLocked, setBoxesLocked] = useState<boolean>(() => {
         if (isDisplayMode) {
@@ -1210,8 +1237,8 @@ export default function App() {
     // Update scale factor when window resizes or settings change
     useEffect(() => {
         const updateScale = () => {
-            if (scaleEnabled && typeof window !== 'undefined') {
-                setScale(window.innerWidth / designWidth);
+            if (effectiveScaleEnabled && typeof window !== 'undefined' && effectiveDesignWidth > 0) {
+                setScale(window.innerWidth / effectiveDesignWidth);
             } else {
                 setScale(1);
             }
@@ -1220,7 +1247,7 @@ export default function App() {
         updateScale();
         window.addEventListener('resize', updateScale);
         return () => window.removeEventListener('resize', updateScale);
-    }, [scaleEnabled, designWidth]);
+    }, [effectiveScaleEnabled, effectiveDesignWidth]);
 
     // Wrapper for setBoxesLocked that prevents changes in display mode
     const handleBoxesLockedChange = (locked: boolean) => {
@@ -2033,7 +2060,7 @@ export default function App() {
             backgroundSize = 'contain';
             backgroundPosition = 'top left';
         } else { // width - apply scale factor if scaling is enabled
-            const scaledWidth = scaleEnabled ? canvasBackgroundImageWidth * scale : canvasBackgroundImageWidth;
+            const scaledWidth = effectiveScaleEnabled ? canvasBackgroundImageWidth * scale : canvasBackgroundImageWidth;
             backgroundSize = `${scaledWidth}px auto`;
             backgroundPosition = 'top left';
         }
@@ -2511,6 +2538,7 @@ export default function App() {
                 onScaleEnabledChange={setScaleEnabled}
                 designWidth={designWidth}
                 onDesignWidthChange={setDesignWidth}
+                onPageScaleChange={handlePageScaleChange}
                 textAnimation={textAnimation}
                 onTextAnimationChange={setTextAnimation}
                 backgroundImageAnimation={backgroundImageAnimation}
@@ -2528,7 +2556,7 @@ export default function App() {
                 style={{
                     transform: `scale(${scale})`,
                     transformOrigin: 'top left',
-                    width: scaleEnabled ? `${designWidth}px` : '100%',
+                    width: effectiveScaleEnabled ? `${effectiveDesignWidth}px` : '100%',
                     minHeight: '100vh',
                     position: 'relative'
                 }}>

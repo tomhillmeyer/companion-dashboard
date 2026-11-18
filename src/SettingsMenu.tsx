@@ -73,6 +73,61 @@ async function probeCompanion(url: string): Promise<boolean> {
     return false;
 }
 
+// One responsive-scaling card: the global setting or a per-page override.
+const ScalingCard = ({
+    idPrefix,
+    title,
+    enabled,
+    designWidth,
+    onEnabledChange,
+    onWidthChange,
+}: {
+    idPrefix: string;
+    title: string;
+    enabled: boolean;
+    designWidth: number;
+    onEnabledChange: (enabled: boolean) => void;
+    onWidthChange: (width: number) => void;
+}) => (
+    <div className="scale-card">
+        <div className="scale-card-header">
+            <span className="scale-card-title">{title}</span>
+            <label className="nav-toggle" title={enabled ? 'Disable scaling' : 'Enable scaling'}>
+                <input
+                    type="checkbox"
+                    checked={enabled}
+                    onChange={(e) => onEnabledChange(e.target.checked)}
+                    aria-label={`Enable scaling for ${title}`}
+                />
+                <span className="nav-toggle-track" />
+            </label>
+        </div>
+        {enabled && (
+            <div className="scaling-width-row">
+                <label htmlFor={`design-width-${idPrefix}`}>Width (px)</label>
+                <input
+                    id={`design-width-${idPrefix}`}
+                    type="number"
+                    value={designWidth}
+                    onChange={(e) => onWidthChange(parseInt(e.target.value) || 1920)}
+                    min="320"
+                    max="7680"
+                />
+                <button
+                    type="button"
+                    title="Set the design width to the current canvas width"
+                    onClick={() => {
+                        if (typeof window !== 'undefined') {
+                            onWidthChange(window.innerWidth);
+                        }
+                    }}
+                >
+                    USE CURRENT
+                </button>            </div>
+        )}
+    </div>
+);
+
 const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onNewBox: () => void;
     connectionUrl: string;
@@ -118,6 +173,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onScaleEnabledChange?: (enabled: boolean) => void;
     designWidth?: number;
     onDesignWidthChange?: (width: number) => void;
+    onPageScaleChange?: (pageId: string, patch: { scaleEnabled?: boolean; designWidth?: number }) => void;
     textAnimation?: AnimationType;
     onTextAnimationChange?: (animation: AnimationType) => void;
     backgroundImageAnimation?: AnimationType;
@@ -173,6 +229,7 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
     onScaleEnabledChange,
     designWidth = 1920,
     onDesignWidthChange,
+    onPageScaleChange,
     textAnimation = 'none',
     onTextAnimationChange,
     backgroundImageAnimation = 'none',
@@ -1553,52 +1610,35 @@ const SettingsMenu = forwardRef<{ toggle: () => void }, {
                                 {collapsedSections.responsiveScaling ? <FaChevronDown /> : <FaChevronUp />}
                             </div>
                             {!collapsedSections.responsiveScaling && (
-                                <>
-                                    <div className='menu-section'>
-                                        <div className='settings-subsection'>
-                                            <div className='scaling-checkbox-row'>
-                                                <input
-                                                    type="checkbox"
-                                                    id="scale-enabled"
-                                                    checked={scaleEnabled}
-                                                    onChange={(e) => onScaleEnabledChange?.(e.target.checked)}
-                                                />
-                                                <label htmlFor="scale-enabled" className="connection-label">
-                                                    Scale based on width
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className='menu-section' style={{ marginTop: '15px' }}>
-                                        <div className='settings-subsection'>
-                                            <div className='scaling-width-row'>
-                                                <label htmlFor="design-width">
-                                                    Width (px)
-                                                </label>
-                                                <input
-                                                    id="design-width"
-                                                    type="number"
-                                                    value={designWidth}
-                                                    onChange={(e) => {
-                                                        const value = parseInt(e.target.value) || 1920;
-                                                        onDesignWidthChange?.(value);
-                                                    }}
-                                                    min="320"
-                                                    max="7680"
-                                                />
-                                                <button
-                                                    onClick={() => {
-                                                        if (typeof window !== 'undefined') {
-                                                            onDesignWidthChange?.(window.innerWidth);
-                                                        }
-                                                    }}
-                                                >
-                                                    USE CURRENT CANVAS WIDTH
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
+                                <div className='menu-section scaling-cards'>
+                                    <ScalingCard
+                                        idPrefix="global"
+                                        title="Global"
+                                        enabled={!!scaleEnabled}
+                                        designWidth={designWidth}
+                                        onEnabledChange={(enabled) => onScaleEnabledChange?.(enabled)}
+                                        onWidthChange={(width) => onDesignWidthChange?.(width)}
+                                    />
+
+                                    {[...pages].sort((a, b) => a.order - b.order).map(page => (
+                                        <ScalingCard
+                                            key={page.id}
+                                            idPrefix={page.id}
+                                            title={page.name}
+                                            enabled={page.scaleEnabled === true}
+                                            designWidth={page.designWidth ?? designWidth}
+                                            onEnabledChange={(enabled) => onPageScaleChange?.(page.id, {
+                                                scaleEnabled: enabled,
+                                                ...(enabled && page.designWidth === undefined ? { designWidth } : {}),
+                                            })}
+                                            onWidthChange={(width) => onPageScaleChange?.(page.id, { designWidth: width })}
+                                        />
+                                    ))}
+
+                                    <p className="scale-cards-hint">
+                                        Page settings override Global when both are enabled.
+                                    </p>
+                                </div>
                             )}
                         </>
                     )}

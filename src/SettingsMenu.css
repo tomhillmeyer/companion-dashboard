@@ -592,6 +592,71 @@ a {
     gap: 10px;
 }
 
+.scaling-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    flex: 1 1 auto;
+    align-items: stretch;
+}
+
+.scale-card {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #1f1f1f;
+    border: 1px solid #3a3a3a;
+    border-radius: 6px;
+    padding: 10px 12px 12px;
+}
+
+.scale-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.scale-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.scale-card .scaling-width-row {
+    margin-top: 10px;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.scale-card .scaling-width-row label {
+    min-width: 0;
+    flex: 0 0 auto;
+}
+
+.scale-card .scaling-width-row input[type="number"] {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+
+.scale-card .scaling-width-row button {
+    flex: 0 0 auto;
+    width: auto;
+    margin: 0;
+    padding: 0 10px;
+}
+
+.scale-cards-hint {
+    margin: 2px 2px 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #888;
+}
+
 .scaling-checkbox-row {
     display: flex;
     align-items: center;

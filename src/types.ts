@@ -208,6 +208,10 @@ export interface PageData {
     id: string;
     name: string;
     order: number;
+    // Optional per-page responsive scaling override. When `scaleEnabled` is
+    // true this page uses its own design width instead of the global setting.
+    scaleEnabled?: boolean;
+    designWidth?: number;
 }
 
 // ============================================================================
