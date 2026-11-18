@@ -11,6 +11,7 @@ import { useVariableFetcher } from './useVariableFetcher';
 import { DoubleTapBox } from './DoubleTapBox';
 import type { VideoRelayManager } from './VideoRelayManager';
 import { isImageUrl, duplicateLayers } from './boxMigration';
+import { pressCompanionButton } from './companionButton';
 import { resolveLayerColor, resolveLayerRadius, computeLayerOverlaySize, computeBoxOpacity, getImageFromDB, resolveBoxNumber, resolveLayerMask, resolveLayerNumber, resolveLayerOffset, hasRadiusSources } from './layerUtils';
 import { buildBoxSources } from './boxSources';
 import { isWebClient as isBrowserClient, isNative } from './platform';
@@ -918,47 +919,25 @@ export default React.memo(function Box({
     const translateDriven = !!(boxData.numberSources?.frameX || boxData.numberSources?.frameY);
     const geometryDriven = translateDriven || !!(boxData.numberSources?.frameWidth || boxData.numberSources?.frameHeight);
 
-    // Helper to send Companion button press
-    const sendCompanionButtonPress = async () => {
-        console.log('sendCompanionButtonPress called', {
-            companionButtonLocation: boxData.companionButtonLocation,
-            companionButtonConnectionId: boxData.companionButtonConnectionId,
-            companionBaseUrl,
-            boxesLocked
-        });
-
-        if (!boxData.companionButtonLocation || !boxData.companionButtonLocation.trim()) {
+    // Helper to send Companion button press. Web clients relay the press to the
+    // Electron host, which is the device that can reach Companion.
+    const sendCompanionButtonPress = () => {
+        if (!boxData.companionButtonLocation?.trim()) {
             console.log('No companion button location set');
             return;
         }
 
-        // Validate format: should be "page/row/column"
-        const parts = boxData.companionButtonLocation.split('/');
-        if (parts.length !== 3) {
-            console.warn('Invalid Companion button location format. Expected: page/row/column');
+        if (isBrowserClient()) {
+            const ws = (window as any).fullAppServerWS;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'press-companion-button', boxId: boxData.id }));
+            } else {
+                console.warn('Cannot press Companion button: not connected to the host');
+            }
             return;
         }
 
-        // Determine which connection URL to use
-        let baseUrl = companionBaseUrl; // Default to main connection
-        if (boxData.companionButtonConnectionId) {
-            const selectedConnection = connections.find(c => c.id === boxData.companionButtonConnectionId);
-            if (selectedConnection) {
-                baseUrl = selectedConnection.url;
-            }
-        }
-
-        const [page, row, column] = parts;
-        const url = `${baseUrl}/api/location/${page}/${row}/${column}/press`;
-
-        console.log('Sending POST to:', url);
-
-        try {
-            const response = await fetch(url, { method: 'POST' });
-            console.log('Response:', response.status, response.statusText);
-        } catch (error) {
-            console.error('Failed to send Companion button press:', error);
-        }
+        void pressCompanionButton(boxData, companionBaseUrl, connections);
     };
 
     const resolvedBorder = isImageUrl(resolveLayerColor(boxData.borderVariableColors, boxData.borderColorText, boxData.borderColor, variableValues, 'borderColorTextSource'))

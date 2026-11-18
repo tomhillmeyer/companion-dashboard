@@ -44,6 +44,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     offRequestVideoDevices: (handler) => {
         if (handler) ipcRenderer.removeListener('request-video-devices-from-browser', handler);
     },
+    onCompanionButtonPress: (callback) => {
+        const handler = (event, data) => callback(data);
+        ipcRenderer.on('companion-button-press', handler);
+        return handler;
+    },
+    offCompanionButtonPress: (handler) => {
+        if (handler) ipcRenderer.removeListener('companion-button-press', handler);
+    },
     onMDNSStatusChanged: (callback) => {
         ipcRenderer.on('mdns-status-changed', () => callback());
     },

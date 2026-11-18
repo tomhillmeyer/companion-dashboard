@@ -253,6 +253,19 @@ class DashboardWebServer {
                         this.onVideoDevicesRequest();
                     }
 
+                    // Companion button presses from any web view (display or
+                    // control) are performed by the Electron host, which is the
+                    // device that can reach Companion.
+                    if (data.type === 'press-companion-button' && typeof data.boxId === 'string') {
+                        if (this.electronWindow && !this.electronWindow.isDestroyed()) {
+                            console.log('Forwarding Companion button press to Electron host:', data.boxId, 'from client:', ws.clientId);
+                            this.electronWindow.webContents.send('companion-button-press', {
+                                boxId: data.boxId,
+                                clientId: ws.clientId,
+                            });
+                        }
+                    }
+
                     // Handle WebRTC signaling for video relay
                     if (data.type === 'webrtc-offer' || data.type === 'webrtc-answer' || data.type === 'webrtc-ice-candidate' || data.type === 'request-video-stream') {
                         // Forward WebRTC signaling to Electron host, including client ID

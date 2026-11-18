@@ -23,6 +23,7 @@ import { hasStoredLicense, storeLicense } from './utils/licenseManager';
 import { migrateBoxData, createDefaultBoxLayers, duplicateLayers } from './boxMigration';
 import { getDisplayPosition, getInternalPosition } from './layerUtils';
 import { collectNumberSources } from './boxSources';
+import { pressCompanionButton } from './companionButton';
 
 
 // Register both operands of a comparison condition as fetch sources when they
@@ -494,6 +495,12 @@ export default function App() {
         }
         return [];
     });
+
+    // Latest state for the Companion button relay (web view presses arrive via IPC).
+    const companionPressStateRef = useRef({ boxes, connections, companionBaseUrl });
+    useEffect(() => {
+        companionPressStateRef.current = { boxes, connections, companionBaseUrl };
+    }, [boxes, connections, companionBaseUrl]);
 
     // Canvas background color state - initialize from localStorage
     const [canvasBackgroundColor, setCanvasBackgroundColor] = useState<string>(() => {
@@ -1513,6 +1520,36 @@ export default function App() {
             api.offRequestVideoDevices?.(handler);
         };
     }, [refreshVideoDevices]);
+
+    // Electron host: web views relay Companion button presses here so the host
+    // can perform the POST (browsers often can't reach Companion directly).
+    useEffect(() => {
+        const api = (window as any).electronAPI;
+        if (!api?.onCompanionButtonPress) return;
+
+        const handler = api.onCompanionButtonPress((data: { boxId?: string }) => {
+            const boxId = data?.boxId;
+            if (!boxId) return;
+
+            const {
+                boxes: currentBoxes,
+                connections: currentConnections,
+                companionBaseUrl: currentBaseUrl,
+            } = companionPressStateRef.current;
+
+            const box = currentBoxes.find(b => b.id === boxId);
+            if (!box) {
+                console.warn('Received Companion button press for unknown box:', boxId);
+                return;
+            }
+
+            void pressCompanionButton(box, currentBaseUrl, currentConnections);
+        });
+
+        return () => {
+            api.offCompanionButtonPress?.(handler);
+        };
+    }, []);
 
     // Send state changes from browser to Electron via WebSocket
     useEffect(() => {
