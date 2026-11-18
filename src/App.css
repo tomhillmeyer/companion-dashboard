@@ -4,6 +4,35 @@
     pointer-events: none !important;
 }
 
+/* Small transient flag for clipboard actions (Box copied, etc.) */
+.app-toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #262626;
+    border: 1px solid #61BAFA;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 13px;
+    padding: 8px 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    z-index: 100003;
+    pointer-events: none;
+    animation: app-toast-in 0.16s ease-out;
+}
+
+@keyframes app-toast-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -6px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
 /* Canvas background image with opacity support */
 .canvas-container {
     position: relative;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaClone } from 'react-icons/fa6';
 import type { PageData } from './types';
 
 interface PageTabsProps {
@@ -8,9 +9,31 @@ interface PageTabsProps {
     onPageAdd: () => void;
     onPageRename: (pageId: string, newName: string) => void;
     onPageDelete: (pageId: string) => void;
+    onPageDuplicate: (pageId: string) => void;
     visible: boolean;
     readOnly?: boolean;
 }
+
+const TAB_HEIGHT = 40;
+const ACTION_WIDTH = 22;
+
+const tabActionButtonStyle: React.CSSProperties = {
+    width: `${ACTION_WIDTH}px`,
+    minWidth: `${ACTION_WIDTH}px`,
+    height: `${TAB_HEIGHT}px`,
+    padding: 0,
+    margin: 0,
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderLeft: '1px solid #3a3a3a',
+    color: '#9a9a9a',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease',
+    flexShrink: 0,
+};
 
 export function PageTabs({
     pages,
@@ -19,11 +42,16 @@ export function PageTabs({
     onPageAdd,
     onPageRename,
     onPageDelete,
+    onPageDuplicate,
     visible,
     readOnly = false
 }: PageTabsProps) {
     const [editingPageId, setEditingPageId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
+    const [hoveredPageId, setHoveredPageId] = useState<string | null>(null);
+
+    // Hover-less devices (iPad/touch) can't reveal hover controls, so show them.
+    const canHover = typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches;
 
     const handleDoubleClick = (page: PageData) => {
         if (readOnly) return;
@@ -46,6 +74,8 @@ export function PageTabs({
         }
     };
 
+    const orderedPages = [...pages].sort((a, b) => a.order - b.order);
+
     return (
         <div
             style={{
@@ -60,8 +90,10 @@ export function PageTabs({
                 maxWidth: '50vw',
             }}
         >
-            {/* Scrollable page tabs container - only show if more than one page */}
-            {pages.length > 1 && (
+            {/* Scrollable page tabs container. Always visible in edit mode so a
+                single page can still be duplicated; read-only views keep the
+                original 2+ pages rule. */}
+            {(!readOnly || pages.length > 1) && (
                 <div
                     style={{
                         display: 'flex',
@@ -75,35 +107,40 @@ export function PageTabs({
                         marginBottom: '-4px',
                     }}
                 >
-                    {pages
-                        .sort((a, b) => a.order - b.order)
-                        .map((page) => (
+                    {orderedPages.map((page) => {
+                        const isActive = currentPageId === page.id;
+                        const showDuplicate = !canHover || hoveredPageId === page.id;
+
+                        return (
                             <div
                                 key={page.id}
                                 style={{
                                     position: 'relative',
                                     display: 'flex',
                                     alignItems: 'stretch',
-                                    backgroundColor: currentPageId === page.id ? '#555' : '#2a2a2a',
+                                    backgroundColor: isActive ? '#333' : '#262626',
                                     color: '#fff',
                                     fontSize: '14px',
-                                    height: '40px',
-                                    fontWeight: currentPageId === page.id ? '600' : '400',
+                                    height: `${TAB_HEIGHT}px`,
+                                    fontWeight: isActive ? '600' : '400',
                                     cursor: 'pointer',
                                     userSelect: 'none',
-                                    transition: 'background-color 0.2s ease',
-                                    border: currentPageId === page.id ? '1px solid #777' : '1px solid #444',
+                                    transition: 'background-color 0.2s ease, border-color 0.2s ease',
+                                    border: isActive ? '1px solid #61BAFA' : '1px solid #444',
+                                    borderRadius: '6px',
                                     overflow: 'hidden',
                                     flexShrink: 0,
                                 }}
                                 onMouseEnter={(e) => {
-                                    if (currentPageId !== page.id) {
-                                        e.currentTarget.style.backgroundColor = '#3a3a3a';
+                                    setHoveredPageId(page.id);
+                                    if (!isActive) {
+                                        e.currentTarget.style.backgroundColor = '#333';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
-                                    if (currentPageId !== page.id) {
-                                        e.currentTarget.style.backgroundColor = '#2a2a2a';
+                                    setHoveredPageId(null);
+                                    if (!isActive) {
+                                        e.currentTarget.style.backgroundColor = '#262626';
                                     }
                                 }}
                             >
@@ -136,7 +173,7 @@ export function PageTabs({
                                                 minWidth: `${page.name.length * 9.5}px`,
                                                 padding: 0,
                                                 margin: 0,
-                                                height: '40px',
+                                                height: `${TAB_HEIGHT}px`,
                                                 lineHeight: '1',
                                                 fontFamily: 'inherit',
                                                 boxSizing: 'content-box',
@@ -148,51 +185,63 @@ export function PageTabs({
                                     )}
                                 </div>
 
-                                {/* Delete button - only show if more than one page and not read-only */}
-                                {pages.length > 1 && !readOnly && (
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm(`Delete page "${page.name}"? All boxes on this page will be deleted.`)) {
-                                                onPageDelete(page.id);
-                                            }
-                                        }}
-                                        style={{
-                                            backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                                            border: 'none',
-                                            borderRadius: '0',
-                                            borderLeft: '1px solid #444',
-                                            margin: '0',
-                                            marginLeft: '5px',
-                                            color: '#aaa',
-                                            cursor: 'pointer',
-                                            opacity: 0.7,
-                                            fontSize: '22px',
-                                            lineHeight: '1',
-                                            height: '40px',
-                                            maxWidth: '20px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'background-color 0.2s ease, opacity 0.2s ease',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.opacity = '1';
-                                            e.currentTarget.style.color = '#fff';
-                                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.opacity = '0.7';
-                                            e.currentTarget.style.color = '#aaa';
-                                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
-                                        }}
-                                        title="Delete page"
-                                    >
-                                        ×
-                                    </button>
+                                {/* Tab actions - hidden in display/read-only mode */}
+                                {!readOnly && (
+                                    <div style={{ display: 'flex', alignItems: 'stretch', marginLeft: '4px' }}>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onPageDuplicate(page.id);
+                                            }}
+                                            style={{
+                                                ...tabActionButtonStyle,
+                                                opacity: showDuplicate ? 1 : 0,
+                                                pointerEvents: showDuplicate ? 'auto' : 'none',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                                                e.currentTarget.style.color = '#fff';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                                e.currentTarget.style.color = '#9a9a9a';
+                                            }}
+                                            title="Duplicate page"
+                                            aria-label="Duplicate page"
+                                        >
+                                            <FaClone style={{ fontSize: '13px' }} />
+                                        </button>
+
+                                        {pages.length > 1 && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onPageDelete(page.id);
+                                                }}
+                                                style={{
+                                                    ...tabActionButtonStyle,
+                                                    fontSize: '20px',
+                                                    lineHeight: '1',
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                                                    e.currentTarget.style.color = '#fff';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                    e.currentTarget.style.color = '#9a9a9a';
+                                                }}
+                                                title="Delete page"
+                                                aria-label="Delete page"
+                                            >
+                                                ×
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                             </div>
-                        ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -201,27 +250,30 @@ export function PageTabs({
                 <button
                     onClick={onPageAdd}
                     style={{
-                        backgroundColor: '#3a3a3a',
+                        backgroundColor: '#333',
                         color: '#fff',
                         padding: '8px 12px',
-                        border: '1px solid #555',
+                        border: '1px solid #444',
                         fontSize: '18px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         lineHeight: '1',
-                        transition: 'background-color 0.2s ease',
+                        transition: 'background-color 0.2s ease, border-color 0.2s ease',
                         flexShrink: 0,
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '0'
+                        width: `${TAB_HEIGHT}px`,
+                        height: `${TAB_HEIGHT}px`,
+                        borderRadius: '6px'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#4a4a4a';
+                        e.currentTarget.style.backgroundColor = '#3a3a3a';
+                        e.currentTarget.style.borderColor = '#61BAFA';
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3a3a3a';
+                        e.currentTarget.style.backgroundColor = '#333';
+                        e.currentTarget.style.borderColor = '#444';
                     }}
                     title="Add new page"
+                    aria-label="Add new page"
                 >
                     +
                 </button>

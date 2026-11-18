@@ -791,6 +791,7 @@ export default React.memo(function Box({
     isSelected,
     onSelect,
     onDeselect,
+    onContextMenu,
     onBoxUpdate,
     onDelete,
     onDuplicate,
@@ -815,6 +816,7 @@ export default React.memo(function Box({
     isSelected: boolean;
     onSelect: (event?: React.MouseEvent) => void;
     onDeselect: () => void;
+    onContextMenu?: (event: React.MouseEvent) => void;
     onBoxUpdate: (boxData: BoxData) => void;
     onDelete: (boxId: string) => void;
     onDuplicate: (boxData: BoxData) => void;
@@ -954,6 +956,7 @@ export default React.memo(function Box({
                             if (boxRef) boxRef(el);
                         }}
                         className={`box ${boxData.noBorder ? 'no-border' : 'with-border'}${isSelected && !boxesLocked ? ' box-selected' : ''}`}
+                        data-box-id={boxData.id}
                         onClick={(e) => {
                             if (boxesLocked) {
                                 // When locked, allow clicks to pass through to content
@@ -1012,6 +1015,13 @@ export default React.memo(function Box({
                             }
                             e.stopPropagation();
                             setShowModal(true);
+                        }}
+                        onContextMenu={(e) => {
+                            // Suppress the native menu everywhere on the canvas; the
+                            // app menu is opened by the host handler in edit mode.
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onContextMenu?.(e);
                         }}
                         style={{
                             width: `${resolvedFrame.width}px`,

@@ -5,6 +5,7 @@ import SettingsMenu from './SettingsMenu.tsx';
 import FindReplaceModal from './FindReplaceModal.tsx';
 import LicensingModal from './LicensingModal.tsx';
 import { PageTabs } from './PageTabs.tsx';
+import BoxContextMenu from './BoxContextMenu';
 import './App.css';
 import defaultBoxes from './defaultBoxes.json';
 import dashboardLogo from './assets/dashboard.png';
@@ -45,6 +46,78 @@ const isBoxTranslateDriven = (box: BoxData): boolean =>
 
 const isBoxGeometryDriven = (box: BoxData): boolean =>
     isBoxTranslateDriven(box) || !!(box.numberSources?.frameWidth || box.numberSources?.frameHeight);
+
+// Clone a box at an explicit display position: new box + layer IDs, assigned to
+// `pageId`. Used by cursor paste and by duplication (with an offset).
+const cloneBoxAtDisplay = (box: BoxData, pageId: string, displayX: number, displayY: number): BoxData => {
+    const translate = getInternalPosition(
+        [displayX, displayY],
+        box.frame.width,
+        box.frame.height,
+        box.anchorPoint
+    );
+
+    return {
+        ...box,
+        id: uuid(),
+        pageId,
+        frame: {
+            ...box.frame,
+            translate,
+        },
+        layers: duplicateLayers(box.layers || []),
+    };
+};
+
+// Clone a box for duplication/paste: new box + layer IDs, optionally offset in
+// display coordinates so the copy is visible, and assigned to `pageId`.
+const cloneBoxForPage = (box: BoxData, pageId: string, offset = 20): BoxData => {
+    const [displayX, displayY] = getDisplayPosition(
+        box.frame.translate,
+        box.frame.width,
+        box.frame.height,
+        box.anchorPoint
+    );
+
+    return cloneBoxAtDisplay(box, pageId, displayX + offset, displayY + offset);
+};
+
+// Context menu state: viewport coords for positioning the menu, canvas coords
+// (in design space) for cursor placement, and which menu variant to show.
+type BoxContextMenuState = {
+    x: number;
+    y: number;
+    canvasX: number;
+    canvasY: number;
+    variant: 'box' | 'canvas';
+};
+
+// Default box used by "New Box" (fixed position, or the right-click cursor).
+const buildDefaultBox = (displayX: number, displayY: number, pageId: string): BoxData => {
+    const width = 600;
+    const height = 105;
+    return {
+        id: uuid(),
+        pageId,
+        frame: {
+            translate: getInternalPosition([displayX, displayY], width, height, 'top-left'),
+            width,
+            height,
+        },
+        anchorPoint: 'top-left',
+        zIndex: 1,
+        opacity: 100,
+        opacitySource: '',
+        opacityVariableValues: [],
+        layers: createDefaultBoxLayers(),
+        borderColor: '#61BAFA',
+        borderColorText: '',
+        borderVariableColors: [],
+        noBorder: true,
+        borderRadius: 15,
+        companionButtonLocation: '',
+    };
+};
 
 // Get window ID for isolated storage
 const getWindowId = () => {
@@ -211,47 +284,7 @@ export default function App() {
     };
 
     const duplicateBox = useCallback((originalBoxData: BoxData) => {
-        // Helper functions for position conversion
-        const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
-            const [x, y] = translate;
-            switch (anchor) {
-                case 'top-left': return [x, y];
-                case 'top-right': return [x + w, y];
-                case 'bottom-left': return [x, y + h];
-                case 'bottom-right': return [x + w, y + h];
-                case 'center': return [x + w / 2, y + h / 2];
-                default: return [x, y];
-            }
-        };
-
-        const getInternalPos = (displayPos: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
-            const [x, y] = displayPos;
-            switch (anchor) {
-                case 'top-left': return [x, y];
-                case 'top-right': return [x - w, y];
-                case 'bottom-left': return [x, y - h];
-                case 'bottom-right': return [x - w, y - h];
-                case 'center': return [x - w / 2, y - h / 2];
-                default: return [x, y];
-            }
-        };
-
-        // Get current display position, add offset, convert back to internal
-        const currentDisplayPos = getDisplayPos(originalBoxData.frame.translate, originalBoxData.frame.width, originalBoxData.frame.height, originalBoxData.anchorPoint);
-        const newDisplayPos: [number, number] = [currentDisplayPos[0] + 20, currentDisplayPos[1] + 20];
-        const newInternalPos = getInternalPos(newDisplayPos, originalBoxData.frame.width, originalBoxData.frame.height, originalBoxData.anchorPoint);
-
-        const duplicatedBox: BoxData = {
-            ...originalBoxData,
-            id: uuid(), // New unique ID
-            frame: {
-                ...originalBoxData.frame,
-                translate: newInternalPos
-            },
-            // Duplicate layers with fresh IDs so each box owns its layers
-            layers: duplicateLayers(originalBoxData.layers || []),
-        };
-        setBoxes((prev) => [...prev, duplicatedBox]);
+        setBoxes((prev) => [...prev, cloneBoxForPage(originalBoxData, originalBoxData.pageId)]);
     }, []);
 
     // Page management handlers
@@ -271,6 +304,37 @@ export default function App() {
         };
         setPages(prev => [...prev, newPage]);
         setCurrentPageId(newPage.id);
+    };
+
+    const handlePageDuplicate = (pageId: string) => {
+        const sourcePage = pages.find(page => page.id === pageId);
+        if (!sourcePage) return;
+
+        // Unique display name using the same case-insensitive rules as rename.
+        const baseName = `${sourcePage.name} Copy`;
+        const existingNames = new Set(pages.map(page => page.name.toLowerCase()));
+        let name = baseName;
+        let suffix = 2;
+        while (existingNames.has(name.toLowerCase())) {
+            name = `${baseName} ${suffix}`;
+            suffix += 1;
+        }
+
+        const newPage: PageData = {
+            id: uuid(),
+            name,
+            order: pages.reduce((max, page) => Math.max(max, page.order), -1) + 1,
+        };
+
+        // Deep snapshot so duplicated boxes never share nested objects with the source.
+        const duplicatedBoxes = boxes
+            .filter(box => box.pageId === pageId)
+            .map(box => cloneBoxForPage(JSON.parse(JSON.stringify(box)) as BoxData, newPage.id, 0));
+
+        setPages(prev => [...prev, newPage]);
+        setBoxes(prev => [...prev, ...duplicatedBoxes]);
+        setCurrentPageId(newPage.id);
+        setSelectedBoxIds([]);
     };
 
     const handlePageChange = (pageId: string) => {
@@ -304,11 +368,22 @@ export default function App() {
         // Don't allow deleting the last page
         if (pages.length <= 1) return;
 
+        const page = pages.find(p => p.id === pageId);
+        const boxCount = boxes.filter(box => box.pageId === pageId).length;
+        const label = page ? `"${page.name}"` : 'this page';
+        const boxLabel = boxCount === 1 ? '1 box' : `${boxCount} boxes`;
+        const warning = boxCount > 0
+            ? `Delete page ${label} and its ${boxLabel}? This cannot be undone.`
+            : `Delete page ${label}? This cannot be undone.`;
+
+        if (!window.confirm(warning)) return;
+
         // Delete all boxes on this page
         setBoxes(prev => prev.filter(box => box.pageId !== pageId));
 
         // Remove the page
         setPages(prev => prev.filter(page => page.id !== pageId));
+        setSelectedBoxIds([]);
 
         // If we're deleting the current page, switch to the first remaining page
         if (currentPageId === pageId) {
@@ -321,6 +396,29 @@ export default function App() {
 
 
     const [selectedBoxIds, setSelectedBoxIds] = useState<string[]>([]);
+    // In-app clipboard for cut/copy/paste (per window); survives page switches.
+    const boxClipboardRef = useRef<BoxData[]>([]);
+    // Cascade successive pastes instead of stacking them at the same spot.
+    const clipboardPasteCountRef = useRef(0);
+
+    // Toast + right-click context menu UI state.
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [contextMenu, setContextMenu] = useState<BoxContextMenuState | null>(null);
+
+    const showToast = useCallback((message: string) => {
+        setToastMessage(message);
+        if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+        toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 1800);
+    }, []);
+
+    const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
+    useEffect(() => {
+        return () => {
+            if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+        };
+    }, []);
     const [isModifierHeld, setIsModifierHeld] = useState<boolean>(false);
     const [isDragging, setIsDragging] = useState<boolean>(false);
     const [findReplaceModalOpen, setFindReplaceModalOpen] = useState<boolean>(false);
@@ -334,6 +432,7 @@ export default function App() {
     const videoRelayManagerRef = useRef<VideoRelayManager | null>(null);
     const [videoRelayManagerReady, setVideoRelayManagerReady] = useState(false);
     const boxRefsMap = useRef<Record<string, HTMLDivElement | null>>({});
+    const canvasWrapperRef = useRef<HTMLDivElement | null>(null);
 
     // Video inputs: the Electron host owns the camera list. Web clients receive
     // it from the host over the WebSocket state sync and never touch the media
@@ -758,6 +857,172 @@ export default function App() {
         const saved = localStorage.getItem(LOCK_STORAGE_KEY);
         return saved === 'true';
     });
+
+    // ---- Box clipboard (cut/copy/paste + context menu) ---------------------
+    const boxCountMessage = (count: number, action: 'copied' | 'cut' | 'pasted') =>
+        `${count === 1 ? 'Box' : `${count} boxes`} ${action}`;
+
+    const copySelectedBoxes = useCallback(() => {
+        if (selectedBoxIds.length === 0) return 0;
+        const selected = boxes.filter(box => selectedBoxIds.includes(box.id));
+        if (selected.length === 0) return 0;
+
+        boxClipboardRef.current = selected.map(box => JSON.parse(JSON.stringify(box)) as BoxData);
+        clipboardPasteCountRef.current = 0;
+        showToast(boxCountMessage(selected.length, 'copied'));
+        return selected.length;
+    }, [boxes, selectedBoxIds, showToast]);
+
+    const cutSelectedBoxes = useCallback(() => {
+        if (isDisplayMode || boxesLocked) return 0;
+        if (selectedBoxIds.length === 0) return 0;
+
+        const selected = boxes.filter(box => selectedBoxIds.includes(box.id));
+        if (selected.length === 0) return 0;
+
+        boxClipboardRef.current = selected.map(box => JSON.parse(JSON.stringify(box)) as BoxData);
+        clipboardPasteCountRef.current = 0;
+        setBoxes(prev => prev.filter(box => !selectedBoxIds.includes(box.id)));
+        setSelectedBoxIds([]);
+        showToast(boxCountMessage(selected.length, 'cut'));
+        return selected.length;
+    }, [boxes, selectedBoxIds, isDisplayMode, boxesLocked, showToast]);
+
+    // Offset paste (keyboard shortcut + box context menu).
+    const pasteBoxes = useCallback(() => {
+        if (isDisplayMode || boxesLocked) return 0;
+        const clipboard = boxClipboardRef.current;
+        if (clipboard.length === 0) return 0;
+
+        clipboardPasteCountRef.current += 1;
+        const offset = 20 * clipboardPasteCountRef.current;
+        const pasted = clipboard.map(box => cloneBoxForPage(box, effectiveCurrentPageId, offset));
+        setBoxes(prev => [...prev, ...pasted]);
+        setSelectedBoxIds(pasted.map(box => box.id));
+        showToast(boxCountMessage(pasted.length, 'pasted'));
+        return pasted.length;
+    }, [isDisplayMode, boxesLocked, effectiveCurrentPageId, showToast]);
+
+    // Cursor paste (empty-canvas context menu): the group's top-left display
+    // position lands on the cursor, preserving the copied layout.
+    const pasteBoxesAt = useCallback((displayX: number, displayY: number) => {
+        if (isDisplayMode || boxesLocked) return 0;
+        const clipboard = boxClipboardRef.current;
+        if (clipboard.length === 0) return 0;
+
+        const positions = clipboard.map(box => getDisplayPosition(
+            box.frame.translate,
+            box.frame.width,
+            box.frame.height,
+            box.anchorPoint
+        ));
+        const minX = Math.min(...positions.map(pos => pos[0]));
+        const minY = Math.min(...positions.map(pos => pos[1]));
+
+        const pasted = clipboard.map((box, index) => cloneBoxAtDisplay(
+            box,
+            effectiveCurrentPageId,
+            displayX + (positions[index][0] - minX),
+            displayY + (positions[index][1] - minY)
+        ));
+        setBoxes(prev => [...prev, ...pasted]);
+        setSelectedBoxIds(pasted.map(box => box.id));
+        showToast(boxCountMessage(pasted.length, 'pasted'));
+        return pasted.length;
+    }, [isDisplayMode, boxesLocked, effectiveCurrentPageId, showToast]);
+
+    const addBoxAt = (displayX: number, displayY: number) => {
+        if (isDisplayMode || boxesLocked) return;
+        const newBox = buildDefaultBox(displayX, displayY, effectiveCurrentPageId);
+        setBoxes(prev => [...prev, newBox]);
+        setSelectedBoxIds([newBox.id]);
+    };
+
+    const getCanvasPoint = (clientX: number, clientY: number) => {
+        const rect = canvasWrapperRef.current?.getBoundingClientRect();
+        const currentScale = scale || 1;
+        if (!rect) return { x: clientX, y: clientY };
+        return {
+            x: (clientX - rect.left) / currentScale,
+            y: (clientY - rect.top) / currentScale,
+        };
+    };
+
+    // Moveable's control box can swallow right-clicks over a selected box, so
+    // resolve the box under the pointer instead of always showing the canvas menu.
+    const getBoxIdAtPoint = (clientX: number, clientY: number): string | null => {
+        if (typeof document.elementsFromPoint !== 'function') return null;
+        const elements = document.elementsFromPoint(clientX, clientY);
+        for (const element of elements) {
+            const boxElement = (element as HTMLElement).closest?.('[data-box-id]') as HTMLElement | null;
+            if (boxElement?.dataset.boxId) return boxElement.dataset.boxId;
+        }
+        return null;
+    };
+
+    const handleBoxContextMenu = (event: React.MouseEvent, boxId: string) => {
+        event.preventDefault();
+        if (isDisplayMode || boxesLocked) return;
+
+        if (!selectedBoxIds.includes(boxId)) {
+            setSelectedBoxIds([boxId]);
+        }
+        const point = getCanvasPoint(event.clientX, event.clientY);
+        setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
+            canvasX: point.x,
+            canvasY: point.y,
+            variant: 'box',
+        });
+    };
+
+    const handleCanvasContextMenu = (event: React.MouseEvent) => {
+        event.preventDefault();
+        if (isDisplayMode || boxesLocked) return;
+
+        const boxId = getBoxIdAtPoint(event.clientX, event.clientY);
+        if (boxId) {
+            handleBoxContextMenu(event, boxId);
+            return;
+        }
+
+        setSelectedBoxIds([]);
+        const point = getCanvasPoint(event.clientX, event.clientY);
+        setContextMenu({
+            x: event.clientX,
+            y: event.clientY,
+            canvasX: point.x,
+            canvasY: point.y,
+            variant: 'canvas',
+        });
+    };
+
+    const handleContextNewBox = () => {
+        if (contextMenu) addBoxAt(contextMenu.canvasX, contextMenu.canvasY);
+        setContextMenu(null);
+    };
+
+    const handleContextCut = () => {
+        cutSelectedBoxes();
+        setContextMenu(null);
+    };
+
+    const handleContextCopy = () => {
+        copySelectedBoxes();
+        setContextMenu(null);
+    };
+
+    const handleContextPaste = () => {
+        if (contextMenu) {
+            if (contextMenu.variant === 'canvas') {
+                pasteBoxesAt(contextMenu.canvasX, contextMenu.canvasY);
+            } else {
+                pasteBoxes();
+            }
+        }
+        setContextMenu(null);
+    };
 
     // Apply font immediately on component mount
     useEffect(() => {
@@ -1810,28 +2075,7 @@ export default function App() {
     };
 
     const createNewBox = () => {
-        const newBox: BoxData = {
-            id: uuid(),
-            pageId: currentPageId,
-            frame: {
-                translate: [30, 60] as [number, number],
-                width: 600,
-                height: 105,
-            },
-            anchorPoint: 'top-left',
-            zIndex: 1,
-            opacity: 100,
-            opacitySource: "",
-            opacityVariableValues: [],
-            layers: createDefaultBoxLayers(),
-            borderColor: "#61BAFA",
-            borderColorText: "",
-            borderVariableColors: [],
-            noBorder: true,
-            borderRadius: 15,
-            companionButtonLocation: '',
-        };
-        setBoxes((prev) => [...prev, newBox]);
+        setBoxes((prev) => [...prev, buildDefaultBox(30, 60, currentPageId)]);
     };
 
 
@@ -1911,57 +2155,51 @@ export default function App() {
             else if (findReplaceModalOpen) {
                 return;
             }
+            // Cut / copy / paste selected boxes (in-app clipboard, works across pages)
+            else if ((event.metaKey || event.ctrlKey) && !event.shiftKey && ['c', 'x', 'v'].includes(event.key.toLowerCase())) {
+                const target = event.target as HTMLElement | null;
+                const isTextEditing = !!target && (
+                    target.isContentEditable ||
+                    target.tagName === 'INPUT' ||
+                    target.tagName === 'TEXTAREA' ||
+                    target.tagName === 'SELECT'
+                );
+                // Let the browser handle native copy/paste while editing text.
+                if (isTextEditing) return;
+
+                const key = event.key.toLowerCase();
+
+                if (key === 'c') {
+                    if (selectedBoxIds.length === 0) return;
+                    event.preventDefault();
+                    copySelectedBoxes();
+                    return;
+                }
+
+                if (key === 'x') {
+                    if (selectedBoxIds.length === 0 || isDisplayMode || boxesLocked) return;
+                    event.preventDefault();
+                    cutSelectedBoxes();
+                    return;
+                }
+
+                // Paste into the currently visible page
+                if (isDisplayMode || boxesLocked) return;
+                if (boxClipboardRef.current.length === 0) return;
+                event.preventDefault();
+                pasteBoxes();
+            }
             // Duplicate selected boxes with Cmd+D (Mac) or Ctrl+D (Windows/Linux)
             else if (event.key === 'd' && (event.metaKey || event.ctrlKey) && selectedBoxIds.length > 0) {
                 event.preventDefault();
                 event.stopPropagation();
 
-                // Helper functions for position conversion
-                const getDisplayPos = (translate: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
-                    const [x, y] = translate;
-                    switch (anchor) {
-                        case 'top-left': return [x, y];
-                        case 'top-right': return [x + w, y];
-                        case 'bottom-left': return [x, y + h];
-                        case 'bottom-right': return [x + w, y + h];
-                        case 'center': return [x + w / 2, y + h / 2];
-                        default: return [x, y];
-                    }
-                };
+                const duplicatedBoxes = boxes
+                    .filter(b => selectedBoxIds.includes(b.id))
+                    .map(box => cloneBoxForPage(box, box.pageId));
 
-                const getInternalPos = (displayPos: [number, number], w: number, h: number, anchor: BoxData['anchorPoint']): [number, number] => {
-                    const [x, y] = displayPos;
-                    switch (anchor) {
-                        case 'top-left': return [x, y];
-                        case 'top-right': return [x - w, y];
-                        case 'bottom-left': return [x, y - h];
-                        case 'bottom-right': return [x - w, y - h];
-                        case 'center': return [x - w / 2, y - h / 2];
-                        default: return [x, y];
-                    }
-                };
-
-                // Get all selected boxes
-                const selectedBoxes = boxes.filter(b => selectedBoxIds.includes(b.id));
-                // Create duplicated boxes with new IDs and offset positions based on display position
-                const duplicatedBoxes = selectedBoxes.map(box => {
-                    const currentDisplayPos = getDisplayPos(box.frame.translate, box.frame.width, box.frame.height, box.anchorPoint);
-                    const newDisplayPos: [number, number] = [currentDisplayPos[0] + 20, currentDisplayPos[1] + 20];
-                    const newInternalPos = getInternalPos(newDisplayPos, box.frame.width, box.frame.height, box.anchorPoint);
-
-                    return {
-                        ...box,
-                        id: uuid(),
-                        frame: {
-                            ...box.frame,
-                            translate: newInternalPos
-                        },
-                        layers: duplicateLayers(box.layers || [])
-                    };
-                });
-                // Add duplicated boxes to the boxes array
                 setBoxes(prev => [...prev, ...duplicatedBoxes]);
-                // Select only the newly duplicated boxes (use setTimeout to ensure state updates after boxes are added)
+                // Select only the newly duplicated boxes (use setTimeout so the new boxes exist first)
                 setTimeout(() => {
                     setSelectedBoxIds(duplicatedBoxes.map(b => b.id));
                 }, 0);
@@ -2028,7 +2266,7 @@ export default function App() {
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [selectedBoxIds, findReplaceModalOpen, boxes, boxesLocked]);
+    }, [selectedBoxIds, findReplaceModalOpen, boxes, boxesLocked, isDisplayMode, effectiveCurrentPageId]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -2284,13 +2522,16 @@ export default function App() {
                 pages={pages}
                 isLicensed={isLicensed}
             />
-            <div style={{
-                transform: `scale(${scale})`,
-                transformOrigin: 'top left',
-                width: scaleEnabled ? `${designWidth}px` : '100%',
-                minHeight: '100vh',
-                position: 'relative'
-            }}>
+            <div
+                ref={canvasWrapperRef}
+                onContextMenu={handleCanvasContextMenu}
+                style={{
+                    transform: `scale(${scale})`,
+                    transformOrigin: 'top left',
+                    width: scaleEnabled ? `${designWidth}px` : '100%',
+                    minHeight: '100vh',
+                    position: 'relative'
+                }}>
                 {boxes.filter(box => box.pageId === effectiveCurrentPageId).length === 0 ? (
                     <div style={{
                         position: 'fixed',
@@ -2349,6 +2590,7 @@ export default function App() {
                                 }
                             }}
                             onDeselect={handleBoxDeselect} // Clear all selections
+                            onContextMenu={(event) => handleBoxContextMenu(event, box.id)}
                             onBoxUpdate={handleBoxUpdate}
                             onDelete={handleBoxDelete}
                             onDuplicate={duplicateBox}
@@ -2471,9 +2713,30 @@ snapDirections={{ top: true, left: true, bottom: true, right: true }}
                     onPageAdd={handlePageAdd}
                     onPageRename={handlePageRename}
                     onPageDelete={handlePageDelete}
+                    onPageDuplicate={handlePageDuplicate}
                     visible={showPageTabs}
                     readOnly={isDisplayMode}
                 />
+            )}
+
+            {contextMenu && (
+                <BoxContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    variant={contextMenu.variant}
+                    canCut={selectedBoxIds.length > 0}
+                    canCopy={selectedBoxIds.length > 0}
+                    canPaste={boxClipboardRef.current.length > 0}
+                    onNewBox={handleContextNewBox}
+                    onCut={handleContextCut}
+                    onCopy={handleContextCopy}
+                    onPaste={handleContextPaste}
+                    onClose={closeContextMenu}
+                />
+            )}
+
+            {toastMessage && (
+                <div className="app-toast">{toastMessage}</div>
             )}
         </div >
     );
